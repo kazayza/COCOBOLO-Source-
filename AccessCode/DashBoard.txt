@@ -1,9 +1,0 @@
-Option Compare Database
-
-Private Sub Form_Open(Cancel As Integer)
- If Not currentUser.HasPermission(Me.Name, "View") Then
-        Cancel = True
-        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
-        DoCmd.Close acForm, Me.Name
-    End If
-End Sub
