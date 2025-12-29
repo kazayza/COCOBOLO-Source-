@@ -1,0 +1,258 @@
+Option Compare Database
+Private Sub btnAddEmployee_Click()
+ Dim db As DAO.Database
+Dim sqlInsert As String
+Dim sqlCheck As String
+Dim rs As DAO.Recordset
+Dim TransactionID As Long
+Dim EmployeeID As Long
+Dim EmployeeName As String
+Dim TransactionAmount As Double
+Dim CustomerName As String
+
+' «· Õﬁﬁ „‰ «Œ Ì«— «·›« Ê—… Ê«·„ÊŸ›
+If IsNull(Me.cboInvoice) Then
+    MsgBox "«Œ — «·›« Ê—… √Ê·«.", vbExclamation, "CCOBOLO System"
+    Exit Sub
+End If
+
+If IsNull(Me.cboEmployee) Then
+    MsgBox "«Œ — «·„ÊŸ›.", vbExclamation
+    Exit Sub
+End If
+
+' ﬁ—«¡… «·ﬁÌ„ „‰ «·ﬂÊ„»Ê »Êﬂ”« 
+TransactionID = Me.cboInvoice.value
+TransactionAmount = Me.cboInvoice.Column(1) ' TotalAmount
+CustomerName = Me.cboInvoice.Column(2)      ' CustomerName (⁄„Êœ —ﬁ„ 3)
+EmployeeID = Me.cboEmployee.value
+EmployeeName = Me.cboEmployee.Column(1)
+
+Set db = CurrentDb
+
+' «· Õﬁﬁ „‰ ÊÃÊœ «·„ÊŸ› »«·›⁄· ·‰›” «·›« Ê—…
+sqlCheck = "SELECT 1 FROM TempCommissionAssignments " & _
+           "WHERE TransactionID = " & TransactionID & " AND EmployeeID = " & EmployeeID
+
+Set rs = db.OpenRecordset(sqlCheck)
+If Not rs.EOF Then
+    MsgBox "«·„ÊŸ› „÷«› »«·›⁄· ·Â–Â «·›« Ê—…!", vbInformation
+    rs.Close
+    Exit Sub
+End If
+rs.Close
+
+' ≈÷«›… «·”Ã· ›Ì «·ÃœÊ· «·„ƒﬁ 
+sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+            "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CommissionRate, CommissionAmount, CustomerName) " & _
+            "VALUES (" & TransactionID & ", " & EmployeeID & ", '" & EmployeeName & "', " & TransactionAmount & ", 0, 0, '" & CustomerName & "');"
+
+db.Execute sqlInsert, dbFailOnError
+
+'  ÕœÌÀ «·›Ê—„ ·⁄—÷ «·”Ã· «·ÃœÌœ
+Me.Requery
+
+MsgBox " „  ≈÷«›… «·„ÊŸ› »‰Ã«Õ.", vbInformation
+
+End Sub
+
+'Private Sub btnLoadTransactions_Click()
+'    Dim db As DAO.Database
+'    Dim sqlDelete As String
+'    Dim sqlInsert As String
+'
+'    Set db = CurrentDb
+'
+'    ' „”Õ «·»Ì«‰«  «·ﬁœÌ„… „‰ «·ÃœÊ· «·„ƒﬁ 
+'    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+'    db.Execute sqlDelete, dbFailOnError
+'
+'    '  ⁄»∆… «·ÃœÊ· «·„ƒﬁ  »«·»Ì«‰«  «·ÃœÌœ…
+'    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+'                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount,  CustomerName, CommissionRate) " & _
+'                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+'                "t.TotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+'                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+'                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+'                "WHERE t.TransactionType = 'Sale' " & _
+'                "AND t.PaidAmount = t.TotalAmount " & _
+'                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                "ORDER BY t.TransactionDate, t.EmpId;"
+'
+'    db.Execute sqlInsert, dbFailOnError
+'
+'    '  ÕœÌÀ «·›Ê—„ ·⁄—÷ «·»Ì«‰«  «·ÃœÌœ…
+'    Me.Requery
+'
+''    MsgBox " „  Õ„Ì· «·›Ê« Ì— «·„œ›Ê⁄… »«·ﬂ«„· «· Ì ·„  ıÕ”» ·Â« ⁄„Ê·….", vbInformation
+'End Sub
+Private Sub btnLoadTransactions_Click()
+Call LoadCommissions
+End Sub
+
+Private Sub btnSaveCommissions_Click()
+Call approve
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+Private Sub txtCommissionRate_AfterUpdate()
+    Dim totalRate As Double
+    Dim TransactionID As Long
+    Dim rs As DAO.Recordset
+    Dim EmployeeID As Long
+    Dim newRate As Double
+    
+    ' ﬁ—«¡… «·»Ì«‰«  „‰ «·›Ê—„
+    TransactionID = Nz(Me.txtTransactionID.value, 0)
+    EmployeeID = Nz(Me.txtEmployeeID.value, 0)
+    newRate = Nz(Me.txtCommissionRate.value, 0)
+    
+    ' «·„œÌ— Ì „ «” À‰«ƒÂ
+    If EmployeeID = 1 Then
+        ' «·„œÌ— À«»  1%° Ì „ Õ”«» «·⁄„Ê·… „»«‘—…
+        Me.txtCommissionRate.value = 0.01
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * 0.01, 2)
+        Exit Sub
+    End If
+    
+    ' › Õ «·ÃœÊ· «·„ƒﬁ  ·· Õﬁﬁ „‰ „Ã„Ê⁄ ‰”» »«ﬁÌ «·„ÊŸ›Ì‰ (»«” À‰«¡ «·„œÌ—)
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT SUM(CommissionRate) AS TotalRate FROM TempCommissionAssignments " & _
+        "WHERE TransactionID = " & TransactionID & " AND EmployeeID <> 1")
+    
+    totalRate = Nz(rs!totalRate, 0)
+    rs.Close
+    
+    ' «· Õﬁﬁ „‰ «·Õœ «·√ﬁ’Ï ·„Ã„Ê⁄ «·„ÊŸ›Ì‰ (1%)
+    If totalRate + newRate > 0.01 Then
+        MsgBox "„Ã„Ê⁄ ‰”» «·„ÊŸ›Ì‰ ·Â–Â «·›« Ê—… ·« Ì„ﬂ‰ √‰ Ì“Ìœ ⁄‰ 1%!", vbExclamation
+        Me.txtCommissionRate.value = 0
+        Me.txtCommissionAmount.value = 0
+    Else
+        ' Õ”«» „»·€ «·⁄„Ê·…  ·ﬁ«∆Ì«
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * newRate, 2)
+    End If
+End Sub
+
+Public Sub LoadCommissions()
+    Dim db As DAO.Database
+    Dim sqlDelete As String
+    Dim sqlInsert As String
+
+    Set db = CurrentDb
+
+    ' „”Õ «·»Ì«‰«  «·ﬁœÌ„… „‰ «·ÃœÊ· «·„ƒﬁ 
+    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+    db.Execute sqlDelete, dbFailOnError
+
+    '  ⁄»∆… «·ÃœÊ· «·„ƒﬁ  »«·»Ì«‰«  «·ÃœÌœ…
+    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount,  CustomerName, CommissionRate) " & _
+                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+                "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+                "WHERE t.TransactionType = 'Sale' " & _
+                "AND t.PaidAmount = t.NetTotalAmount " & _
+                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+                "ORDER BY t.TransactionDate, t.EmpId;"
+
+    db.Execute sqlInsert, dbFailOnError
+
+    '  ÕœÌÀ «·›Ê—„ ·⁄—÷ «·»Ì«‰«  «·ÃœÌœ…
+    Me.Requery
+
+''    MsgBox " „  Õ„Ì· «·›Ê« Ì— «·„œ›Ê⁄… »«·ﬂ«„· «· Ì ·„  ıÕ”» ·Â« ⁄„Ê·….", vbInformation
+
+'    Dim db As DAO.Database
+'    Dim rsTransactions As DAO.Recordset
+'    Dim sqlDelete As String, sqlInsert As String, sqlInsertAuto As String
+'
+'    Set db = CurrentDb
+'
+'    ' „”Õ «·»Ì«‰«  «·ﬁœÌ„… „‰ «·ÃœÊ· «·„ƒﬁ 
+'    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+'    db.Execute sqlDelete, dbFailOnError
+'
+'    '  ⁄»∆… «·ÃœÊ· «·„ƒﬁ  »«·»Ì«‰«  «·ÃœÌœ…
+'    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+'                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CustomerName, CommissionRate) " & _
+'                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+'                "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+'                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+'                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+'                "WHERE t.TransactionType = 'Sale' " & _
+'                "AND t.PaidAmount = t.NetTotalAmount " & _
+'                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                "ORDER BY t.TransactionDate, t.EmpId;"
+'
+'    db.Execute sqlInsert, dbFailOnError
+    
+    ' ?????? «·Ã“¡ «·ÃœÌœ: ≈÷«›… «·„ÊŸ› «·≈÷«›Ì ??????
+    
+    ' ≈÷«›… „ÊŸ› ≈÷«›Ì (ﬂÊœ 1) »‰”»… 1% ·ﬂ· ›« Ê—…
+'    sqlInsertAuto = "INSERT INTO TempCommissionAssignments " & _
+'                    "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CustomerName, CommissionRate,CommissionAmount) " & _
+'                    "SELECT t.TransactionID, 1 AS EmployeeID, " & _
+'                    "(SELECT FullName FROM dbo_Employees WHERE EmployeeID = 1) AS EmployeeName, " & _
+'                    "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, .01 AS CommissionRate,t.TotalAmount * 0.01 AS CommissionAmount " & _
+'                    "FROM dbo_Transactions t " & _
+'                    "INNER JOIN dbo_Parties p ON t.PartyID = p.PartyID " & _
+'                    "WHERE t.TransactionType = 'Sale' " & _
+'                    "AND t.PaidAmount = t.NetTotalAmount " & _
+'                    "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                    "AND t.TransactionID IN (SELECT TransactionID FROM TempCommissionAssignments);"
+'
+'    db.Execute sqlInsertAuto, dbFailOnError
+    
+    ' ?????? ‰Â«Ì… «·Ã“¡ «·ÃœÌœ ??????
+    
+    '  ÕœÌÀ «·›Ê—„ ·⁄—÷ «·»Ì«‰«  «·ÃœÌœ…
+'    Me.Requery
+    
+End Sub
+Public Sub approve()
+    Dim db As DAO.Database
+    Dim sqlInsert As String
+    Dim msgTitle As String
+    Dim msgBody As String
+    Dim totalCommissions As Double
+
+    Set db = CurrentDb
+
+    ' ≈œ—«Ã «·»Ì«‰«  „‰ «·ÃœÊ· «·„ƒﬁ  ··ÃœÊ· «·√”«”Ì
+    sqlInsert = "INSERT INTO dbo_CommissionAssignments " & _
+                "(TransactionID, EmployeeID,TransactionAmount, CommissionRate, CommissionAmount, CommissionMonth, CommissionYear, CreatedBy, CreatedAt) " & _
+                "SELECT TransactionID, EmployeeID,TransactionAmount, CommissionRate, CommissionAmount, " & Month(Date) & ", " & Year(Date) & ", " & _
+                "'" & currentUser.UserName & "', Now() " & _
+                "FROM TempCommissionAssignments;"
+    db.Execute sqlInsert, dbFailOnError
+
+    '  Ã„Ì⁄ ≈Ã„«·Ì «·⁄„Ê·… «·„Õ›ÊŸ… («Œ Ì«—Ì »” ·⁄—÷Â« ›Ì «·≈‘⁄«—)
+    totalCommissions = Nz(DLookup("Sum(CommissionAmount)", "TempCommissionAssignments"), 0)
+
+    ' „”Õ «·ÃœÊ· «·„ƒﬁ 
+    db.Execute "DELETE FROM TempCommissionAssignments;", dbFailOnError
+
+    ' ⁄„· ≈‘⁄«— ··„œÌ—
+    msgTitle = "ApproveCommissions"
+    msgBody = "—Ã«¡ «⁄ „«œ Commission ·‘Â— " & Month(Date) & "/" & Year(Date) & _
+              ". ≈Ã„«·Ì «·⁄„Ê·« : " & Format(totalCommissions, "Currency")
+
+    ' «” œ⁄«¡ œ«·… «·≈‘⁄«— (··„œÌ— admin)
+    Call SendNotification("nabil", msgTitle, msgBody, "frm_CommissionsReview", 0, True, currentUser.UserName)
+
+    ' —”«·…  √ﬂÌœ
+    MsgBox " „ Õ›Ÿ »Ì«‰«  «·⁄„Ê·… Ê≈—”«· ≈‘⁄«— ··„œÌ—!", vbInformation
+
+    '  ÕœÌÀ «·›Ê—„
+'    Me.Requery
+End Sub

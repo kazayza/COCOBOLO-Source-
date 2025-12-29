@@ -1,0 +1,52 @@
+Option Compare Database
+
+Private Sub Quantity_AfterUpdate()
+Me.TotalAmount = Nz(Me.Quantity, 0) * Nz(Me.UnitPrice, 0)
+End Sub
+
+Private Sub UnitPrice_AfterUpdate()
+Me.TotalAmount = Nz(Me.Quantity, 0) * Nz(Me.UnitPrice, 0)
+End Sub
+
+Private Sub UnitPrice_BeforeUpdate(Cancel As Integer)
+
+    Dim ProductID As Long
+    Dim lastPurchasePrice As Currency
+    Dim minSalePrice As Currency
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    ' ‰ √ﬂœ ≈‰ «·›« Ê—… »Ì⁄
+    If Forms![frm_SalesInvoive]![TransactionType] <> "Sale" Then Exit Sub
+    
+    ProductID = Me.ProductID
+    
+    ' ‰ÃÌ» ¬Œ— ”⁄— ‘—«¡ „‰ ÃœÊ·  ›«’Ì· «·›Ê« Ì—
+    sql = "SELECT TOP 1 UnitPrice " & _
+          "FROM dbo_TransactionDetails AS TD " & _
+          "INNER JOIN dbo_Transactions AS T ON TD.TransactionID = T.TransactionID " & _
+          "WHERE TD.ProductID = " & ProductID & " AND T.TransactionType = 'Purchase' " & _
+          "ORDER BY T.TransactionDate DESC"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot)
+    If Not rs.EOF Then
+        lastPurchasePrice = rs!UnitPrice
+    Else
+        lastPurchasePrice = 0
+    End If
+    rs.Close
+    
+    ' ·Ê „›Ì‘ „‘ —Ì«  ﬁ»· ﬂœÂ ? «”„Õ »«·”⁄—
+    If lastPurchasePrice = 0 Then Exit Sub
+    
+    ' «Õ”» «·Õœ «·√œ‰Ï
+    minSalePrice = lastPurchasePrice * 1.3
+    
+    '  Õﬁﬁ „‰ «·”⁄—
+    If Me.UnitPrice < minSalePrice Then
+        MsgBox "”⁄— «·»Ì⁄ ·« ÌÃ» √‰ Ìﬁ· ⁄‰ 30% ›Êﬁ ”⁄— «·‘—«¡ «·√ŒÌ— (" & Format(minSalePrice, "0.00") & ")", vbCritical
+        Cancel = True
+    End If
+End Sub
+
+

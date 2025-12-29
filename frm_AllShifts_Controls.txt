@@ -1,0 +1,38 @@
+Form: frm_AllShifts
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtFromDate		TextBox		
+Label1		Label		„‰  «—ÌŒ
+txtToDate		TextBox		
+Label3		Label		«·Ï  «—ÌŒ
+cboEmployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.Status)="‰‘ÿ") AND ((dbo_Employees.IsPermanentlyExempt)=False)); 
+Label5		Label		«·„ÊŸ›
+cboShiftType		ComboBox		’»«ÕÏ;„”«∆Ï
+Label7		Label		«·‘Ì› 
+Label21		Label		Êﬁ  «·‰Â«Ì…
+Label17		Label		‰Ê⁄ «·‘Ì› 
+Label15		Label		ﬂÊœ «·»’„…
+Label19		Label		Êﬁ  «·»œ«Ì…
+Label9		Label		—ﬁ„ «·‘Ì› 
+Label11		Label		ﬂÊœ «·„ÊŸ›
+Label13		Label		«·«”„
+Label25		Label		«·Ï  «—ÌŒ
+Label23		Label		„‰  «—ÌŒ
+Box64		Rectangle		
+Box65		Rectangle		
+btnAddShifts		Button		≈÷«›… ‘Ì› 
+cmdExport		Button		 ’œÌ— «·Ï «ﬂ”Ì·
+btnOpenReport		Button		 ﬁ—Ì—
+EmployeeShiftID		TextBox		EmployeeShiftID
+EmployeeID		TextBox		EmployeeID
+FullName		TextBox		FullName
+BiometricCode		TextBox		BiometricCode
+ShiftType		TextBox		ShiftType
+StartTime		TextBox		StartTime
+EndTime		TextBox		EndTime
+EffectiveFrom		TextBox		EffectiveFrom
+EffectiveTo		TextBox		EffectiveTo
+Command66		Button		 ⁄œÌ·
+Line87		Line		

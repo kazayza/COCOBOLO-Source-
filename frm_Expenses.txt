@@ -1,0 +1,524 @@
+Option Compare Database
+
+Private Sub btnaddGroup_Click()
+If Not currentUser.HasPermission("frm_ExpensesGroup") Then
+        
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+
+
+DoCmd.OpenForm "frm_ExpensesGroup"
+End Sub
+
+Private Sub btnCancel_Click()
+DoCmd.Close acForm, "frm_Expenses"
+End Sub
+' «·ﬂÊœ œÂ ·Õ›Ÿ Ê ”ÃÌ· «·„’—Ê› „»«‘—
+'Private Sub btnSaveExpense_Click()
+'    Dim db As DAO.Database
+'    Dim rsExpenses As DAO.Recordset
+'    Dim rsCashTrans As DAO.Recordset
+'    Dim newExpenseID As Long
+'    Dim cashBoxID As Long
+'    Dim expenseAmount As Double
+'
+'    '  Õﬁﬁ „‰ «·»Ì«‰«  «·„ÿ·Ê»…
+'    If IsNull(Me.cboExpenseGroup) Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«— „Ã„Ê⁄… «·„’—Ê›", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+'        MsgBox "Ì—ÃÏ ≈œŒ«· «”„ «·„’—Ê›", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If IsNull(Me.cboCashBox) Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«— «·Œ“‰…", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Nz(Me.Amount, 0) <= 0 Then
+'        MsgBox "Ì—ÃÏ ≈œŒ«· „»·€ ’ÕÌÕ √ﬂ»— „‰ ’›—", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'
+'    cashBoxID = Me.cboCashBox
+'    expenseAmount = Nz(Me.Amount, 0)
+'
+'    ' Õ›Ÿ »Ì«‰«  «·„’—Ê› ›Ì dbo_Expenses
+'    Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+'    rsExpenses.AddNew
+'    rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+'    rsExpenses!ExpenseName = Me.ExpenseName
+'    rsExpenses!Amount = expenseAmount
+'    rsExpenses!ExpenseDate = Nz(Me.ExpenseDate, Date)
+'    rsExpenses!cashBoxID = cashBoxID
+'    rsExpenses!Notes = Nz(Me.Notes, "")
+'    rsExpenses!CreatedBy = "admin"
+'    rsExpenses!CreatedAt = Now()
+'    rsExpenses.Update
+'    rsExpenses.Bookmark = rsExpenses.LastModified
+'    newExpenseID = rsExpenses!ExpenseID
+'    rsExpenses.Close
+'
+'    ' Õ›Ÿ Õ—ﬂ… «·„’—Ê› ›Ì dbo_CashboxTransactions (’—› ‰ﬁœÌ)
+'    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+'    rsCashTrans.AddNew
+'    rsCashTrans!cashBoxID = cashBoxID
+'    rsCashTrans!TransactionType = "’—›"    ' ·√‰ «·„’—Ê› ÂÊ ’—› ‰ﬁœÌ
+'    rsCashTrans!Amount = expenseAmount
+'    rsCashTrans!TransactionDate = Nz(Me.ExpenseDate, Date)
+'    rsCashTrans!ReferenceID = newExpenseID
+'    rsCashTrans!ReferenceType = "Expense"
+'    rsCashTrans!Notes = Nz(Me.Notes, "")
+'    rsCashTrans!CreatedBy = "admin"
+'    rsCashTrans!CreatedAt = Now()
+'    rsCashTrans.Update
+'    rsCashTrans.Close
+'
+'    MsgBox " „ Õ›Ÿ «·„’—Ê› »‰Ã«Õ", vbInformation
+'
+'    '  ‰ŸÌ› «·ÕﬁÊ· »⁄œ «·Õ›Ÿ («Œ Ì«—Ì)
+'    Me.cboExpenseGroup = Null
+'    Me.ExpenseName = ""
+'    Me.Amount = 0
+'    Me.cboCashBox = Null
+'    Me.ExpenseDate = Date
+'    Me.Notes = ""
+'
+'End Sub
+
+Private Sub btnSaveExpense_Click()
+
+    Dim db As DAO.Database
+    Dim rsExpenses As DAO.Recordset
+    Dim rsCashTrans As DAO.Recordset
+    Dim ExpenseID As Long
+    Dim CashBoxID As Long
+    Dim expenseAmount As Double
+    Dim isNew As Boolean
+    Dim i As Integer
+    Dim monthlyAmount As Double
+    Dim ExpenseDate As Date
+    
+    '  Õﬁﬁ „‰ «·»Ì«‰«  «·„ÿ·Ê»…
+    If IsNull(Me.cboExpenseGroup) Then
+        MsgBox "Ì—ÃÏ «Œ Ì«— „Ã„Ê⁄… «·„’—Ê›", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+        MsgBox "Ì—ÃÏ ≈œŒ«· «”„ «·„’—Ê›", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If IsNull(Me.cboCashBox) Then
+        MsgBox "Ì—ÃÏ «Œ Ì«— «·Œ“‰…", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If Nz(Me.Amount, 0) <= 0 Then
+        MsgBox "Ì—ÃÏ ≈œŒ«· „»·€ ’ÕÌÕ √ﬂ»— „‰ ’›—", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    ' «· Õﬁﬁ „‰ »Ì«‰«  «·„’—Ê› «·„ﬁœ„
+    If Me.chkIsAdvance.value Then
+        If Nz(Me.txtAdvanceMonths.value, 0) <= 0 Then
+            MsgBox "Ì—ÃÏ ≈œŒ«· ⁄œœ √‘Â— ’ÕÌÕ ··„’—Ê› «·„ﬁœ„", vbExclamation, "COCOBOLO SYSTEM"
+            Exit Sub
+        End If
+    End If
+    
+    Set db = CurrentDb
+    CashBoxID = Me.cboCashBox
+    expenseAmount = Nz(Me.Amount, 0)
+    ExpenseDate = Nz(Me.ExpenseDate, Date)
+    
+    ' ≈–« ﬂ«‰  ⁄œÌ· (·Ì” ÃœÌœ) - ‰›” «·ﬂÊœ «·ﬁœÌ„
+    isNew = IsNull(Me.ExpenseID) Or Me.ExpenseID = 0
+    
+    If Not isNew Then
+        ' ﬂÊœ «· ⁄œÌ· Ì›÷· ﬂ„« ÂÊ
+        Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+        rsExpenses.FindFirst "ExpenseID = " & Me.ExpenseID
+        If rsExpenses.NoMatch Then
+            MsgBox "·„ Ì „ «·⁄ÀÊ— ⁄·Ï «·„’—Ê› ·· ⁄œÌ·", vbExclamation, "COCOBOLO SYSTEM"
+            rsExpenses.Close
+            Exit Sub
+        End If
+        rsExpenses.Edit
+        
+        rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+        rsExpenses!ExpenseName = Me.ExpenseName
+        rsExpenses!Amount = expenseAmount
+        rsExpenses!ExpenseDate = ExpenseDate
+        rsExpenses!CashBoxID = CashBoxID
+        rsExpenses!Notes = Nz(Me.Notes, "")
+        rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+        rsExpenses!CreatedBy = currentUser.UserName
+        rsExpenses!CreatedAt = Now()
+        
+        ' ≈÷«›… «·ÕﬁÊ· «·ÃœÌœ…
+        If Me.chkIsAdvance.value Then
+            rsExpenses!IsAdvance = True
+            rsExpenses!AdvanceMonths = Nz(Me.txtAdvanceMonths.value, 0)
+        Else
+            rsExpenses!IsAdvance = False
+            rsExpenses!AdvanceMonths = Null
+        End If
+        
+        rsExpenses.Update
+        rsExpenses.Close
+        
+        ' Õ—ﬂ… «·Œ“Ì‰… ( ⁄œÌ·)
+        Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+        rsCashTrans.FindFirst "ReferenceType = 'Expense' AND ReferenceID = " & Me.ExpenseID
+        If rsCashTrans.NoMatch Then
+            rsCashTrans.AddNew
+        Else
+            rsCashTrans.Edit
+        End If
+        
+        rsCashTrans!CashBoxID = CashBoxID
+        rsCashTrans!TransactionType = "’—›"
+        rsCashTrans!Amount = expenseAmount
+        rsCashTrans!TransactionDate = ExpenseDate
+        rsCashTrans!ReferenceID = Me.ExpenseID
+        rsCashTrans!ReferenceType = "Expense"
+        rsCashTrans!Notes = Nz(Me.Notes, "") & " «·„” ›Ìœ : " & Nz(Me.Torecipient, "")
+        rsCashTrans!CreatedBy = currentUser.UserName
+        rsCashTrans!CreatedAt = Now()
+        rsCashTrans.Update
+        rsCashTrans.Close
+        
+        MsgBox " „  ⁄œÌ· «·„’—Ê› »‰Ã«Õ", vbInformation, "COCOBOLO SYSTEM"
+    Else
+        ' ≈–« ﬂ«‰ „’—Ê› ÃœÌœ
+        If Me.chkIsAdvance.value Then
+            ' „’—Ê› „ﬁœ„ - ‰”Ã· Õ—ﬂ… Œ“Ì‰… Ê«Õœ… + ⁄œ… „’—Ê›« 
+            monthlyAmount = expenseAmount / Nz(Me.txtAdvanceMonths.value, 1)
+            
+            ' 1.  ”ÃÌ· Õ—ﬂ… «·Œ“Ì‰… Ê«Õœ… »«·„»·€ «·ﬂ«„·
+            Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+            rsCashTrans.AddNew
+            rsCashTrans!CashBoxID = CashBoxID
+            rsCashTrans!TransactionType = "’—›"
+            rsCashTrans!Amount = expenseAmount
+            rsCashTrans!TransactionDate = ExpenseDate
+            rsCashTrans!ReferenceID = 0 ' ”Ì „  ÕœÌÀÂ ·«Õﬁ«
+            rsCashTrans!ReferenceType = "AdvanceExpense"
+            rsCashTrans!Notes = "„’—Ê› „ﬁœ„ - " & Nz(Me.Notes, "") & " «·„” ›Ìœ : " & Nz(Me.Torecipient, "")
+            rsCashTrans!CreatedBy = currentUser.UserName
+            rsCashTrans!CreatedAt = Now()
+            rsCashTrans.Update
+            rsCashTrans.Close
+            
+            ' 2.  ”ÃÌ· ⁄œ… „’—Ê›«  ›Ì ÃœÊ· «·„’—Ê›«  (‘Â—Ì…)
+            Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+            
+            For i = 1 To Nz(Me.txtAdvanceMonths.value, 1)
+                rsExpenses.AddNew
+                rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+                rsExpenses!ExpenseName = Me.ExpenseName & " (" & i & "/" & Me.txtAdvanceMonths.value & ")"
+                rsExpenses!Amount = monthlyAmount
+                rsExpenses!ExpenseDate = DateAdd("m", i - 1, ExpenseDate) ' ‰›” «·ÌÊ„ „‰ ﬂ· ‘Â—
+                rsExpenses!CashBoxID = CashBoxID
+                rsExpenses!Notes = Nz(Me.Notes, "") & " - ﬁ”ÿ " & i & " „‰ " & Me.txtAdvanceMonths.value
+                rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+                rsExpenses!CreatedBy = currentUser.UserName
+                rsExpenses!CreatedAt = Now()
+                rsExpenses!IsAdvance = True
+                rsExpenses!AdvanceMonths = Nz(Me.txtAdvanceMonths.value, 0)
+                rsExpenses.Update
+                
+                ' ≈–« ﬂ«‰  «·Õ—ﬂ… «·√Ê·Ï° ‰—»ÿÂ« »Õ—ﬂ… «·Œ“Ì‰…
+                If i = 1 Then
+                    rsExpenses.Bookmark = rsExpenses.LastModified
+                    ExpenseID = rsExpenses!ExpenseID
+                    
+                    '  ÕœÌÀ Õ—ﬂ… «·Œ“Ì‰… »«·‹ ReferenceID «·’ÕÌÕ
+                    db.Execute "UPDATE dbo_CashboxTransactions SET ReferenceID = " & ExpenseID & _
+                              " WHERE ReferenceType = 'AdvanceExpense' AND ReferenceID = 0"
+                End If
+            Next i
+            
+            rsExpenses.Close
+            
+            MsgBox " „ Õ›Ÿ «·„’—Ê› «·„ﬁœ„ ⁄·Ï " & Me.txtAdvanceMonths.value & " √‘Â— »‰Ã«Õ", vbInformation, "COCOBOLO SYSTEM"
+        Else
+            ' „’—Ê› ⁄«œÌ - ‰›” «·ﬂÊœ «·ﬁœÌ„
+            Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+            rsExpenses.AddNew
+            
+            rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+            rsExpenses!ExpenseName = Me.ExpenseName
+            rsExpenses!Amount = expenseAmount
+            rsExpenses!ExpenseDate = ExpenseDate
+            rsExpenses!CashBoxID = CashBoxID
+            rsExpenses!Notes = Nz(Me.Notes, "")
+            rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+            rsExpenses!CreatedBy = currentUser.UserName
+            rsExpenses!CreatedAt = Now()
+            rsExpenses!IsAdvance = False
+            rsExpenses!AdvanceMonths = Null
+            rsExpenses.Update
+            rsExpenses.Bookmark = rsExpenses.LastModified
+            ExpenseID = rsExpenses!ExpenseID
+            rsExpenses.Close
+            
+            ' Õ—ﬂ… «·Œ“Ì‰… ··„’—Ê› «·⁄«œÌ
+            Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+            rsCashTrans.AddNew
+            rsCashTrans!CashBoxID = CashBoxID
+            rsCashTrans!TransactionType = "’—›"
+            rsCashTrans!Amount = expenseAmount
+            rsCashTrans!TransactionDate = ExpenseDate
+            rsCashTrans!ReferenceID = ExpenseID
+            rsCashTrans!ReferenceType = "Expense"
+            rsCashTrans!Notes = Nz(Me.Notes, "") & " «·„” ›Ìœ : " & Nz(Me.Torecipient, "")
+            rsCashTrans!CreatedBy = currentUser.UserName
+            rsCashTrans!CreatedAt = Now()
+            rsCashTrans.Update
+            rsCashTrans.Close
+            
+            MsgBox " „ Õ›Ÿ «·„’—Ê› «·⁄«œÌ »‰Ã«Õ", vbInformation, "COCOBOLO SYSTEM"
+        End If
+        
+        '  ‰ŸÌ› «·ÕﬁÊ· ≈–« ﬂ«‰ ÃœÌœ
+        Me.cboExpenseGroup = Null
+        Me.ExpenseName = ""
+        Me.Amount = 0
+        Me.cboCashBox = Null
+        Me.ExpenseDate = Date
+        Me.Notes = ""
+        Me.chkIsAdvance = False
+        Me.txtAdvanceMonths = Null
+        Me.txtAdvanceMonths.Visible = False
+        Me.Torecipient = ""
+    End If
+    
+
+End Sub
+
+'________________________________
+
+'Private Sub btnSaveExpense_Click()
+'    Dim db As DAO.Database
+'    Dim rsExpenses As DAO.Recordset
+'    Dim rsCashTrans As DAO.Recordset
+'    Dim ExpenseID As Long
+'    Dim CashBoxID As Long
+'    Dim expenseAmount As Double
+'    Dim isNew As Boolean
+'
+'    '  Õﬁﬁ „‰ «·»Ì«‰«  «·„ÿ·Ê»…
+'    If IsNull(Me.cboExpenseGroup) Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«— „Ã„Ê⁄… «·„’—Ê›", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+'        MsgBox "Ì—ÃÏ ≈œŒ«· «”„ «·„’—Ê›", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If IsNull(Me.cboCashBox) Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«— «·Œ“‰…", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Nz(Me.Amount, 0) <= 0 Then
+'        MsgBox "Ì—ÃÏ ≈œŒ«· „»·€ ’ÕÌÕ √ﬂ»— „‰ ’›—", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'    CashBoxID = Me.cboCashBox
+'    expenseAmount = Nz(Me.Amount, 0)
+'
+'    ' ≈–« ﬂ«‰ „ÊÃÊœ ExpenseID ›Ì «·›Ê—„ Ì»ﬁÏ  ⁄œÌ·° ·Ê „‘ „ÊÃÊœ Ì»ﬁÏ ≈÷«›…
+'    isNew = IsNull(Me.ExpenseID) Or Me.ExpenseID = 0
+'
+'    ' Õ›Ÿ √Ê  ⁄œÌ· »Ì«‰«  «·„’—Ê› ›Ì dbo_Expenses
+'    Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+'
+'    If isNew Then
+'        rsExpenses.AddNew
+'    Else
+'        rsExpenses.FindFirst "ExpenseID = " & Me.ExpenseID
+'        If rsExpenses.NoMatch Then
+'            MsgBox "·„ Ì „ «·⁄ÀÊ— ⁄·Ï «·„’—Ê› ·· ⁄œÌ·", vbExclamation
+'            rsExpenses.Close
+'            Exit Sub
+'        End If
+'        rsExpenses.Edit
+'    End If
+'
+'    rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+'    rsExpenses!ExpenseName = Me.ExpenseName
+'    rsExpenses!Amount = expenseAmount
+'    rsExpenses!ExpenseDate = Nz(Me.ExpenseDate, Date)
+'    rsExpenses!CashBoxID = CashBoxID
+'    rsExpenses!Notes = Nz(Me.Notes, "")
+'    rsExpenses!CreatedBy = CurrentUser.UserName
+'    rsExpenses!CreatedAt = Now()
+'    rsExpenses.Update
+'
+'    ' «·Õ’Ê· ⁄·Ï «·‹ ID ··„’—Ê›
+'    If isNew Then
+'        rsExpenses.Bookmark = rsExpenses.LastModified
+'        ExpenseID = rsExpenses!ExpenseID
+'    Else
+'        ExpenseID = Me.ExpenseID
+'    End If
+'    rsExpenses.Close
+'
+'    ' Õ›Ÿ √Ê  ⁄œÌ· Õ—ﬂ… «·Œ“‰… «·„— »ÿ… »«·„’—Ê›
+'    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+'
+'    If isNew Then
+'        rsCashTrans.AddNew
+'    Else
+'        rsCashTrans.FindFirst "ReferenceType = 'Expense' AND ReferenceID = " & ExpenseID
+'        If rsCashTrans.NoMatch Then
+'            rsCashTrans.AddNew
+'        Else
+'            rsCashTrans.Edit
+'        End If
+'    End If
+'
+'    rsCashTrans!CashBoxID = CashBoxID
+'    rsCashTrans!TransactionType = "’—›"    ' ·√‰ «·„’—Ê› ÂÊ ’—› ‰ﬁœÌ
+'    rsCashTrans!Amount = expenseAmount
+'    rsCashTrans!TransactionDate = Nz(Me.ExpenseDate, Date)
+'    rsCashTrans!ReferenceID = ExpenseID
+'    rsCashTrans!ReferenceType = "Expense"
+'    rsCashTrans!Notes = Nz(Me.Notes, "")
+'    rsCashTrans!CreatedBy = CurrentUser.UserName
+'    rsCashTrans!CreatedAt = Now()
+'    rsCashTrans.Update
+'    rsCashTrans.Close
+'
+'    MsgBox " „ Õ›Ÿ/ ⁄œÌ· «·„’—Ê› Ê«·Õ—ﬂ… ›Ì «·Œ“‰… »‰Ã«Õ", vbInformation
+'
+'    '  ‰ŸÌ› «·ÕﬁÊ· ≈–« ﬂ«‰ ÃœÌœ
+'    If isNew Then
+'        Me.cboExpenseGroup = Null
+'        Me.ExpenseName = ""
+'        Me.Amount = 0
+'        Me.cboCashBox = Null
+'        Me.ExpenseDate = Date
+'        Me.Notes = ""
+'    End If
+'
+'End Sub
+
+
+
+Private Sub cboExpenseGroup_AfterUpdate()
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim SelectedID As Long
+    
+    If IsNull(Me.cboExpenseGroup) Then
+        Me.ExpenseName = ""
+        Exit Sub
+    End If
+    
+    SelectedID = Me.cboExpenseGroup.itemData(Me.cboExpenseGroup.ListIndex)
+    
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT ExpenseGroupName FROM dbo_ExpenseGroups WHERE ExpenseGroupID = " & SelectedID)
+    
+    If Not rs.EOF Then
+        Me.ExpenseName = Nz(rs!ExpenseGroupName, "")
+    Else
+        Me.ExpenseName = ""
+    End If
+    
+    rs.Close
+
+
+End Sub
+
+Private Sub cboExpenseGroup_GotFocus()
+Me.Requery
+End Sub
+
+Private Sub chkIsAdvance_AfterUpdate()
+
+    Me.txtAdvanceMonths.Visible = Me.chkIsAdvance.value
+    Me.lblAdvanceMonths.Visible = Me.chkIsAdvance.value
+    If Me.chkIsAdvance.value Then
+        Me.txtAdvanceMonths.SetFocus
+    End If
+End Sub
+
+
+Private Sub Form_Load()
+    Dim expID As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "·„ Ì „  ÕœÌœ „ÊŸ› ··⁄—÷.", vbExclamation
+       ' Me.btnSaveExpense.Visible = True
+       ' Me.btnEdit.Visible = False
+       ' Me.btnChangeBasicSalary.Visible = False
+       ' Me.Label66.Caption = "Add New Employees"
+        Exit Sub
+        Else
+       '  Me.btnSaveExpense.Visible = False
+       ' Me.btnEdit.Visible = True
+       ' Me.btnChangeBasicSalary.Visible = True
+       ' Me.Label66.Caption = "Edit Current Empolyee"
+       Me.txtAdvanceMonths.Visible = False
+    Me.lblAdvanceMonths.Visible = False
+    End If
+
+    expID = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Expenses WHERE ExpenseID = " & expID
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+       Me.ExpenseDate = Nz(rs!ExpenseDate, "")
+       Me.ExpenseID = Nz(rs!ExpenseID, "")
+       Me.cboCashBox = Nz(rs!CashBoxID, "")
+       Me.Amount = Nz(rs!Amount, "")
+       Me.cboExpenseGroup = Nz(rs!ExpenseGroupID, "")
+       Me.ExpenseName = Nz(rs!ExpenseName, "")
+       Me.Notes = Nz(rs!Notes, "")
+       Me.chkIsAdvance = rs!IsAdvance
+       Me.txtAdvanceMonths = rs!AdvanceMonths
+       Me.Torecipient = rs!Torecipient
+        ' ... «„·√ »«ﬁÌ «·ÕﬁÊ· »‰›” «·ÿ—Ìﬁ…
+    Else
+        MsgBox "«·„’—Ê› €Ì— „ÊÃÊœ.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

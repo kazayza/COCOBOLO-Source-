@@ -1,0 +1,1047 @@
+'Option Compare Database
+'
+'Private Sub Form_Load()
+'    '  ÂÌ∆… «·ﬁÌ„ «·«› —«÷Ì… ›ﬁÿ »œÊ‰  Õ„Ì· »Ì«‰« 
+'    Me.cboYear = Year(Date)
+'    Me.cboMonth = Month(Date)
+'    Me.cboViewType = "‘Â—Ì"
+'
+'    ' —”«·… »œ«∆Ì… ·· Õ·Ì·
+'    If Not IsNull(Me.txtFinancialInsights) Then
+'        Me.txtFinancialInsights.value = "”ÌŸÂ— «· Õ·Ì· Â‰« »⁄œ ÷€ÿ “— «· ÕœÌÀ"
+'    End If
+'End Sub
+'
+'Private Sub RefreshData()
+'    On Error GoTo ErrHandler
+'
+'    Dim SQL As String
+'    Dim condition As String
+'
+'    ' »‰«¡ ‘—ÿ «·›· —
+'    If Me.cboViewType = "‘Â—Ì" Then
+'        If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+'            condition = "WHERE [Year] = " & Me.cboYear & " AND [Month] = " & Me.cboMonth
+'        End If
+'    ElseIf Me.cboViewType = "”‰ÊÌ" Then
+'        If Not IsNull(Me.cboYear) Then
+'            condition = "WHERE [Year] = " & Me.cboYear
+'        End If
+'    Else
+'        condition = ""
+'    End If
+'
+'    SQL = "SELECT * FROM qry_CashFlow " & condition & " ORDER BY [Year], [Month]"
+'
+'    '  ÕœÌÀ «·»Ì«‰«  ›ﬁÿ
+'    Me.subData.SourceObject = ""
+'    Me.subData.SourceObject = "Query.qry_CashFlow"
+'    Me.subData.Form.RecordSource = SQL
+'    Me.subData.Form.Requery
+'
+'    '  ÕœÌÀ «·„·Œ’ ›ﬁÿ
+'    Call UpdateSummary
+'    Call GenerateFinancialInsights
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "Œÿ√ ›Ì  ÕœÌÀ «·»Ì«‰« : " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub UpdateSummary()
+'    On Error Resume Next
+'
+'    If Me.subData.Form.Recordset.recordCount > 0 Then
+'        With Me.subData.Form.Recordset
+'            .MoveFirst
+'
+'            Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'
+'            Do Until .EOF
+'                totalIncome = totalIncome + !CashInSales + !CashInOther
+'                totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'                netFlow = netFlow + !NetCashFlow
+'                .MoveNext
+'            Loop
+'
+'            ' ⁄—÷ «·„·Œ’ «·√”«”Ì
+'            Me.lblTotalIncome.Caption = Format(totalIncome, "###,###,##0.00")
+'            Me.lblTotalExpenses.Caption = Format(totalExpenses, "###,###,##0.00")
+'            Me.lblNetFlow.Caption = Format(netFlow, "###,###,##0.00")
+'            Me.lblRecordCount.Caption = "⁄œœ «·√‘Â—: " & Me.subData.Form.Recordset.recordCount
+'
+'            If netFlow >= 0 Then
+'                Me.lblNetFlow.ForeColor = vbGreen
+'            Else
+'                Me.lblNetFlow.ForeColor = vbRed
+'            End If
+'        End With
+'    Else
+'        Me.lblTotalIncome.Caption = "0.00"
+'        Me.lblTotalExpenses.Caption = "0.00"
+'        Me.lblNetFlow.Caption = "0.00"
+'        Me.lblRecordCount.Caption = "·«  ÊÃœ »Ì«‰« "
+'    End If
+'End Sub
+'
+'' √Õœ«À «· ÕœÌÀ «· ·ﬁ«∆Ì (»œÊ‰  Õ·Ì·)
+'
+'
+'Private Sub cboViewType_AfterUpdate()
+'    If Me.cboViewType = "‘Â—Ì" Then
+'        Me.lblMonth.Visible = True
+'        Me.cboMonth.Visible = True
+'    Else
+'        Me.lblMonth.Visible = False
+'        Me.cboMonth.Visible = False
+'    End If
+'
+'    Call RefreshData
+'    Call GenerateFinancialInsights
+'End Sub
+'
+'' √“—«— «· Õﬂ„
+'Private Sub cmdExportExcel_Click()
+'    On Error GoTo ErrHandler
+'
+'    Dim fileName As String
+'    fileName = "«· œ›ﬁ_«·‰ﬁœÌ_" & Format(Date, "yyyy-mm-dd") & ".xlsx"
+'
+'    DoCmd.OutputTo acOutputQuery, "qry_CashFlow", acFormatXLSX, fileName, True
+'    MsgBox " „ «· ’œÌ— ≈·Ï Excel »‰Ã«Õ", vbInformation
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "Œÿ√ ›Ì «· ’œÌ—: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub cmdPrintReport_Click()
+'    On Error GoTo ErrHandler
+'
+'    If Me.subData.Form.Recordset.recordCount = 0 Then
+'        MsgBox "·«  ÊÃœ »Ì«‰«  ·ÿ»«⁄… «· ﬁ—Ì—", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Dim filterCondition As String
+'    filterCondition = BuildFilterCondition
+'
+'    ' › Õ «· ﬁ—Ì— „⁄ «·›· — ›Ì OpenArgs
+'    DoCmd.OpenReport "rptCashFlow", acViewPreview, , , , filterCondition
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "Œÿ√ ›Ì › Õ «· ﬁ—Ì—: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Function BuildFilterCondition() As String
+'    Dim filterCondition As String
+'    filterCondition = ""
+'
+'    If Me.cboViewType = "‘Â—Ì" Then
+'        If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+'            filterCondition = "[Year] = " & Me.cboYear & " AND [Month] = " & Me.cboMonth
+'        End If
+'    ElseIf Me.cboViewType = "”‰ÊÌ" Then
+'        If Not IsNull(Me.cboYear) Then
+'            filterCondition = "[Year] = " & Me.cboYear
+'        End If
+'    End If
+'
+'    BuildFilterCondition = filterCondition
+'End Function
+'
+'Private Sub cmdRefresh_Click()
+'    On Error GoTo ErrHandler
+'
+'    '  ÕœÌÀ «·»Ì«‰«  √Ê·«
+'    Call RefreshData
+'
+'    ' À„ ⁄„· «· Õ·Ì·
+'    Call GenerateFinancialInsights
+'
+'    MsgBox " „  ÕœÌÀ «·»Ì«‰«  Ê«· Õ·Ì·", vbInformation
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "Œÿ√ ›Ì «· ÕœÌÀ: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub GenerateFinancialInsights()
+'    On Error GoTo ErrHandler
+'
+'    ' ÿ—Ìﬁ… √›÷· ·· Õﬁﬁ „‰ ÊÃÊœ «·⁄‰’—
+'    Dim ControlExists As Boolean
+'    ControlExists = False
+'
+'    On Error Resume Next
+'    Dim testValue As String
+'    testValue = Me.txtFinancialInsights.Name ' „Õ«Ê·… «·Ê’Ê· ··⁄‰’—
+'    If Err.Number = 0 Then
+'        ControlExists = True
+'    End If
+'    On Error GoTo ErrHandler
+'
+'    If Not ControlExists Then
+'        MsgBox "«·⁄‰’— txtFinancialInsights „ÊÃÊœ ·ﬂ‰ ·« Ì„ﬂ‰ «·Ê’Ê· ·Â. ”Ì „ ⁄—÷ «· Õ·Ì· ›Ì —”«·….", vbExclamation
+'        Call ShowAnalysisInMessage
+'        Exit Sub
+'    End If
+'
+'    ' «· √ﬂœ „‰ ÊÃÊœ »Ì«‰« 
+'    If Me.subData.Form.Recordset.recordCount = 0 Then
+'        Me.txtFinancialInsights.value = "·«  ÊÃœ »Ì«‰«  ·· Õ·Ì·"
+'        Exit Sub
+'    End If
+'
+'    ' —”«·… »œ«Ì… «· Õ·Ì·
+'    Me.txtFinancialInsights.value = "Ã«—Ì  Õ·Ì· «·»Ì«‰« ... Ì—ÃÏ «·«‰ Ÿ«—"
+'    DoEvents
+'
+'    ' Õ”«» «·≈Ã„«·Ì« 
+'    Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'    Dim TotalSales As Currency, totalSalaries As Currency, TotalPurchases As Currency
+'
+'    With Me.subData.Form.Recordset
+'        .MoveFirst
+'        Do Until .EOF
+'            TotalSales = TotalSales + !CashInSales
+'            totalSalaries = totalSalaries + !Salaries
+'            TotalPurchases = TotalPurchases + !CashOutPurchases
+'            totalIncome = totalIncome + !CashInSales + !CashInOther
+'            totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'            netFlow = netFlow + !NetCashFlow
+'            .MoveNext
+'        Loop
+'    End With
+'
+'    ' ≈‰‘«¡ ‰’ «· Õ·Ì·
+'    Dim analysisText As String
+'    analysisText = "«· ﬁ—Ì— «· Õ·Ì·Ì «·„«·Ì" & vbCrLf
+'    analysisText = analysisText & "==========================" & vbCrLf & vbCrLf
+'
+'    analysisText = analysisText & "„·Œ’ «·√œ«¡:" & vbCrLf
+'    analysisText = analysisText & "ï ≈Ã„«·Ì «·≈Ì—«œ« : " & Format(totalIncome, "###,###") & " Ã.„" & vbCrLf
+'    analysisText = analysisText & "ï ≈Ã„«·Ì «·„’—Ê›« : " & Format(totalExpenses, "###,###") & " Ã.„" & vbCrLf
+'    analysisText = analysisText & "ï ’«›Ì «· œ›ﬁ «·‰ﬁœÌ: " & Format(netFlow, "###,###") & " Ã.„" & vbCrLf & vbCrLf
+'
+'    ' «·‰”» «·„«·Ì…
+'    analysisText = analysisText & "«·‰”» «·„«·Ì…:" & vbCrLf
+'
+'    If totalIncome > 0 Then
+'        Dim profitMargin As Double
+'        profitMargin = (netFlow / totalIncome) * 100
+'        analysisText = analysisText & "ï Â«„‘ «·—»Õ: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+'
+'        Dim expenseRatio As Double
+'        expenseRatio = (totalExpenses / totalIncome) * 100
+'        analysisText = analysisText & "ï ‰”»… «·„’—Ê›« : " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+'
+'        If totalExpenses > 0 Then
+'            Dim salaryRatio As Double
+'            salaryRatio = (totalSalaries / totalExpenses) * 100
+'            analysisText = analysisText & "ï ‰”»… «·—Ê« »: " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+'        End If
+'    End If
+'
+'    ' «· ﬁÌÌ„
+'    analysisText = analysisText & vbCrLf & "«· ﬁÌÌ„: "
+'    If netFlow > 0 Then
+'        analysisText = analysisText & "√œ«¡ ÃÌœ ?"
+'    Else
+'        analysisText = analysisText & "ÌÕ «Ã  Õ”Ì‰ ?"
+'    End If
+'
+'    ' ⁄—÷ «· Õ·Ì· ›Ì «·⁄‰’—
+'    Me.txtFinancialInsights.value = analysisText
+'
+'    ' „Õ«Ê·…  ÕœÌÀ «·⁄‰«’— «·√Œ—Ï
+'    Call UpdateOtherControls(totalIncome, totalExpenses, netFlow, TotalPurchases)
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    ' ≈–« ›‘· «·Ê’Ê· ··⁄‰’—° «⁄—÷ ›Ì —”«·…
+'    Call ShowAnalysisInMessage
+'End Sub
+'
+'Private Sub UpdateOtherControls(totalIncome As Currency, totalExpenses As Currency, netFlow As Currency, TotalPurchases As Currency)
+'    On Error Resume Next '  Ã«Â· «·√Œÿ«¡ ›Ì «·⁄‰«’— «·√Œ—Ï
+'
+'    '  ÕœÌÀ lblGrossMargin
+'    If totalIncome > 0 Then
+'        Dim profitMargin As Double
+'        profitMargin = (netFlow / totalIncome) * 100
+'
+'        Me.lblGrossMargin.Caption = Format(profitMargin, "0.00") & "%"
+'        Me.lblNetMargin.Caption = Format((totalIncome - TotalPurchases) / totalIncome * 100, "0.00") & "%"
+'        Me.lblOperatingRatio.Caption = Format((totalExpenses / totalIncome) * 100, "0.00") & "%"
+'
+'        '  ÕœÌÀ «·ﬂ›«¡…
+'        Dim expenseRatio As Double
+'        expenseRatio = (totalExpenses / totalIncome) * 100
+'        If expenseRatio < 70 Then
+'            Me.lblEfficiency.Caption = "„„ «“"
+'        ElseIf expenseRatio < 85 Then
+'            Me.lblEfficiency.Caption = "ÃÌœ"
+'        Else
+'            Me.lblEfficiency.Caption = "ÌÕ «Ã  Õ”Ì‰"
+'        End If
+'    End If
+'End Sub
+'
+'Private Sub ShowAnalysisInMessage()
+'    ' ⁄—÷ «· Õ·Ì· ›Ì —”«·…
+'    If Me.subData.Form.Recordset.recordCount > 0 Then
+'        Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'        Dim TotalSales As Currency, totalSalaries As Currency
+'
+'        With Me.subData.Form.Recordset
+'            .MoveFirst
+'            Do Until .EOF
+'                TotalSales = TotalSales + !CashInSales
+'                totalSalaries = totalSalaries + !Salaries
+'                totalIncome = totalIncome + !CashInSales + !CashInOther
+'                totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'                netFlow = netFlow + !NetCashFlow
+'                .MoveNext
+'            Loop
+'        End With
+'
+'        Dim analysisText As String
+'        analysisText = "«· Õ·Ì· «·„«·Ì" & vbCrLf & vbCrLf
+'        analysisText = analysisText & "«·≈Ì—«œ« : " & Format(totalIncome, "###,###") & " Ã.„" & vbCrLf
+'        analysisText = analysisText & "«·„’—Ê›« : " & Format(totalExpenses, "###,###") & " Ã.„" & vbCrLf
+'        analysisText = analysisText & "«·’«›Ì: " & Format(netFlow, "###,###") & " Ã.„" & vbCrLf & vbCrLf
+'
+'        If totalIncome > 0 Then
+'            analysisText = analysisText & "Â«„‘ «·—»Õ: " & Format((netFlow / totalIncome) * 100, "0.00") & "%"
+'        End If
+'
+'        MsgBox analysisText, vbInformation, "«· Õ·Ì· «·„«·Ì"
+'    Else
+'        MsgBox "·«  ÊÃœ »Ì«‰«  ·· Õ·Ì·", vbInformation, "«· Õ·Ì· «·„«·Ì"
+'    End If
+'End Sub
+'========================
+ ' „‰ Â‰« «· ⁄œÌ· «·ÃœÌœ
+ '=======================
+ Option Compare Database
+Option Explicit
+
+' ========== Type ··≈Ã„«·Ì«  ==========
+Private Type CashFlowTotals
+    TotalIncome As Currency
+    TotalExpenses As Currency
+    NetFlow As Currency
+    TotalSales As Currency
+    TotalSalaries As Currency
+    TotalPurchases As Currency
+    TotalOtherIncome As Currency
+    TotalOtherExpenses As Currency
+    RecordCount As Long
+End Type
+
+' ========== „ €Ì— ·Õ›Ÿ «·≈Ã„«·Ì«  ==========
+Private m_Totals As CashFlowTotals
+
+' ==========  Õ„Ì· «·‰„Ê–Ã ==========
+'Private Sub Form_Load()
+'    On Error Resume Next
+'
+'    '  ÂÌ∆… «·ﬁÌ„ «·«› —«÷Ì…
+'    Me.cboYear = Year(Date)
+'    Me.cboMonth = Month(Date)
+'    Me.cboViewType = "‘Â—Ì"
+'
+'    ' —”«·… »œ«∆Ì…
+'    If Not IsNull(Me.txtFinancialInsights) Then
+'        Me.txtFinancialInsights.value = "«÷€ÿ ⁄·Ï “— «· ÕœÌÀ ·⁄—÷ «· Õ·Ì· «·„«·Ì"
+'    End If
+'
+'    ' ≈ŸÂ«—/≈Œ›«¡ Õﬁ· «·‘Â— Õ”» ‰Ê⁄ «·⁄—÷
+'    Call ToggleMonthVisibility
+'End Sub
+Private Sub Form_Load()
+    On Error Resume Next
+    
+    '  ÂÌ∆… «·ﬁÌ„ «·«› —«÷Ì…
+    Me.cboYear = Year(Date)
+    Me.cboMonth = Month(Date)
+    Me.cboViewType = "‘Â—Ì"
+    
+    ' ≈ŸÂ«—/≈Œ›«¡ Õﬁ· «·‘Â—
+    Call ToggleMonthVisibility
+    
+    '  Õ„Ì· »Ì«‰«  «·‘Â— «·Õ«·Ì „»«‘—…
+    Call RefreshData
+End Sub
+' ========== œ«·… Õ”«» «·≈Ã„«·Ì«  «·„ÊÕœ… ==========
+Private Function CalculateTotals() As CashFlowTotals
+    Dim result As CashFlowTotals
+    
+    On Error GoTo ErrHandler
+    
+    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰« 
+    If Me.subData.Form.Recordset Is Nothing Then
+        CalculateTotals = result
+        Exit Function
+    End If
+    
+    If Me.subData.Form.Recordset.RecordCount = 0 Then
+        CalculateTotals = result
+        Exit Function
+    End If
+    
+    ' Õ”«» «·≈Ã„«·Ì« 
+    With Me.subData.Form.Recordset
+        .MoveFirst
+        Do Until .EOF
+            ' «·≈Ì—«œ« 
+            result.TotalSales = result.TotalSales + Nz(.Fields("≈Ì—«œ«  «·„»Ì⁄« "), 0)
+            result.TotalOtherIncome = result.TotalOtherIncome + Nz(.Fields("≈Ì—«œ«  √Œ—Ï"), 0)
+            
+            ' «·„’—Ê›« 
+            result.TotalPurchases = result.TotalPurchases + Nz(.Fields("„’—Ê›«  «·„‘ —Ì« "), 0)
+            result.TotalOtherExpenses = result.TotalOtherExpenses + Nz(.Fields("„’—Ê›«  √Œ—Ï"), 0) + Nz(.Fields("«·„’—Ê›«  «·⁄«„…"), 0)
+            result.TotalSalaries = result.TotalSalaries + Nz(.Fields("«·—Ê« »"), 0)
+            
+            ' «·≈Ã„«·Ì« 
+            result.TotalIncome = result.TotalIncome + Nz(.Fields("≈Ã„«·Ì «·≈Ì—«œ« "), 0)
+            result.TotalExpenses = result.TotalExpenses + Nz(.Fields("≈Ã„«·Ì «·„’—Ê›« "), 0)
+            result.NetFlow = result.NetFlow + Nz(.Fields("’«›Ì «· œ›ﬁ «·‰ﬁœÌ"), 0)
+            
+            .MoveNext
+        Loop
+        result.RecordCount = .RecordCount
+    End With
+    
+    CalculateTotals = result
+    Exit Function
+    
+ErrHandler:
+    CalculateTotals = result
+End Function
+' ========== »‰«¡ ‘—ÿ «·›· — ==========
+Private Function BuildFilterCondition() As String
+    Dim condition As String
+    condition = ""
+    
+    Select Case Nz(Me.cboViewType, "")
+        Case "‘Â—Ì"
+            If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+                condition = "[«·”‰…] = " & Me.cboYear & " AND [«·‘Â—] = " & Me.cboMonth
+            ElseIf Not IsNull(Me.cboYear) Then
+                condition = "[«·”‰…] = " & Me.cboYear
+            End If
+            
+        Case "”‰ÊÌ"
+            If Not IsNull(Me.cboYear) Then
+                condition = "[«·”‰…] = " & Me.cboYear
+            End If
+            
+        Case "«·ﬂ·"
+            condition = ""
+    End Select
+    
+    BuildFilterCondition = condition
+End Function
+
+' ==========  ÕœÌÀ «·»Ì«‰«  ==========
+Private Sub RefreshData()
+    On Error GoTo ErrHandler
+    
+    Dim sql As String
+    Dim condition As String
+    
+    ' ⁄—÷ „ƒ‘— «·«‰ Ÿ«—
+    DoCmd.Hourglass True
+    
+    ' »‰«¡ «·«” ⁄·«„
+    condition = BuildFilterCondition()
+    
+    If condition <> "" Then
+        sql = "SELECT * FROM qry_CashFlow WHERE " & condition & " ORDER BY [«·”‰…], [«·‘Â—]"
+    Else
+        sql = "SELECT * FROM qry_CashFlow ORDER BY [«·”‰…], [«·‘Â—]"
+    End If
+    
+    '  ÕœÌÀ „’œ— «·»Ì«‰« 
+    Me.subData.Form.RecordSource = sql
+    Me.subData.Form.Requery
+    DoEvents
+    
+    ' Õ”«» «·≈Ã„«·Ì« 
+    m_Totals = CalculateTotals()
+    
+    '  ÕœÌÀ «·⁄‰«’—
+    Call UpdateSummary
+    Call UpdateFinancialRatios
+    Call GenerateFinancialInsights
+    
+    DoCmd.Hourglass False
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "Œÿ√ ›Ì  ÕœÌÀ «·»Ì«‰« : " & Err.Description, vbCritical, "Œÿ√"
+End Sub
+' ==========  ÕœÌÀ «·„·Œ’ ==========
+Private Sub UpdateSummary()
+    On Error Resume Next
+    
+    If m_Totals.RecordCount > 0 Then
+        ' ⁄—÷ «·≈Ã„«·Ì« 
+        Me.lblTotalIncome.Caption = Format(m_Totals.TotalIncome, "###,###,##0.00")
+        Me.lblTotalExpenses.Caption = Format(m_Totals.TotalExpenses, "###,###,##0.00")
+        Me.lblNetFlow.Caption = Format(m_Totals.NetFlow, "###,###,##0.00")
+        Me.lblRecordCount.Caption = "⁄œœ «·√‘Â—: " & m_Totals.RecordCount
+        
+        '  ·ÊÌ‰ ’«›Ì «· œ›ﬁ
+        If m_Totals.NetFlow >= 0 Then
+            Me.lblNetFlow.ForeColor = RGB(0, 128, 0)  ' √Œ÷—
+        Else
+            Me.lblNetFlow.ForeColor = RGB(255, 0, 0)  ' √Õ„—
+        End If
+    Else
+        ' ·«  ÊÃœ »Ì«‰« 
+        Me.lblTotalIncome.Caption = "0.00"
+        Me.lblTotalExpenses.Caption = "0.00"
+        Me.lblNetFlow.Caption = "0.00"
+        Me.lblRecordCount.Caption = "·«  ÊÃœ »Ì«‰« "
+        Me.lblNetFlow.ForeColor = vbBlack
+    End If
+End Sub
+
+' ==========  ÕœÌÀ «·‰”» «·„«·Ì… ==========
+Private Sub UpdateFinancialRatios()
+    On Error Resume Next
+    
+    Dim profitMargin As Double
+    Dim expenseRatio As Double
+    Dim salaryRatio As Double
+    Dim netMargin As Double
+    
+    If m_Totals.TotalIncome > 0 Then
+        ' Õ”«» «·‰”»
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+        netMargin = ((m_Totals.TotalIncome - m_Totals.TotalPurchases) / m_Totals.TotalIncome) * 100
+        
+        ' ⁄—÷ «·‰”»
+        Me.lblGrossMargin.Caption = Format(profitMargin, "0.00") & "%"
+        Me.lblNetMargin.Caption = Format(netMargin, "0.00") & "%"
+        Me.lblOperatingRatio.Caption = Format(expenseRatio, "0.00") & "%"
+        
+        '  ﬁÌÌ„ «·ﬂ›«¡…
+        Select Case expenseRatio
+            Case Is < 60
+                Me.lblEfficiency.Caption = "„„ «“"
+                Me.lblEfficiency.ForeColor = RGB(0, 128, 0)
+            Case Is < 75
+                Me.lblEfficiency.Caption = "ÃÌœ Ãœ«"
+                Me.lblEfficiency.ForeColor = RGB(0, 100, 0)
+            Case Is < 85
+                Me.lblEfficiency.Caption = "ÃÌœ"
+                Me.lblEfficiency.ForeColor = RGB(255, 165, 0)
+            Case Is < 95
+                Me.lblEfficiency.Caption = "„ﬁ»Ê·"
+                Me.lblEfficiency.ForeColor = RGB(255, 140, 0)
+            Case Else
+                Me.lblEfficiency.Caption = "ÌÕ «Ã  Õ”Ì‰"
+                Me.lblEfficiency.ForeColor = RGB(255, 0, 0)
+        End Select
+        
+        ' ‰”»… «·—Ê« » „‰ «·„’—Ê›« 
+        If m_Totals.TotalExpenses > 0 Then
+            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+        End If
+    Else
+        ' ≈⁄«œ…  ⁄ÌÌ‰ «·ﬁÌ„
+        Me.lblGrossMargin.Caption = "0.00%"
+        Me.lblNetMargin.Caption = "0.00%"
+        Me.lblOperatingRatio.Caption = "0.00%"
+        Me.lblEfficiency.Caption = "-"
+        Me.lblEfficiency.ForeColor = vbBlack
+    End If
+End Sub
+
+' ==========  Ê·Ìœ «· Õ·Ì· «·„«·Ì ==========
+'Private Sub GenerateFinancialInsights()
+'    On Error GoTo ErrHandler
+'
+'    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰« 
+'    If m_Totals.RecordCount = 0 Then
+'        Me.txtFinancialInsights.value = "·«  ÊÃœ »Ì«‰«  ·· Õ·Ì·" & vbCrLf & vbCrLf & _
+'                                        "Ì—ÃÏ «Œ Ì«— › —… “„‰Ì…  Õ ÊÌ ⁄·Ï »Ì«‰« "
+'        Exit Sub
+'    End If
+'
+'    Dim analysisText As String
+'    Dim profitMargin As Double
+'    Dim expenseRatio As Double
+'    Dim salaryRatio As Double
+'    Dim purchaseRatio As Double
+'
+''    ' ========== «·⁄‰Ê«‰ ==========
+''    analysisText = "=======" & vbCrLf
+''    analysisText = analysisText & "       «· ﬁ—Ì— «· Õ·Ì·Ì «·„«·Ì" & vbCrLf
+''    analysisText = analysisText & "=======" & vbCrLf & vbCrLf
+''
+''    ' ========== „·Œ’ «·√œ«¡ ==========
+''    analysisText = analysisText & "? „·Œ’ «·√œ«¡ «·„«·Ì:" & vbCrLf
+''    analysisText = analysisText & "========" & vbCrLf
+''    analysisText = analysisText & "  ï ≈Ã„«·Ì «·≈Ì—«œ« : " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " Ã.„" & vbCrLf
+''    analysisText = analysisText & "     ?? «·„»Ì⁄« : " & Format(m_Totals.TotalSales, "###,###,##0.00") & " Ã.„" & vbCrLf
+''    analysisText = analysisText & "     ?? ≈Ì—«œ«  √Œ—Ï: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+''
+''    analysisText = analysisText & "  ï ≈Ã„«·Ì «·„’—Ê›« : " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " Ã.„" & vbCrLf
+''    analysisText = analysisText & "     ?? «·„‘ —Ì« : " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " Ã.„" & vbCrLf
+''    analysisText = analysisText & "     ?? «·—Ê« »: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " Ã.„" & vbCrLf
+''    analysisText = analysisText & "     ?? „’—Ê›«  √Œ—Ï: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+''
+''    analysisText = analysisText & "  ï ’«›Ì «· œ›ﬁ «·‰ﬁœÌ: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+''
+''    ' ========== «·‰”» «·„«·Ì… ==========
+''    analysisText = analysisText & "? «·‰”» «·„«·Ì…:" & vbCrLf
+''    analysisText = analysisText & "===========" & vbCrLf
+''
+''    If m_Totals.TotalIncome > 0 Then
+''        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+''        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+''        purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+''
+''        analysisText = analysisText & "  ï Â«„‘ «·—»Õ: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+''        analysisText = analysisText & "  ï ‰”»… «·„’—Ê›«  ··≈Ì—«œ« : " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+''        analysisText = analysisText & "  ï ‰”»… «·„‘ —Ì«  ··≈Ì—«œ« : " & Format(purchaseRatio, "0.00") & "%" & vbCrLf
+''
+''        If m_Totals.TotalExpenses > 0 Then
+''            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+''            analysisText = analysisText & "  ï ‰”»… «·—Ê« » „‰ «·„’—Ê›« : " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+''        End If
+''    Else
+''        analysisText = analysisText & "  ·« Ì„ﬂ‰ Õ”«» «·‰”» - ·«  ÊÃœ ≈Ì—«œ« " & vbCrLf
+''    End If
+''
+''    analysisText = analysisText & vbCrLf
+''
+''    ' ========== «· ﬁÌÌ„ Ê«· Ê’Ì«  ==========
+''    analysisText = analysisText & "? «· ﬁÌÌ„ Ê«· Ê’Ì« :" & vbCrLf
+''    analysisText = analysisText & "=============" & vbCrLf
+''
+''    '  ﬁÌÌ„ «·√œ«¡ «·⁄«„
+''    If m_Totals.NetFlow > 0 Then
+''        analysisText = analysisText & "  ? «·√œ«¡ «·„«·Ì: ≈ÌÃ«»Ì" & vbCrLf
+''
+''        If profitMargin >= 20 Then
+''            analysisText = analysisText & "  ? Â«„‘ «·—»Õ: „„ «“ (√⁄·Ï „‰ 20%)" & vbCrLf
+''        ElseIf profitMargin >= 10 Then
+''            analysisText = analysisText & "  ? Â«„‘ «·—»Õ: ÃÌœ (»Ì‰ 10% Ê 20%)" & vbCrLf
+''        ElseIf profitMargin >= 5 Then
+''            analysisText = analysisText & "  ? Â«„‘ «·—»Õ: „ﬁ»Ê· (»Ì‰ 5% Ê 10%)" & vbCrLf
+''        Else
+''            analysisText = analysisText & "  ? Â«„‘ «·—»Õ: ÷⁄Ì› (√ﬁ· „‰ 5%)" & vbCrLf
+''        End If
+''    Else
+''        analysisText = analysisText & "  ? «·√œ«¡ «·„«·Ì: ”·»Ì - ÌÕ «Ã „—«Ã⁄… ⁄«Ã·…" & vbCrLf
+''    End If
+''
+''    '  Ê’Ì«  »‰«¡ ⁄·Ï «·‰”»
+''    If m_Totals.TotalIncome > 0 Then
+''        If expenseRatio > 90 Then
+''            analysisText = analysisText & "  ?  Ê’Ì…: ‰”»… «·„’—Ê›«  „— ›⁄… Ãœ« - ÌÃ» Œ›÷ «· ﬂ«·Ì›" & vbCrLf
+''        End If
+''
+''        If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+''            analysisText = analysisText & "  ?  Ê’Ì…: ‰”»… «·—Ê« » „— ›⁄… - —«Ã⁄ «·ÂÌﬂ· «·ÊŸÌ›Ì" & vbCrLf
+''        End If
+''
+''        If purchaseRatio > 70 Then
+''            analysisText = analysisText & "  ?  Ê’Ì…:  ﬂ·›… «·„‘ —Ì«  „— ›⁄… - «»ÕÀ ⁄‰ „Ê—œÌ‰ √›÷·" & vbCrLf
+''        End If
+''    End If
+''
+''    analysisText = analysisText & vbCrLf
+''
+''    ' ========== „⁄·Ê„«  «·› —… ==========
+''    analysisText = analysisText & "? „⁄·Ê„«  «·› —…:" & vbCrLf
+''    analysisText = analysisText & "============" & vbCrLf
+''    analysisText = analysisText & "  ï ‰Ê⁄ «·⁄—÷: " & Nz(Me.cboViewType, "-") & vbCrLf
+''    analysisText = analysisText & "  ï «·”‰…: " & Nz(Me.cboYear, "-") & vbCrLf
+''
+''    If Me.cboViewType = "‘Â—Ì" Then
+''        analysisText = analysisText & "  ï «·‘Â—: " & Nz(Me.cboMonth, "-") & vbCrLf
+''    End If
+''
+''    analysisText = analysisText & "  ï ⁄œœ «·› —« : " & m_Totals.RecordCount & vbCrLf
+''    analysisText = analysisText & "  ï  «—ÌŒ «· ﬁ—Ì—: " & Format(Now(), "yyyy/mm/dd hh:nn") & vbCrLf
+'    ' ========== «·⁄‰Ê«‰ ==========
+'analysisText = "===============================" & vbCrLf
+'analysisText = analysisText & "       «· ﬁ—Ì— «· Õ·Ì·Ì «·„«·Ì" & vbCrLf
+'analysisText = analysisText & "===============================" & vbCrLf & vbCrLf
+'
+'' ========== „·Œ’ «·√œ«¡ ==========
+'analysisText = analysisText & "[ „·Œ’ «·√œ«¡ «·„«·Ì ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'analysisText = analysisText & "  * ≈Ã„«·Ì «·≈Ì—«œ« : " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " Ã.„" & vbCrLf
+'analysisText = analysisText & "     - «·„»Ì⁄« : " & Format(m_Totals.TotalSales, "###,###,##0.00") & " Ã.„" & vbCrLf
+'analysisText = analysisText & "     - ≈Ì—«œ«  √Œ—Ï: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+'
+'analysisText = analysisText & "  * ≈Ã„«·Ì «·„’—Ê›« : " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " Ã.„" & vbCrLf
+'analysisText = analysisText & "     - «·„‘ —Ì« : " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " Ã.„" & vbCrLf
+'analysisText = analysisText & "     - «·—Ê« »: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " Ã.„" & vbCrLf
+'analysisText = analysisText & "     - „’—Ê›«  √Œ—Ï: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+'
+'analysisText = analysisText & "  * ’«›Ì «· œ›ﬁ «·‰ﬁœÌ: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+'
+'' ========== «·‰”» «·„«·Ì… ==========
+'analysisText = analysisText & "[ «·‰”» «·„«·Ì… ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'
+'If m_Totals.TotalIncome > 0 Then
+'    profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+'    expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+'    purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+'
+'    analysisText = analysisText & "  * Â«„‘ «·—»Õ: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+'    analysisText = analysisText & "  * ‰”»… «·„’—Ê›«  ··≈Ì—«œ« : " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+'    analysisText = analysisText & "  * ‰”»… «·„‘ —Ì«  ··≈Ì—«œ« : " & Format(purchaseRatio, "0.00") & "%" & vbCrLf
+'
+'    If m_Totals.TotalExpenses > 0 Then
+'        salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+'        analysisText = analysisText & "  * ‰”»… «·—Ê« » „‰ «·„’—Ê›« : " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+'    End If
+'Else
+'    analysisText = analysisText & "  ·« Ì„ﬂ‰ Õ”«» «·‰”» - ·«  ÊÃœ ≈Ì—«œ« " & vbCrLf
+'End If
+'
+'analysisText = analysisText & vbCrLf
+'
+'' ========== «· ﬁÌÌ„ Ê«· Ê’Ì«  ==========
+'analysisText = analysisText & "[ «· ﬁÌÌ„ Ê«· Ê’Ì«  ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'
+''  ﬁÌÌ„ «·√œ«¡ «·⁄«„
+'If m_Totals.NetFlow > 0 Then
+'    analysisText = analysisText & "  [+] «·√œ«¡ «·„«·Ì: ≈ÌÃ«»Ì" & vbCrLf
+'
+'    If profitMargin >= 20 Then
+'        analysisText = analysisText & "  [+] Â«„‘ «·—»Õ: „„ «“ (√⁄·Ï „‰ 20%)" & vbCrLf
+'    ElseIf profitMargin >= 10 Then
+'        analysisText = analysisText & "  [+] Â«„‘ «·—»Õ: ÃÌœ (»Ì‰ 10% Ê 20%)" & vbCrLf
+'    ElseIf profitMargin >= 5 Then
+'        analysisText = analysisText & "  [!] Â«„‘ «·—»Õ: „ﬁ»Ê· (»Ì‰ 5% Ê 10%)" & vbCrLf
+'    Else
+'        analysisText = analysisText & "  [!] Â«„‘ «·—»Õ: ÷⁄Ì› (√ﬁ· „‰ 5%)" & vbCrLf
+'    End If
+'Else
+'    analysisText = analysisText & "  [-] «·√œ«¡ «·„«·Ì: ”·»Ì - ÌÕ «Ã „—«Ã⁄… ⁄«Ã·…" & vbCrLf
+'End If
+'
+''  Ê’Ì« 
+'If m_Totals.TotalIncome > 0 Then
+'    If expenseRatio > 90 Then
+'        analysisText = analysisText & "  [!]  Ê’Ì…: ‰”»… «·„’—Ê›«  „— ›⁄… Ãœ« - ÌÃ» Œ›÷ «· ﬂ«·Ì›" & vbCrLf
+'    End If
+'
+'    If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+'        analysisText = analysisText & "  [!]  Ê’Ì…: ‰”»… «·—Ê« » „— ›⁄… - —«Ã⁄ «·ÂÌﬂ· «·ÊŸÌ›Ì" & vbCrLf
+'    End If
+'
+'    If purchaseRatio > 70 Then
+'        analysisText = analysisText & "  [!]  Ê’Ì…:  ﬂ·›… «·„‘ —Ì«  „— ›⁄… - «»ÕÀ ⁄‰ „Ê—œÌ‰ √›÷·" & vbCrLf
+'    End If
+'End If
+'
+'analysisText = analysisText & vbCrLf
+'
+'' ========== „⁄·Ê„«  «·› —… ==========
+'analysisText = analysisText & "[ „⁄·Ê„«  «·› —… ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'analysisText = analysisText & "  * ‰Ê⁄ «·⁄—÷: " & Nz(Me.cboViewType, "-") & vbCrLf
+'analysisText = analysisText & "  * «·”‰…: " & Nz(Me.cboYear, "-") & vbCrLf
+'
+'If Me.cboViewType = "‘Â—Ì" Then
+'    analysisText = analysisText & "  * «·‘Â—: " & Nz(Me.cboMonth, "-") & vbCrLf
+'End If
+'
+'analysisText = analysisText & "  * ⁄œœ «·› —« : " & m_Totals.RecordCount & vbCrLf
+'analysisText = analysisText & "  *  «—ÌŒ «· ﬁ—Ì—: " & Format(Now(), "yyyy/mm/dd hh:nn") & vbCrLf
+'    ' ⁄—÷ «· Õ·Ì·
+'    Me.txtFinancialInsights.value = analysisText
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    Me.txtFinancialInsights.value = "ÕœÀ Œÿ√ √À‰«¡ ≈‰‘«¡ «· Õ·Ì·: " & Err.Description
+'End Sub
+
+Private Sub GenerateFinancialInsights()
+    On Error GoTo ErrHandler
+
+    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰« 
+    If m_Totals.RecordCount = 0 Then
+        Me.txtFinancialInsights.value = "<div dir=""rtl""><font color=""gray"">·«  ÊÃœ »Ì«‰«  ·· Õ·Ì·<br><br>Ì—ÃÏ «Œ Ì«— › —… “„‰Ì…  Õ ÊÌ ⁄·Ï »Ì«‰« </font></div>"
+        Exit Sub
+    End If
+
+    Dim analysisText As String
+    Dim profitMargin As Double
+    Dim expenseRatio As Double
+    Dim salaryRatio As Double
+    Dim purchaseRatio As Double
+
+    ' ========== »œ«Ì… «·‰’ „⁄ RTL ==========
+    analysisText = "<div dir=""rtl"">"
+
+    ' ========== «·⁄‰Ê«‰ ==========
+    analysisText = analysisText & "<div><font color=""#2E86AB"" size=""4""><b>[ «· Õ·Ì· «·„«·Ï ·ﬁ«∆„… «· œ›ﬁ «·‰ﬁœÏ ]</b></font></div>"
+    analysisText = analysisText & "<div>===============================</div><br>"
+
+    ' ========== „·Œ’ «·√œ«¡ ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ „·Œ’ «·√œ«¡ «·„«·Ì ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    ' «·≈Ì—«œ«  - √Œ÷—
+    analysisText = analysisText & "<div><font color=""#28A745""><b>≈Ã„«·Ì «·≈Ì—«œ« : " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " Ã.„</b></font></div>"
+    analysisText = analysisText & "<div><font color=""#28A745"">    - «·„»Ì⁄« : " & Format(m_Totals.TotalSales, "###,###,##0.00") & " Ã.„</font></div>"
+    analysisText = analysisText & "<div><font color=""#28A745"">    - ≈Ì—«œ«  √Œ—Ï: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " Ã.„</font></div><br>"
+
+    ' «·„’—Ê›«  - √Õ„—
+    analysisText = analysisText & "<div><font color=""#DC3545""><b>≈Ã„«·Ì «·„’—Ê›« : " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " Ã.„</b></font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - «·„‘ —Ì« : " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " Ã.„</font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - «·—Ê« »: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " Ã.„</font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - „’—Ê›«  √Œ—Ï: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " Ã.„</font></div><br>"
+
+    ' ’«›Ì «· œ›ﬁ
+    If m_Totals.NetFlow >= 0 Then
+        analysisText = analysisText & "<div><font color=""#28A745"" size=""3""><b>’«›Ì «· œ›ﬁ «·‰ﬁœÌ: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " Ã.„</b></font></div><br>"
+    Else
+        analysisText = analysisText & "<div><font color=""#DC3545"" size=""3""><b>’«›Ì «· œ›ﬁ «·‰ﬁœÌ: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " Ã.„</b></font></div><br>"
+    End If
+
+    ' ========== «·‰”» «·„«·Ì… ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ «·‰”» «·„«·Ì… ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    If m_Totals.TotalIncome > 0 Then
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+        purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+
+        ' Â«„‘ «·—»Õ »·Ê‰ Õ”» «·ﬁÌ„…
+        If profitMargin >= 20 Then
+            analysisText = analysisText & "<div>Â«„‘ «·—»Õ: <font color=""#28A745""><b>" & Format(profitMargin, "0.00") & "% („„ «“)</b></font></div>"
+        ElseIf profitMargin >= 10 Then
+            analysisText = analysisText & "<div>Â«„‘ «·—»Õ: <font color=""#17A2B8""><b>" & Format(profitMargin, "0.00") & "% (ÃÌœ)</b></font></div>"
+        ElseIf profitMargin >= 0 Then
+            analysisText = analysisText & "<div>Â«„‘ «·—»Õ: <font color=""#FFC107""><b>" & Format(profitMargin, "0.00") & "% („ﬁ»Ê·)</b></font></div>"
+        Else
+            analysisText = analysisText & "<div>Â«„‘ «·—»Õ: <font color=""#DC3545""><b>" & Format(profitMargin, "0.00") & "% (”·»Ì)</b></font></div>"
+        End If
+
+        analysisText = analysisText & "<div>‰”»… «·„’—Ê›«  ··≈Ì—«œ« : " & Format(expenseRatio, "0.00") & "%</div>"
+        analysisText = analysisText & "<div>‰”»… «·„‘ —Ì«  ··≈Ì—«œ« : " & Format(purchaseRatio, "0.00") & "%</div>"
+
+        If m_Totals.TotalExpenses > 0 Then
+            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+            analysisText = analysisText & "<div>‰”»… «·—Ê« » „‰ «·„’—Ê›« : " & Format(salaryRatio, "0.00") & "%</div>"
+        End If
+    Else
+        analysisText = analysisText & "<div><font color=""gray"">·« Ì„ﬂ‰ Õ”«» «·‰”» - ·«  ÊÃœ ≈Ì—«œ« </font></div>"
+    End If
+
+    analysisText = analysisText & "<br>"
+
+    ' ========== «· ﬁÌÌ„ Ê«· Ê’Ì«  ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ «· ﬁÌÌ„ Ê«· Ê’Ì«  ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    '  ﬁÌÌ„ «·√œ«¡ «·⁄«„
+    If m_Totals.NetFlow > 0 Then
+        analysisText = analysisText & "<div><font color=""#28A745""><b>«·√œ«¡ «·„«·Ì: ≈ÌÃ«»Ì (+)</b></font></div>"
+
+        If profitMargin >= 20 Then
+            analysisText = analysisText & "<div><font color=""#28A745"">Â«„‘ «·—»Õ: „„ «“ - √⁄·Ï „‰ 20% (+)</font></div>"
+        ElseIf profitMargin >= 10 Then
+            analysisText = analysisText & "<div><font color=""#17A2B8"">Â«„‘ «·—»Õ: ÃÌœ - »Ì‰ 10% Ê 20% (+)</font></div>"
+        ElseIf profitMargin >= 5 Then
+            analysisText = analysisText & "<div><font color=""#FFC107"">Â«„‘ «·—»Õ: „ﬁ»Ê· - »Ì‰ 5% Ê 10% (!)</font></div>"
+        Else
+            analysisText = analysisText & "<div><font color=""#FD7E14"">Â«„‘ «·—»Õ: ÷⁄Ì› - √ﬁ· „‰ 5% (!)</font></div>"
+        End If
+    Else
+        analysisText = analysisText & "<div><font color=""#DC3545""><b>«·√œ«¡ «·„«·Ì: ”·»Ì - ÌÕ «Ã „—«Ã⁄… ⁄«Ã·… (-)</b></font></div>"
+    End If
+
+    ' «· Ê’Ì« 
+    If m_Totals.TotalIncome > 0 Then
+        If expenseRatio > 90 Then
+            analysisText = analysisText & "<div><font color=""#DC3545""> Ê’Ì…: ‰”»… «·„’—Ê›«  „— ›⁄… Ãœ« - ÌÃ» Œ›÷ «· ﬂ«·Ì› (!)</font></div>"
+        End If
+
+        If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+            analysisText = analysisText & "<div><font color=""#FD7E14""> Ê’Ì…: ‰”»… «·—Ê« » „— ›⁄… - —«Ã⁄ «·ÂÌﬂ· «·ÊŸÌ›Ì (!)</font></div>"
+        End If
+
+        If purchaseRatio > 70 Then
+            analysisText = analysisText & "<div><font color=""#FD7E14""> Ê’Ì…:  ﬂ·›… «·„‘ —Ì«  „— ›⁄… - «»ÕÀ ⁄‰ „Ê—œÌ‰ √›÷· (!)</font></div>"
+        End If
+    End If
+
+    analysisText = analysisText & "<br>"
+
+    ' ========== „⁄·Ê„«  «·› —… ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ „⁄·Ê„«  «·› —… ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+    analysisText = analysisText & "<div><font color=""#6C757D"">‰Ê⁄ «·⁄—÷: " & Nz(Me.cboViewType, "-") & "</font></div>"
+    analysisText = analysisText & "<div><font color=""#6C757D"">«·”‰…: " & Nz(Me.cboYear, "-") & "</font></div>"
+
+    If Me.cboViewType = "‘Â—Ì" Then
+        analysisText = analysisText & "<div><font color=""#6C757D"">«·‘Â—: " & Nz(Me.cboMonth, "-") & "</font></div>"
+    End If
+
+    analysisText = analysisText & "<div><font color=""#6C757D"">⁄œœ «·› —« : " & m_Totals.RecordCount & "</font></div>"
+    analysisText = analysisText & "<div><font color=""#6C757D""> «—ÌŒ «· ﬁ—Ì—: " & Format(Now(), "yyyy/mm/dd hh:nn") & "</font></div>"
+
+    ' ========== ‰Â«Ì… «·‰’ ==========
+    analysisText = analysisText & "</div>"
+
+    ' ⁄—÷ «· Õ·Ì·
+    Me.txtFinancialInsights.value = analysisText
+
+    Exit Sub
+
+ErrHandler:
+    Me.txtFinancialInsights.value = "<div dir=""rtl""><font color=""red"">ÕœÀ Œÿ√ √À‰«¡ ≈‰‘«¡ «· Õ·Ì·: " & Err.Description & "</font></div>"
+End Sub
+
+
+' ========== ≈ŸÂ«—/≈Œ›«¡ Õﬁ· «·‘Â— ==========
+Private Sub ToggleMonthVisibility()
+    On Error Resume Next
+    
+    Dim showMonth As Boolean
+    showMonth = (Nz(Me.cboViewType, "") = "‘Â—Ì")
+    
+    Me.lblMonth.Visible = showMonth
+    Me.cboMonth.Visible = showMonth
+End Sub
+
+' ========== √Õœ«À «· ÕœÌÀ ==========
+Private Sub cboViewType_AfterUpdate()
+    Call ToggleMonthVisibility
+    Call RefreshData
+End Sub
+
+Private Sub cboYear_AfterUpdate()
+    Call RefreshData
+End Sub
+
+Private Sub cboMonth_AfterUpdate()
+    Call RefreshData
+End Sub
+
+Private Sub cmdRefresh_Click()
+    Call RefreshData
+    MsgBox " „  ÕœÌÀ «·»Ì«‰«  Ê«· Õ·Ì· »‰Ã«Õ", vbInformation, " „ «· ÕœÌÀ"
+End Sub
+
+' ========== «· ’œÌ— ≈·Ï Excel ==========
+Private Sub cmdExportExcel_Click()
+    On Error GoTo ErrHandler
+    
+    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰« 
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "·«  ÊÃœ »Ì«‰«  ·· ’œÌ—", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    Dim fileName As String
+    Dim filePath As String
+    
+    ' ≈‰‘«¡ «”„ «·„·›
+    fileName = "«· œ›ﬁ_«·‰ﬁœÌ_" & Format(Date, "yyyy-mm-dd") & "_" & Format(Time, "hh-nn") & ".xlsx"
+    
+    ' «· ’œÌ—
+    DoCmd.Hourglass True
+    DoCmd.OutputTo acOutputQuery, "qry_CashFlow", acFormatXLSX, , True
+    DoCmd.Hourglass False
+    
+    MsgBox " „ «· ’œÌ— ≈·Ï Excel »‰Ã«Õ", vbInformation, " „ «· ’œÌ—"
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "Œÿ√ ›Ì «· ’œÌ—: " & Err.Description, vbCritical, "Œÿ√"
+End Sub
+
+' ========== ÿ»«⁄… «· ﬁ—Ì— ==========
+Private Sub cmdPrintReport_Click()
+    On Error GoTo ErrHandler
+    
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "·«  ÊÃœ »Ì«‰«  ·ÿ»«⁄… «· ﬁ—Ì—", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    Dim filterCondition As String
+    filterCondition = BuildFilterCondition()
+    
+    DoCmd.Hourglass True
+    
+    If filterCondition <> "" Then
+        DoCmd.OpenReport "rptCashFlow", acViewPreview, , filterCondition, , filterCondition
+    Else
+        DoCmd.OpenReport "rptCashFlow", acViewPreview
+    End If
+    
+    DoCmd.Hourglass False
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "Œÿ√ ›Ì › Õ «· ﬁ—Ì—: " & Err.Description, vbCritical, "Œÿ√"
+End Sub
+
+
+' ========== ⁄—÷ «· Õ·Ì· ›Ì —”«·… («Õ Ì«ÿÌ) ==========
+Private Sub ShowAnalysisInMessage()
+    On Error Resume Next
+    
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "·«  ÊÃœ »Ì«‰«  ·· Õ·Ì·", vbInformation, "«· Õ·Ì· «·„«·Ì"
+        Exit Sub
+    End If
+    
+    Dim analysisText As String
+    Dim profitMargin As Double
+    
+    analysisText = "??? «· Õ·Ì· «·„«·Ì ???" & vbCrLf & vbCrLf
+    analysisText = analysisText & "«·≈Ì—«œ« : " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " Ã.„" & vbCrLf
+    analysisText = analysisText & "«·„’—Ê›« : " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " Ã.„" & vbCrLf
+    analysisText = analysisText & "«·’«›Ì: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " Ã.„" & vbCrLf & vbCrLf
+    
+    If m_Totals.TotalIncome > 0 Then
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        analysisText = analysisText & "Â«„‘ «·—»Õ: " & Format(profitMargin, "0.00") & "%" & vbCrLf & vbCrLf
+    End If
+    
+    If m_Totals.NetFlow > 0 Then
+        analysisText = analysisText & "«· ﬁÌÌ„: √œ«¡ ÃÌœ ?"
+    Else
+        analysisText = analysisText & "«· ﬁÌÌ„: ÌÕ «Ã  Õ”Ì‰ ?"
+    End If
+    
+    MsgBox analysisText, vbInformation, "«· Õ·Ì· «·„«·Ì"
+End Sub
+ 
+
+Private Sub Form_Open(Cancel As Integer)
+    If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

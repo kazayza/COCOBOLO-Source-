@@ -1,0 +1,9 @@
+Form: frm_AdditionalCharges
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label3		Label		»Ì«‰ «·—”Ê„
+Label4		Label		«·„»·€
+ChargeDescription		TextBox		ChargeDescription
+ChargeAmount		TextBox		ChargeAmount

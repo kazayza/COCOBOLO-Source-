@@ -1,0 +1,2644 @@
+Option Compare Database
+
+Private Sub btnBrowseFile_Click()
+    Dim fd As fileDialog
+    Set fd = Application.fileDialog(3) ' msoFileDialogFilePicker
+    
+    With fd
+        .AllowMultiSelect = False
+        .Title = "«Œ — „·› «·»’„…"
+        .Filters.Clear
+        .Filters.Add "Text Files", "*.dat;*.txt;*.xlsx"
+        If .Show = True Then
+            Me.txtFilePath = .SelectedItems(1)
+        End If
+    End With
+End Sub
+'===============================
+'Â–« «·ﬂÊœ ‘€«·  „«„ ··«” Ì—«œ ·„« ﬂ«‰  «·Ãœ«Ê· „Õ·ÌÂ Ê·Ì”  ”Ì—›—
+'===============================
+'Private Sub btnImport_Click()
+'    Dim importMonth As Integer
+'    Dim importYear As Integer
+'
+'    If Me.txtFilePath = "" Then
+'        MsgBox "«Œ — „·› «·»’„… √Ê·«", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Not IsNull(Me.cboMonth) Then importMonth = Me.cboMonth
+'    If Not IsNull(Me.cboYear) Then importYear = Me.cboYear
+'
+'    ' «” œ⁄«¡ «·ﬂÊœ «·ÃœÌœ „⁄ ProgressBar
+'    Call ImportBiometricBATWithProgress(Me.txtFilePath, Me, importMonth, importYear)
+'
+'    '  ÃÂÌ“ ÃœÊ· «·„·Œ’ «·ÌÊ„Ì
+'    Call ProcessAttendance
+'
+'    ' ≈⁄«œ…  ⁄ÌÌ‰ ProgressBar
+'    Me.pbImport.Value = 0
+'
+'    MsgBox " „ «·«” Ì—«œ Ê ÃÂÌ“ „·Œ’ «·Õ÷Ê— «·ÌÊ„Ì.", vbInformation
+'End Sub
+''«·ﬂÊ œÂ ‘€«· «” Ì—«œ „‰„·›«·»’„Â «·Ï ÃœÊ· Õ—ﬂ«  «·»’„Â
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê≈Œ›«¡ «·“— „ƒﬁ «
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents ' ·· √ﬂœ „‰  ÕœÌÀ «·Ê«ÃÂ…
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·„·› Ê«·‘Â— Ê«·”‰…
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "ÌÃ»  ÕœÌœ „·› «·»’„… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    '  ÕœÌœ «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â— «·„Õœœ
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' › Õ „·› «·»’„… ··ﬁ—«¡…
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "«·„·› «·„Õœœ €Ì— „ÊÃÊœ", vbExclamation, "Œÿ√"
+'        GoTo CleanUp
+'    End If
+'
+'    ' Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·› · ÕœÌœ ‘—Ìÿ «· ﬁœ„
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "«·„·› ›«—€ √Ê ·« Ì„ﬂ‰ ﬁ—«¡ Â", vbExclamation, "Œÿ√"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "Ã«—Ì  Õ÷Ì— «·»Ì«‰« ... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    ' «·« ’«· »ﬁ«⁄œ… «·»Ì«‰« 
+'    Dim db As DAO.Database
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    Set db = CurrentDb()
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    currentLine = 0
+'
+'    ' »œ¡ «·„⁄«„·…
+'    ws.BeginTrans
+'
+'    ' ﬁ—«¡… «·„·› ”ÿ—« ”ÿ—«
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ﬂ· 50 ”ÿ— √Ê ⁄‰œ ‰”»… „∆ÊÌ… „Õœœ…
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "Ã«—Ì «” Ì—«œ «·»Ì«‰« ... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " „‰ " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        '  ŒÿÌ «·√”ÿ— «·›«—€…
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        '  ﬁ”Ì„ «·”ÿ— ≈·Ï √⁄„œ… („›’Ê·… »⁄·«„«  Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' «· √ﬂœ „‰ ÊÃÊœ ⁄œœ ﬂ«›Ú „‰ «·√⁄„œ…
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' «” Œ—«Ã «·»Ì«‰«  „‰ «·√⁄„œ…
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        '  Õﬁﬁ „‰ ’Õ… «·ﬂÊœ «·»ÌÊ„ —Ì
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ·
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' «” Œ—«Ã «·Êﬁ  ›ﬁÿ „‰ «· «—ÌŒ/«·Êﬁ 
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' «· Õﬁﬁ „„« ≈–« ﬂ«‰ «· «—ÌŒ ÷„‰ «·‰ÿ«ﬁ «·„Õœœ
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' ≈œŒ«· «·”Ã· ›Ì «·ÃœÊ·
+'            Dim sql As String
+'            sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                  "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'            db.Execute sql, dbFailOnError
+'            successCount = successCount + 1
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    '  √ﬂÌœ «·„⁄«„·…
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì…
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ «·«” Ì—«œ »‰Ã«Õ!"
+'    DoEvents
+'
+'    '  √ŒÌ— »”Ìÿ ·—ƒÌ… ‘—Ìÿ «· ﬁœ„ „ﬂ „·«
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox " „ «” Ì—«œ «·»Ì«‰«  »‰Ã«Õ!" & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„” Ê—œ…: " & successCount & vbCrLf & _
+'           "⁄œœ «·√Œÿ«¡: " & errorCount, vbInformation, "‰ ÌÃ… «·«” Ì—«œ"
+'
+'CleanUp:
+'    ' ≈Œ›«¡ ‘—Ìÿ «· ﬁœ„ Ê≈⁄«œ…  ›⁄Ì· «·“—
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' «· —«Ã⁄ ⁄‰ «·„⁄«„·… ›Ì Õ«·… ÕœÊÀ Œÿ√
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·«” Ì—«œ: " & Err.Description, vbCritical, "Œÿ√"
+'    GoTo CleanUp
+'End Sub
+'Ê«·ﬂÊœ œÂ ‘€«· »—œÂ  «· «‰Ï
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê≈Œ›«¡ «·“— „ƒﬁ «
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents ' ·· √ﬂœ „‰  ÕœÌÀ «·Ê«ÃÂ…
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·„·› Ê«·‘Â— Ê«·”‰…
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "ÌÃ»  ÕœÌœ „·› «·»’„… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    '  ÕœÌœ «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â— «·„Õœœ
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' › Õ „·› «·»’„… ··ﬁ—«¡…
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "«·„·› «·„Õœœ €Ì— „ÊÃÊœ", vbExclamation, "Œÿ√"
+'        GoTo CleanUp
+'    End If
+'
+'    ' Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·› · ÕœÌœ ‘—Ìÿ «· ﬁœ„
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "«·„·› ›«—€ √Ê ·« Ì„ﬂ‰ ﬁ—«¡ Â", vbExclamation, "Œÿ√"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "Ã«—Ì  Õ÷Ì— «·»Ì«‰« ... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    ' «·« ’«· »ﬁ«⁄œ… «·»Ì«‰« 
+'    Dim db As DAO.Database
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    Set db = CurrentDb()
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim duplicateCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    duplicateCount = 0
+'    currentLine = 0
+'
+'    ' »œ¡ «·„⁄«„·…
+'    ws.BeginTrans
+'
+'    ' ﬁ—«¡… «·„·› ”ÿ—« ”ÿ—«
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ﬂ· 50 ”ÿ— √Ê ⁄‰œ ‰”»… „∆ÊÌ… „Õœœ…
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "Ã«—Ì «” Ì—«œ «·»Ì«‰« ... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " „‰ " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        '  ŒÿÌ «·√”ÿ— «·›«—€…
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        '  ﬁ”Ì„ «·”ÿ— ≈·Ï √⁄„œ… („›’Ê·… »⁄·«„«  Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' «· √ﬂœ „‰ ÊÃÊœ ⁄œœ ﬂ«›Ú „‰ «·√⁄„œ…
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' «” Œ—«Ã «·»Ì«‰«  „‰ «·√⁄„œ…
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        '  Õﬁﬁ „‰ ’Õ… «·ﬂÊœ «·»ÌÊ„ —Ì
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ·
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' «” Œ—«Ã «·Êﬁ  ›ﬁÿ „‰ «· «—ÌŒ/«·Êﬁ 
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' «· Õﬁﬁ „„« ≈–« ﬂ«‰ «· «—ÌŒ ÷„‰ «·‰ÿ«ﬁ «·„Õœœ
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' «· Õﬁﬁ „‰ ⁄œ„ ÊÃÊœ «·»Ì«‰«  „”»ﬁ« ›Ì «·ÃœÊ·
+'            Dim rs As DAO.Recordset
+'            Dim checkSql As String
+'
+'            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+'                       "WHERE BiometricCode = " & bioCode & _
+'                       " AND LogDate = #" & Format(logDate, "yyyy-mm-dd") & "#" & _
+'                       " AND LogTime = #" & logTime & "#"
+'
+'            Set rs = db.OpenRecordset(checkSql)
+'
+'            If rs!RecordCount = 0 Then
+'                ' ≈œŒ«· «·”Ã· ›Ì «·ÃœÊ·
+'                Dim sql As String
+'                sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'                db.Execute sql, dbFailOnError
+'                successCount = successCount + 1
+'            Else
+'                duplicateCount = duplicateCount + 1
+'            End If
+'
+'            rs.Close
+'            Set rs = Nothing
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    '  √ﬂÌœ «·„⁄«„·…
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì…
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ «·«” Ì—«œ »‰Ã«Õ!"
+'    DoEvents
+'
+'    '  √ŒÌ— »”Ìÿ ·—ƒÌ… ‘—Ìÿ «· ﬁœ„ „ﬂ „·«
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox " „ «” Ì—«œ «·»Ì«‰«  »‰Ã«Õ!" & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„” Ê—œ…: " & successCount & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„ﬂ——… ( „  ŒÿÌÂ«): " & duplicateCount & vbCrLf & _
+'           "⁄œœ «·√Œÿ«¡: " & errorCount, vbInformation, "‰ ÌÃ… «·«” Ì—«œ"
+'
+'CleanUp:
+'    ' ≈Œ›«¡ ‘—Ìÿ «· ﬁœ„ Ê≈⁄«œ…  ›⁄Ì· «·“—
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' «· —«Ã⁄ ⁄‰ «·„⁄«„·… ›Ì Õ«·… ÕœÊÀ Œÿ√
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·«” Ì—«œ: " & Err.Description, vbCritical, "Œÿ√"
+'    GoTo CleanUp
+'End Sub
+'=================================================================================================
+'Â–« «·ﬂÊœ ‘€«· »” »ÿÏ¡ »”»» «·ÃœÊ· «·„ƒﬁ  «·Ï « ÷«› ·«‰Â »Ì„‰⁄  ﬂ—«— «·»Ì«‰«  «–« ﬂ«‰  „÷«›… ”«»ﬁ…
+'==================================================================================================
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê≈Œ›«¡ «·“— „ƒﬁ «
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·„·› Ê«·‘Â— Ê«·”‰…
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "ÌÃ»  ÕœÌœ „·› «·»’„… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    '  ÕœÌœ «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â— «·„Õœœ
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' «·« ’«· »ﬁ«⁄œ… «·»Ì«‰«  ·· Õﬁﬁ
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Set db = CurrentDb()
+'
+'    ' ========== «· Õﬁﬁ ≈–« ﬂ«‰ «·‘Â— ﬁœ  „ «” Ì—«œÂ „‰ ﬁ»· ==========
+'    Dim checkMonthSql As String
+'    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+'                    "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        rs.Close
+'        Set rs = Nothing
+'
+'        If MsgBox("·ﬁœ  „ «” Ì—«œ »Ì«‰«  " & selectedMonth & "/" & selectedYear & " „‰ ﬁ»·." & vbCrLf & _
+'                  "Â·  —Ìœ «·«” Ì—«œ „—… √Œ—Ïø", vbYesNo + vbQuestion, "»Ì«‰«  „ÊÃÊœ… „”»ﬁ«") = vbNo Then
+'            Set db = Nothing
+'            GoTo CleanUp
+'        End If
+'    End If
+'
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    ' › Õ „·› «·»’„… ··ﬁ—«¡…
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "«·„·› «·„Õœœ €Ì— „ÊÃÊœ", vbExclamation, "Œÿ√"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    ' Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·›
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "«·„·› ›«—€ √Ê ·« Ì„ﬂ‰ ﬁ—«¡ Â", vbExclamation, "Œÿ√"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "Ã«—Ì  Õ÷Ì— «·»Ì«‰« ... 0%"
+'    DoEvents
+'
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'
+'    ' „Õ«Ê·… Õ–› «·ÃœÊ· «·„ƒﬁ  ≈–« ﬂ«‰ „ÊÃÊœ« (»„Õ«Ê·«  „ ⁄œœ…)
+'    Dim tableDropped As Boolean
+'    tableDropped = False
+'    Dim attempts As Integer
+'    attempts = 0
+'
+'    On Error Resume Next
+'    Do While attempts < 5 And Not tableDropped
+'        db.Execute "DROP TABLE TempImport", dbFailOnError
+'        If Err.Number = 0 Then
+'            tableDropped = True
+'        Else
+'            attempts = attempts + 1
+'            ' «·«‰ Ÿ«— ·„œ… À«‰Ì… ﬁ»· «·„Õ«Ê·… „—… √Œ—Ï
+'            Dim waitTime As Date
+'            waitTime = DateAdd("s", 1, Now())
+'            Do While Now() < waitTime
+'                DoEvents
+'            Loop
+'        End If
+'    Loop
+'    On Error GoTo ErrorHandler
+'
+'    ' ≈‰‘«¡ ÃœÊ· „ƒﬁ  »‰›” ÂÌﬂ· «·ÃœÊ· «·—∆Ì”Ì
+'    db.Execute "CREATE TABLE TempImport (BiometricCode LONG, LogDate DATE, LogTime TEXT(10))", dbFailOnError
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    Dim recordCount As Long
+'    Dim errorCount As Long
+'    Dim currentLine As Long
+'    recordCount = 0
+'    errorCount = 0
+'    currentLine = 0
+'
+'    ' »œ¡ «·„⁄«„·…
+'    ws.BeginTrans
+'
+'    ' ﬁ—«¡… «·„·› ”ÿ—« ”ÿ—«
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "Ã«—Ì  Õ„Ì· «·»Ì«‰« ... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " „‰ " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        '  ŒÿÌ «·√”ÿ— «·›«—€…
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        '  ﬁ”Ì„ «·”ÿ— ≈·Ï √⁄„œ…
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' «· √ﬂœ „‰ ÊÃÊœ ⁄œœ ﬂ«›Ú „‰ «·√⁄„œ…
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' «” Œ—«Ã «·»Ì«‰«  „‰ «·√⁄„œ…
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        '  Õﬁﬁ „‰ ’Õ… «·ﬂÊœ «·»ÌÊ„ —Ì
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ·
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' «” Œ—«Ã «·Êﬁ  ›ﬁÿ „‰ «· «—ÌŒ/«·Êﬁ 
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' «· Õﬁﬁ „„« ≈–« ﬂ«‰ «· «—ÌŒ ÷„‰ «·‰ÿ«ﬁ «·„Õœœ
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' ≈œŒ«· «·”Ã· ›Ì «·ÃœÊ· «·„ƒﬁ 
+'            Dim tempSql As String
+'            tempSql = "INSERT INTO TempImport (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, '" & logTime & "')"
+'
+'            db.Execute tempSql
+'            recordCount = recordCount + 1
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    Close #fileNum
+'
+'    ' ≈œ—«Ã «·»Ì«‰«  ›Ì «·ÃœÊ· «·—∆Ì”Ì „⁄ „‰⁄ «· ﬂ—«—
+'    Me.lblStatus.Caption = "Ã«—Ì ≈œŒ«· «·»Ì«‰«  ›Ì «·ÃœÊ· «·—∆Ì”Ì..."
+'    DoEvents
+'
+'    ' «· Õﬁﬁ „‰ ÊÃÊœ ”Ã·«  ›Ì «·ÃœÊ· «·„ƒﬁ  ﬁ»· «·„Õ«Ê·…
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM TempImport", dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        Dim appendSql As String
+'        appendSql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                    "SELECT t.BiometricCode, t.LogDate, t.LogTime FROM TempImport t " & _
+'                    "WHERE NOT EXISTS (" & _
+'                    "   SELECT 1 FROM dbo_BiometricLog b " & _
+'                    "   WHERE b.BiometricCode = t.BiometricCode " & _
+'                    "   AND b.LogDate = t.LogDate " & _
+'                    "   AND b.LogTime = t.LogTime" & _
+'                    ")"
+'
+'        db.Execute appendSql
+'    End If
+'
+'    rs.Close
+'    Set rs = Nothing
+'
+'    ' „Õ«Ê·… Õ–› «·ÃœÊ· «·„ƒﬁ  (»„Õ«Ê·«  „ ⁄œœ…)
+'    attempts = 0
+'    tableDropped = False
+'
+'    On Error Resume Next
+'    Do While attempts < 5 And Not tableDropped
+'        db.Execute "DROP TABLE TempImport", dbFailOnError
+'        If Err.Number = 0 Then
+'            tableDropped = True
+'        Else
+'            attempts = attempts + 1
+'            ' «·«‰ Ÿ«— ·„œ… À«‰Ì… ﬁ»· «·„Õ«Ê·… „—… √Œ—Ï
+'            waitTime = DateAdd("s", 1, Now())
+'            Do While Now() < waitTime
+'                DoEvents
+'            Loop
+'        End If
+'    Loop
+'    On Error GoTo ErrorHandler
+'
+'    '  √ﬂÌœ «·„⁄«„·…
+'    ws.CommitTrans
+'
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì…
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ «·«” Ì—«œ »‰Ã«Õ!"
+'    DoEvents
+'
+'    '  √ŒÌ— »”Ìÿ ·—ƒÌ… ‘—Ìÿ «· ﬁœ„ „ﬂ „·«
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox " „ «” Ì—«œ «·»Ì«‰«  »‰Ã«Õ!" & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„Õ„·…: " & recordCount & vbCrLf & _
+'           "⁄œœ «·√Œÿ«¡: " & errorCount, vbInformation, "‰ ÌÃ… «·«” Ì—«œ"
+'
+'CleanUp:
+'    '  ‰ŸÌ› «·„Ê«—œ
+'    On Error Resume Next
+'    Close #fileNum
+'
+'    ' „Õ«Ê·… ≈€·«ﬁ √Ì recordset „› ÊÕ Ê≈”ﬁ«ÿ «·ÃœÊ· «·„ƒﬁ 
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    If Not db Is Nothing Then
+'        attempts = 0
+'        tableDropped = False
+'
+'        Do While attempts < 3 And Not tableDropped
+'            db.Execute "DROP TABLE TempImport", dbFailOnError
+'            If Err.Number = 0 Then
+'                tableDropped = True
+'            Else
+'                attempts = attempts + 1
+'                waitTime = DateAdd("s", 1, Now())
+'                Do While Now() < waitTime
+'                    DoEvents
+'                Loop
+'            End If
+'        Loop
+'
+'        Set db = Nothing
+'    End If
+'
+'    If Not ws Is Nothing Then Set ws = Nothing
+'
+'    ' ≈Œ›«¡ ‘—Ìÿ «· ﬁœ„ Ê≈⁄«œ…  ›⁄Ì· «·“—
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' «· —«Ã⁄ ⁄‰ «·„⁄«„·… ›Ì Õ«·… ÕœÊÀ Œÿ√
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    ' ⁄—÷  ›«’Ì· «·Œÿ√ ··„”«⁄œ… ›Ì «· ‘ŒÌ’
+'    Dim errMsg As String
+'    errMsg = "ÕœÀ Œÿ√ √À‰«¡ «·«” Ì—«œ: " & Err.Description & vbCrLf & _
+'             "—ﬁ„ «·Œÿ√: " & Err.Number & vbCrLf & _
+'             "«·„’œ—: " & Err.Source
+'
+'    ' ≈–« ﬂ«‰ «·Œÿ√ „ ⁄·ﬁ« »«·ÃœÊ· «·„ƒﬁ 
+'    If Err.Number = 3211 Then
+'        errMsg = errMsg & vbCrLf & "«·ÃœÊ· «·„ƒﬁ  ﬁÌœ «·«” Œœ«„. ”Ì „ «·„Õ«Ê·… „—… √Œ—Ï  ·ﬁ«∆Ì«."
+'
+'        ' «·„Õ«Ê·… „—… √Œ—Ï »⁄œ › —… ÊÃÌ“…
+'        Dim retryTime As Date
+'        retryTime = DateAdd("s", 2, Now())
+'        Do While Now() < retryTime
+'            DoEvents
+'        Loop
+'
+'        Resume
+'    End If
+'
+'    MsgBox errMsg, vbCritical, "Œÿ√"
+'    GoTo CleanUp
+'End Sub
+'====================
+'„‘ﬂ·… «· ÊﬁÌ 
+'====================
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê≈Œ›«¡ «·“— „ƒﬁ «
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·„·› Ê«·‘Â— Ê«·”‰…
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "ÌÃ»  ÕœÌœ „·› «·»’„… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    '  ÕœÌœ «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â— «·„Õœœ
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' «· Õﬁﬁ ≈–« ﬂ«‰ «·‘Â— ﬁœ  „ «” Ì—«œÂ „‰ ﬁ»·
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Set db = CurrentDb()
+'
+'    Dim checkMonthSql As String
+'    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+'                    "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        rs.Close
+'        Set rs = Nothing
+'
+'        If MsgBox("·ﬁœ  „ «” Ì—«œ »Ì«‰«  " & selectedMonth & "/" & selectedYear & " „‰ ﬁ»·." & vbCrLf & _
+'                  "Â·  —Ìœ «·«” Ì—«œ „—… √Œ—Ïø", vbYesNo + vbQuestion, "»Ì«‰«  „ÊÃÊœ… „”»ﬁ«") = vbNo Then
+'            Set db = Nothing
+'            GoTo CleanUp
+'        End If
+'    End If
+'
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    ' › Õ „·› «·»’„… ··ﬁ—«¡…
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "«·„·› «·„Õœœ €Ì— „ÊÃÊœ", vbExclamation, "Œÿ√"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    ' Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·›
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "«·„·› ›«—€ √Ê ·« Ì„ﬂ‰ ﬁ—«¡ Â", vbExclamation, "Œÿ√"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "Ã«—Ì  Õ÷Ì— «·»Ì«‰« ... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim duplicateCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    duplicateCount = 0
+'    currentLine = 0
+'
+'    ' »œ¡ «·„⁄«„·…
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    ws.BeginTrans
+'
+'    ' ﬁ—«¡… «·„·› ”ÿ—« ”ÿ—«
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ﬂ· 50 ”ÿ— √Ê ⁄‰œ ‰”»… „∆ÊÌ… „Õœœ…
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "Ã«—Ì «” Ì—«œ «·»Ì«‰« ... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " „‰ " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        '  ŒÿÌ «·√”ÿ— «·›«—€…
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        '  ﬁ”Ì„ «·”ÿ— ≈·Ï √⁄„œ… („›’Ê·… »⁄·«„«  Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' «· √ﬂœ „‰ ÊÃÊœ ⁄œœ ﬂ«›Ú „‰ «·√⁄„œ…
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' «” Œ—«Ã «·»Ì«‰«  „‰ «·√⁄„œ…
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        '  Õﬁﬁ „‰ ’Õ… «·ﬂÊœ «·»ÌÊ„ —Ì
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ·
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' «” Œ—«Ã «·Êﬁ  ›ﬁÿ „‰ «· «—ÌŒ/«·Êﬁ 
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' «· Õﬁﬁ „„« ≈–« ﬂ«‰ «· «—ÌŒ ÷„‰ «·‰ÿ«ﬁ «·„Õœœ
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' «· Õﬁﬁ „‰ ⁄œ„ ÊÃÊœ «·»Ì«‰«  „”»ﬁ« ›Ì «·ÃœÊ·
+'            Dim checkSql As String
+'            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+'                       "WHERE BiometricCode = " & bioCode & _
+'                       " AND LogDate = #" & Format(logDate, "yyyy-mm-dd") & "#" & _
+'                       " AND LogTime = #" & logTime & "#"
+'
+'            Set rs = db.OpenRecordset(checkSql, dbOpenSnapshot)
+'
+'            If rs!recordCount = 0 Then
+'                ' ≈œŒ«· «·”Ã· ›Ì «·ÃœÊ·
+'                Dim sql As String
+'                sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'                db.Execute sql
+'                successCount = successCount + 1
+'            Else
+'                duplicateCount = duplicateCount + 1
+'            End If
+'
+'            rs.Close
+'            Set rs = Nothing
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    '  √ﬂÌœ «·„⁄«„·…
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì…
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ «·«” Ì—«œ »‰Ã«Õ!"
+'    DoEvents
+'
+'    '  √ŒÌ— »”Ìÿ ·—ƒÌ… ‘—Ìÿ «· ﬁœ„ „ﬂ „·«
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox " „ «” Ì—«œ «·»Ì«‰«  »‰Ã«Õ!" & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„” Ê—œ…: " & successCount & vbCrLf & _
+'           "⁄œœ «·”Ã·«  «·„ﬂ——… ( „  ŒÿÌÂ«): " & duplicateCount & vbCrLf & _
+'           "⁄œœ «·√Œÿ«¡: " & errorCount, vbInformation, "‰ ÌÃ… «·«” Ì—«œ"
+'
+'CleanUp:
+'    '  ‰ŸÌ› «·„Ê«—œ
+'    On Error Resume Next
+'    Close #fileNum
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'    If Not db Is Nothing Then Set db = Nothing
+'    If Not ws Is Nothing Then Set ws = Nothing
+'
+'    ' ≈Œ›«¡ ‘—Ìÿ «· ﬁœ„ Ê≈⁄«œ…  ›⁄Ì· «·“—
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' «· —«Ã⁄ ⁄‰ «·„⁄«„·… ›Ì Õ«·… ÕœÊÀ Œÿ√
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·«” Ì—«œ: " & Err.Description & vbCrLf & _
+'           "—ﬁ„ «·Œÿ√: " & Err.Number, vbCritical, "Œÿ√"
+
+'    GoTo CleanUp
+'End Sub
+'*******************************************************
+'========================================
+' ÿ»Ìﬁ «·Œ”„ ﬁ»· «÷«›… «·«” À‰«¡« 
+'========================================
+'Private Sub cmdApplyDeductions_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' «· Õﬁﬁ „‰  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        Exit Sub
+'    End If
+'
+'    Dim rsAttendance As DAO.Recordset
+'    Dim rsShift As DAO.Recordset
+'    Dim db As DAO.Database
+'    Dim strSQL As String
+'    Dim ShiftStart As Date
+'    Dim ShiftEnd As Date
+'    Dim timeIn As Date
+'    Dim timeOut As Date
+'    Dim LateMin As Long
+'    Dim EarlyLeaveMin As Long
+'    Dim totalHrs As Double
+'    Dim PenaltyHrs As Integer
+'    Dim recordCount As Long
+'    Dim totalRecords As Long
+'    Dim CurrentBiometricCode As Long
+'    Dim CurrentDate As Date
+'    Dim ProgressPercent As Integer
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim MonthName As String
+'
+'    Set db = CurrentDb
+'
+'    ' «·Õ’Ê· ⁄·Ï «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'
+'
+'    ' ≈⁄œ«œ «·‹ Progress Bar Ê«·‹ Label
+'    Me.pbImport1.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.lblStatus.Visible = True
+'    Me.lblStatus.Caption = "Ã«—Ì  Õ„Ì· «·»Ì«‰« ..."
+'    DoEvents ' ·· √ﬂœ „‰  ÕœÌÀ «·‘«‘…
+'
+'    ' › Õ recordset ··Õ÷Ê— ÕÌÀ Â‰«ﬂ Õ÷Ê— Ê·Ì” €Ì«» „⁄ „—«⁄«… «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+'    strSQL = "SELECT a.* FROM dbo_Attendance a " & _
+'             "WHERE a.Status <> '€«∆»' AND a.Status IS NOT NULL " & _
+'             "AND a.TimeIn IS NOT NULL " & _
+'             "AND Month(a.logDate) = " & selectedMonth & " " & _
+'             "AND Year(a.logDate) = " & selectedYear
+'
+'    Set rsAttendance = db.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+'
+'    ' Õ”«» «·⁄œœ «·≈Ã„«·Ì ··”Ã·« 
+'    If Not rsAttendance.EOF Then
+'        rsAttendance.MoveLast
+'        totalRecords = rsAttendance.recordCount
+'        rsAttendance.MoveFirst
+'    Else
+'        totalRecords = 0
+'    End If
+'
+'    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰«  ··‘Â— «·„Õœœ
+'    If totalRecords = 0 Then
+'        Me.lblStatus.Caption = "·«  ÊÃœ »Ì«‰«  ··‘Â— «·„Õœœ"
+'        MsgBox "·«  ÊÃœ »Ì«‰«  Õ÷Ê— ··‘Â—: " & cboMonth.Value & " Ê«·”‰…: " & selectedYear, vbInformation, "«‰ »Â"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.lblStatus.Caption = "Ã«—Ì „⁄«·Ã… 0 „‰ " & totalRecords & " ”Ã·..."
+'    Me.pbImport1.Max = totalRecords
+'    DoEvents
+'
+'    recordCount = 0
+'
+'    If Not rsAttendance.EOF Then
+'        Do Until rsAttendance.EOF
+'            PenaltyHrs = 0
+'            LateMin = 0
+'            EarlyLeaveMin = 0
+''            TotalHrs = 0
+'
+'            CurrentBiometricCode = Nz(rsAttendance!BiometricCode, 0)
+'            CurrentDate = Nz(rsAttendance!logDate, Date)
+'
+'            '  ÕœÌÀ «·‹ Progress Bar Ê«·‹ Label
+'            recordCount = recordCount + 1
+'            ProgressPercent = (recordCount / totalRecords) * 100
+'
+'            Me.pbImport1.Value = recordCount
+'            Me.lblStatus.Caption = "Ã«—Ì „⁄«·Ã… «·”Ã· " & recordCount & " „‰ " & totalRecords & _
+'                                  " (" & Round(ProgressPercent, 0) & "%)" & _
+'                                  " - «·„ÊŸ›: " & CurrentBiometricCode
+'            DoEvents ' „Â„ Ãœ« · ÕœÌÀ «·‘«‘…
+'
+'            '  √ﬂœ √‰ BiometricCode —ﬁ„Ì
+'            If CurrentBiometricCode = 0 Then
+'                rsAttendance.MoveNext
+'                GoTo ContinueLoop
+'            End If
+'
+'            ' «·»ÕÀ ⁄‰ «·‘Ì›  «·„‰«”» ··„ÊŸ›
+'            strSQL = "SELECT TOP 1 StartTime, EndTime " & _
+'                     "FROM dbo_EmployeeShifts " & _
+'                     "WHERE BiometricCode = " & CurrentBiometricCode & " " & _
+'                     "AND EffectiveFrom <= #" & Format(CurrentDate, "mm/dd/yyyy") & "# " & _
+'                     "AND (EffectiveTo IS NULL OR EffectiveTo >= #" & Format(CurrentDate, "mm/dd/yyyy") & "#) " & _
+'                     "ORDER BY EffectiveFrom DESC"
+'
+'            Set rsShift = db.OpenRecordset(strSQL)
+'
+'            If Not rsShift.EOF Then
+'                ShiftStart = Nz(rsShift!StartTime, TimeValue("08:00:00"))
+'                ShiftEnd = Nz(rsShift!EndTime, TimeValue("17:00:00"))
+'            Else
+'                ' «” Œœ«„ ﬁÌ„ «› —«÷Ì… ≈–« ·„ ÌÊÃœ ‘Ì› 
+'                ShiftStart = TimeValue("08:00:00")
+'                ShiftEnd = TimeValue("17:00:00")
+'            End If
+'
+'            If Not rsShift Is Nothing Then
+'                rsShift.Close
+'                Set rsShift = Nothing
+'            End If
+'
+'            ' ﬁ—«¡… √Êﬁ«  «·Õ÷Ê— Ê«·«‰’—«›
+'            timeIn = Nz(rsAttendance!timeIn, TimeValue("00:00:00"))
+'            timeOut = Nz(rsAttendance!timeOut, TimeValue("00:00:00"))
+'
+'            ' Õ”«» œﬁ«∆ﬁ «· √ŒÌ—
+'            If timeIn > ShiftStart Then
+'                LateMin = DateDiff("n", ShiftStart, timeIn)
+'            Else
+'                LateMin = 0
+'            End If
+'
+'            ' Õ”«» œﬁ«∆ﬁ «·«‰’—«› «·„»ﬂ—
+'            If timeOut < ShiftEnd And timeOut > timeIn Then
+'                EarlyLeaveMin = DateDiff("n", timeOut, ShiftEnd)
+'            Else
+'                EarlyLeaveMin = 0
+'            End If
+'
+'            ' Õ”«» ⁄œœ «·”«⁄«  «·ﬂ·Ì
+'            If timeOut > timeIn Then
+'                totalHrs = rsAttendance!totalHours 'DateDiff("n", TimeIn, TimeOut) / 60
+'            Else
+'                totalHrs = 0
+'            End If
+'
+'            '  ÿ»Ìﬁ ﬁÊ«⁄œ «·Œ’„ ﬂ„« ÿ·»  »«·÷»ÿ
+'            PenaltyHrs = 0
+'
+'            ' 1. ≈–« ·„ Ì”Ã· «‰’—«› ≈ÿ·«ﬁ« ? ÌŒ’„ 4 ”«⁄« 
+'            If timeOut = TimeValue("00:00:00") Then
+'                PenaltyHrs = 4
+'            ' 2. ≈–« «‰’—› „»ﬂ—« √ﬂÀ— „‰ 5 œﬁ«∆ﬁ ? ÌŒ’„ ”«⁄ Ì‰
+'            ElseIf EarlyLeaveMin >= 5 Then
+'                PenaltyHrs = 2
+'            ' 3. ≈–« ﬂ«‰ „Ã„Ê⁄ ”«⁄«  «·⁄„· √ﬁ· „‰ 4 ”«⁄«  ? ÌŒ’„ 8 ”«⁄« 
+'            ElseIf totalHrs > 0 And totalHrs < 4 Then
+'                PenaltyHrs = 8
+'            ' 4. ⁄ﬁÊ»«  «· √ŒÌ—
+'            ElseIf LateMin > 30 Then
+'                PenaltyHrs = 4
+'            ElseIf LateMin > 20 Then
+'                PenaltyHrs = 2
+'            ElseIf LateMin > 10 Then
+'                PenaltyHrs = 1
+'            End If
+'
+'            '  ÕœÌÀ ”Ã· «·Õ÷Ê—
+'            rsAttendance.Edit
+'            rsAttendance!lateMinutes = LateMin
+'            rsAttendance!EarlyLeaveMinutes = EarlyLeaveMin
+''            rsAttendance!totalHours = Round(TotalHrs, 2)
+'            rsAttendance!penaltyHours = PenaltyHrs
+'            rsAttendance.Update
+'
+'ContinueLoop:
+'            rsAttendance.MoveNext
+'        Loop
+'
+'        ' ≈ŸÂ«— —”«·… «·«‰ Â«¡
+'        Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ „⁄«·Ã… " & totalRecords & " ”Ã· »‰Ã«Õ"
+'        Me.pbImport1.Value = Me.pbImport1.Max
+'        MsgBox " „  ÿ»Ìﬁ «·Œ’Ê„«  ⁄·Ï " & totalRecords & " ”Ã· Õ÷Ê— »‰Ã«Õ", vbInformation
+'
+'    Else
+'        Me.lblStatus.Caption = "·«  ÊÃœ ”Ã·«  ··„⁄«·Ã…"
+'        MsgBox "·«  ÊÃœ ”Ã·«  Õ÷Ê—  Õ «Ã ≈·Ï  ÿ»Ìﬁ Œ’Ê„« ", vbInformation
+'    End If
+'
+'CleanUp:
+'    On Error Resume Next
+'    If Not rsShift Is Nothing Then
+'        rsShift.Close
+'        Set rsShift = Nothing
+'    End If
+'    If Not rsAttendance Is Nothing Then
+'        rsAttendance.Close
+'        Set rsAttendance = Nothing
+'    End If
+'
+'    ' ≈Œ›«¡ «·‹ Progress Bar »⁄œ 3 ÀÊ«‰Ì
+'    If Me.pbImport1.Visible Then
+'        DoEvents
+'        Application.Run "Sleep", 3000 ' «‰ Ÿ«— 3 ÀÊ«‰Ì
+'        Me.pbImport1.Visible = False
+'        Me.lblStatus.Visible = False
+'    End If
+'
+'    Set db = Nothing
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "ÕœÀ Œÿ√ √À‰«¡ «·„⁄«·Ã…"
+'    MsgBox "ÕœÀ Œÿ√: " & Err.Description & " ··„ÊŸ›: " & CurrentBiometricCode & " ›Ì «· «—ÌŒ: " & Format(CurrentDate, "yyyy-mm-dd"), vbCritical
+'    Resume CleanUp
+'End Sub
+Private Sub cmdApplyDeductions_Click()
+    On Error GoTo ErrorHandler
+    
+    ' «· Õﬁﬁ „‰  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+
+    Dim rsAttendance As DAO.Recordset
+    Dim rsShift As DAO.Recordset
+    Dim db As DAO.Database
+    Dim strSQL As String
+    Dim ShiftStart As Date
+    Dim ShiftEnd As Date
+    Dim TimeIn As Date
+    Dim TimeOut As Date
+    Dim LateMin As Long
+    Dim EarlyLeaveMin As Long
+    Dim totalHrs As Double
+    Dim PenaltyHrs As Integer
+    Dim RecordCount As Long
+    Dim totalRecords As Long
+    Dim CurrentBiometricCode As Long
+    Dim currentDate As Date
+    Dim ProgressPercent As Integer
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+
+    Set db = CurrentDb
+    
+    ' «·Õ’Ê· ⁄·Ï «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+
+    ' ≈⁄œ«œ «·‹ Progress Bar Ê«·‹ Label
+    Me.pbImport1.Visible = True
+    Me.pbImport1.value = 0
+    Me.lblStatus.Visible = True
+    Me.lblStatus.Caption = "Ã«—Ì  Õ„Ì· «·»Ì«‰« ..."
+    DoEvents
+
+    ' › Õ recordset ··Õ÷Ê— ÕÌÀ Â‰«ﬂ Õ÷Ê— Ê·Ì” €Ì«» „⁄ „—«⁄«… «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+    strSQL = "SELECT a.* FROM dbo_Attendance a " & _
+             "WHERE a.Status <> '€«∆»' AND a.Status IS NOT NULL " & _
+             "AND a.TimeIn IS NOT NULL " & _
+             "AND Month(a.logDate) = " & SelectedMonth & " " & _
+             "AND Year(a.logDate) = " & SelectedYear
+
+    Set rsAttendance = db.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+    ' Õ”«» «·⁄œœ «·≈Ã„«·Ì ··”Ã·« 
+    If Not rsAttendance.EOF Then
+        rsAttendance.MoveLast
+        totalRecords = rsAttendance.RecordCount
+        rsAttendance.MoveFirst
+    Else
+        totalRecords = 0
+    End If
+
+    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰«  ··‘Â— «·„Õœœ
+    If totalRecords = 0 Then
+        Me.lblStatus.Caption = "·«  ÊÃœ »Ì«‰«  ··‘Â— «·„Õœœ"
+        MsgBox "·«  ÊÃœ »Ì«‰«  Õ÷Ê— ··‘Â—: " & cboMonth.value & " Ê«·”‰…: " & SelectedYear, vbInformation, "«‰ »Â"
+        GoTo CleanUp
+    End If
+
+    Me.lblStatus.Caption = "Ã«—Ì „⁄«·Ã… 0 „‰ " & totalRecords & " ”Ã·..."
+    Me.pbImport1.Max = totalRecords
+    DoEvents
+
+    RecordCount = 0
+
+    If Not rsAttendance.EOF Then
+        Do Until rsAttendance.EOF
+            PenaltyHrs = 0
+            LateMin = 0
+            EarlyLeaveMin = 0
+
+            CurrentBiometricCode = Nz(rsAttendance!BiometricCode, 0)
+            currentDate = Nz(rsAttendance!LogDate, Date)
+
+            '  ÕœÌÀ «·‹ Progress Bar Ê«·‹ Label
+            RecordCount = RecordCount + 1
+            ProgressPercent = (RecordCount / totalRecords) * 100
+
+            Me.pbImport1.value = RecordCount
+            Me.lblStatus.Caption = "Ã«—Ì „⁄«·Ã… «·”Ã· " & RecordCount & " „‰ " & totalRecords & _
+                                  " (" & Round(ProgressPercent, 0) & "%)" & _
+                                  " - «·„ÊŸ›: " & CurrentBiometricCode
+            DoEvents
+
+            '  √ﬂœ √‰ BiometricCode —ﬁ„Ì
+            If CurrentBiometricCode = 0 Then
+                rsAttendance.MoveNext
+                GoTo ContinueLoop
+            End If
+
+            ' «·»ÕÀ ⁄‰ «·‘Ì›  «·„‰«”» ··„ÊŸ› ›Ì «· «—ÌŒ «·„Õœœ - «· ’ÕÌÕ Â‰«
+            strSQL = "SELECT TOP 1 StartTime, EndTime " & _
+                     "FROM dbo_EmployeeShifts " & _
+                     "WHERE BiometricCode = " & CurrentBiometricCode & " " & _
+                     "AND EffectiveFrom <= #" & Format(currentDate, "mm/dd/yyyy") & "# " & _
+                     "AND (EffectiveTo >= #" & Format(currentDate, "mm/dd/yyyy") & "# OR EffectiveTo IS NULL) " & _
+                     "ORDER BY IIf(EffectiveFrom = EffectiveTo, 1, 0) DESC, EffectiveFrom DESC"
+
+            Set rsShift = db.OpenRecordset(strSQL)
+
+            If Not rsShift.EOF Then
+                ShiftStart = Nz(rsShift!StartTime, TimeValue("08:00:00"))
+                ShiftEnd = Nz(rsShift!EndTime, TimeValue("17:00:00"))
+                
+                '  ÕœÌÀ «·‹ Label »„⁄·Ê„«  «·‘Ì› 
+                Me.lblStatus.Caption = "Ã«—Ì „⁄«·Ã… «·”Ã· " & RecordCount & " „‰ " & totalRecords & _
+                                      " - «·‘Ì› : " & Format(ShiftStart, "hh:mm AM/PM") & " - " & Format(ShiftEnd, "hh:mm AM/PM")
+                DoEvents
+            Else
+                ' «” Œœ«„ ﬁÌ„ «› —«÷Ì… ≈–« ·„ ÌÊÃœ ‘Ì› 
+                ShiftStart = TimeValue("08:00:00")
+                ShiftEnd = TimeValue("17:00:00")
+            End If
+
+            If Not rsShift Is Nothing Then
+                rsShift.Close
+                Set rsShift = Nothing
+            End If
+
+            ' ﬁ—«¡… √Êﬁ«  «·Õ÷Ê— Ê«·«‰’—«›
+            TimeIn = Nz(rsAttendance!TimeIn, TimeValue("00:00:00"))
+            TimeOut = Nz(rsAttendance!TimeOut, TimeValue("00:00:00"))
+
+            ' Õ”«» œﬁ«∆ﬁ «· √ŒÌ—
+            If TimeIn > ShiftStart Then
+                LateMin = DateDiff("n", ShiftStart, TimeIn)
+            Else
+                LateMin = 0
+            End If
+
+            ' Õ”«» œﬁ«∆ﬁ «·«‰’—«› «·„»ﬂ—
+            If TimeOut < ShiftEnd And TimeOut > TimeIn Then
+                EarlyLeaveMin = DateDiff("n", TimeOut, ShiftEnd)
+            Else
+                EarlyLeaveMin = 0
+            End If
+
+            ' Õ”«» ⁄œœ «·”«⁄«  «·ﬂ·Ì
+            If TimeOut > TimeIn Then
+                totalHrs = rsAttendance!totalHours
+            Else
+                totalHrs = 0
+            End If
+
+            '  ÿ»Ìﬁ ﬁÊ«⁄œ «·Œ’„ ﬂ„« ÿ·»  »«·÷»ÿ
+            PenaltyHrs = 0
+            
+            ' 1. ≈–« ·„ Ì”Ã· «‰’—«› ≈ÿ·«ﬁ« ? ÌŒ’„ 4 ”«⁄« 
+            If TimeOut = TimeValue("00:00:00") Then
+                PenaltyHrs = 4
+            ' 2. ≈–« «‰’—› „»ﬂ—« √ﬂÀ— „‰ 5 œﬁ«∆ﬁ ? ÌŒ’„ ”«⁄ Ì‰
+            ElseIf EarlyLeaveMin >= 5 Then
+                PenaltyHrs = 2
+            ' 3. ≈–« ﬂ«‰ „Ã„Ê⁄ ”«⁄«  «·⁄„· √ﬁ· „‰ 4 ”«⁄«  ? ÌŒ’„ 8 ”«⁄« 
+            ElseIf totalHrs > 0 And totalHrs < 4 Then
+                PenaltyHrs = 8
+            ' 4. ⁄ﬁÊ»«  «· √ŒÌ—
+            ElseIf LateMin > 30 Then
+                PenaltyHrs = 4
+            ElseIf LateMin > 20 Then
+                PenaltyHrs = 2
+            ElseIf LateMin > 10 Then
+                PenaltyHrs = 1
+            End If
+
+            '  ÕœÌÀ ”Ã· «·Õ÷Ê—
+            rsAttendance.Edit
+            rsAttendance!LateMinutes = LateMin
+            rsAttendance!EarlyLeaveMinutes = EarlyLeaveMin
+            rsAttendance!PenaltyHours = PenaltyHrs
+            rsAttendance.Update
+
+ContinueLoop:
+            rsAttendance.MoveNext
+        Loop
+
+        ' ≈ŸÂ«— —”«·… «·«‰ Â«¡
+        Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ „⁄«·Ã… " & totalRecords & " ”Ã· »‰Ã«Õ"
+        Me.pbImport1.value = Me.pbImport1.Max
+        MsgBox " „  ÿ»Ìﬁ «·Œ’Ê„«  ⁄·Ï " & totalRecords & " ”Ã· Õ÷Ê— »‰Ã«Õ", vbInformation
+
+    Else
+        Me.lblStatus.Caption = "·«  ÊÃœ ”Ã·«  ··„⁄«·Ã…"
+        MsgBox "·«  ÊÃœ ”Ã·«  Õ÷Ê—  Õ «Ã ≈·Ï  ÿ»Ìﬁ Œ’Ê„« ", vbInformation
+    End If
+
+CleanUp:
+    On Error Resume Next
+    If Not rsShift Is Nothing Then
+        rsShift.Close
+        Set rsShift = Nothing
+    End If
+    If Not rsAttendance Is Nothing Then
+        rsAttendance.Close
+        Set rsAttendance = Nothing
+    End If
+
+    ' ≈Œ›«¡ «·‹ Progress Bar »⁄œ 3 ÀÊ«‰Ì
+    If Me.pbImport1.Visible Then
+        DoEvents
+        Application.Run "Sleep", 3000
+        Me.pbImport1.Visible = False
+        Me.lblStatus.Visible = False
+    End If
+
+    Set db = Nothing
+    Exit Sub
+
+ErrorHandler:
+    Me.lblStatus.Caption = "ÕœÀ Œÿ√ √À‰«¡ «·„⁄«·Ã…"
+    MsgBox "ÕœÀ Œÿ√: " & Err.Description & " ··„ÊŸ›: " & CurrentBiometricCode & " ›Ì «· «—ÌŒ: " & Format(currentDate, "yyyy-mm-dd"), vbCritical
+    Resume CleanUp
+End Sub
+
+
+Private Sub cmdImport_Click()
+    On Error GoTo ErrorHandler
+    
+    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê≈Œ›«¡ «·“— „ƒﬁ «
+    Me.pbImport.Visible = True
+    Me.lblStatus.Visible = True
+    Me.pbImport.value = 0
+    Me.cmdImport.Enabled = False
+    DoEvents
+    
+    ' «· √ﬂœ „‰  ÕœÌœ «·„·› Ê«·‘Â— Ê«·”‰…
+    If Nz(Me.txtFilePath, "") = "" Then
+        MsgBox "ÌÃ»  ÕœÌœ „·› «·»’„… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        GoTo CleanUp
+    End If
+    
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        GoTo CleanUp
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    '  ÕœÌœ «·‘Â— Ê«·”‰… «·„ÕœœÌ‰
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â— «·„Õœœ
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    ' «· Õﬁﬁ ≈–« ﬂ«‰ «·‘Â— ﬁœ  „ «” Ì—«œÂ „‰ ﬁ»·
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Set db = CurrentDb()
+    
+    Dim checkMonthSql As String
+    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+                    "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+    
+    If rs!recCount > 0 Then
+        rs.Close
+        Set rs = Nothing
+        
+        If MsgBox("·ﬁœ  „ «” Ì—«œ »Ì«‰«  " & SelectedMonth & "/" & SelectedYear & " „‰ ﬁ»·." & vbCrLf & _
+                  "Â·  —Ìœ «·«” Ì—«œ „—… √Œ—Ïø", vbYesNo + vbQuestion, "»Ì«‰«  „ÊÃÊœ… „”»ﬁ«") = vbNo Then
+            Set db = Nothing
+            GoTo CleanUp
+        End If
+    Else
+        If Not rs Is Nothing Then
+            rs.Close
+            Set rs = Nothing
+        End If
+    End If
+    
+    ' › Õ „·› «·»’„… ··ﬁ—«¡…
+    Dim filePath As String
+    filePath = Me.txtFilePath.value
+    
+    If Dir(filePath) = "" Then
+        MsgBox "«·„·› «·„Õœœ €Ì— „ÊÃÊœ", vbExclamation, "Œÿ√"
+        Set db = Nothing
+        GoTo CleanUp
+    End If
+    
+    ' Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·›
+    Dim totalLines As Long
+    totalLines = CountFileLines(filePath)
+    If totalLines = 0 Then
+        MsgBox "«·„·› ›«—€ √Ê ·« Ì„ﬂ‰ ﬁ—«¡ Â", vbExclamation, "Œÿ√"
+        Set db = Nothing
+        GoTo CleanUp
+    End If
+    
+    Me.pbImport.Max = totalLines
+    Me.lblStatus.Caption = "Ã«—Ì  Õ÷Ì— «·»Ì«‰« ... 0%"
+    DoEvents
+    
+    Dim fileNum As Integer
+    fileNum = FreeFile()
+    
+    Open filePath For Input As #fileNum
+    
+    Dim successCount As Long
+    Dim errorCount As Long
+    Dim duplicateCount As Long
+    Dim currentLine As Long
+    successCount = 0
+    errorCount = 0
+    duplicateCount = 0
+    currentLine = 0
+    
+    ' »œ¡ «·„⁄«„·…
+    Dim ws As DAO.Workspace
+    Set ws = DBEngine.Workspaces(0)
+    ws.BeginTrans
+    
+    ' ≈⁄œ«œ «” ⁄·«„ ··≈÷«›… · Õ”Ì‰ «·√œ«¡
+    Dim qdf As DAO.QueryDef
+    Dim strSQL As String
+    strSQL = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) VALUES (p1, p2, p3)"
+    Set qdf = db.CreateQueryDef("", strSQL)
+    
+    ' ﬁ—«¡… «·„·› ”ÿ—« ”ÿ—«
+    Dim lineText As String
+    
+    Do While Not EOF(fileNum)
+        Line Input #fileNum, lineText
+        currentLine = currentLine + 1
+        
+        '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ﬂ· 50 ”ÿ— √Ê ⁄‰œ ‰”»… „∆ÊÌ… „Õœœ…
+        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+            Me.pbImport.value = currentLine
+            Me.lblStatus.Caption = "Ã«—Ì «” Ì—«œ «·»Ì«‰« ... " & _
+                Format(currentLine / totalLines, "0%") & " (" & currentLine & " „‰ " & totalLines & ")"
+            DoEvents
+        End If
+        
+        '  ŒÿÌ «·√”ÿ— «·›«—€…
+        If Trim(lineText) = "" Then GoTo NextLine
+        
+        '  ﬁ”Ì„ «·”ÿ— ≈·Ï √⁄„œ… („›’Ê·… »⁄·«„«  Tab)
+        Dim parts() As String
+        parts = Split(lineText, vbTab)
+        
+        ' «· √ﬂœ „‰ ÊÃÊœ ⁄œœ ﬂ«›Ú „‰ «·√⁄„œ…
+        If UBound(parts) < 1 Then
+            errorCount = errorCount + 1
+            GoTo NextLine
+        End If
+        
+        Dim bioCode As String
+        Dim logDateTime As String
+        Dim LogDate As Date
+        Dim logTime As String
+        
+        ' «” Œ—«Ã «·»Ì«‰«  „‰ «·√⁄„œ…
+        bioCode = Trim(parts(0))
+        logDateTime = Trim(parts(1))
+        
+        '  Õﬁﬁ „‰ ’Õ… «·ﬂÊœ «·»ÌÊ„ —Ì
+        If Not IsNumeric(bioCode) Then
+            errorCount = errorCount + 1
+            GoTo NextLine
+        End If
+        
+'        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ· ﬁ»·  ⁄œÌ· »’„Â „‰ ’› «··Ì·
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' «” Œ—«Ã «·Êﬁ  ›ﬁÿ „‰ «· «—ÌŒ/«·Êﬁ 
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+        
+        
+        '  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ· »⁄œ  ⁄œÌ· «·»’„Â »⁄œ „‰ ’› «··Ì·
+'  ÕÊÌ·  «—ÌŒ ÊÊﬁ  «· ”ÃÌ·
+On Error Resume Next
+LogDate = CDate(logDateTime)
+If Err.Number <> 0 Then
+    errorCount = errorCount + 1
+    On Error GoTo ErrorHandler
+    GoTo NextLine
+End If
+On Error GoTo ErrorHandler
+
+' „⁄«·Ã… «·»’„«  »⁄œ „‰ ’› «··Ì· (»Ì‰ 12:00 AM Ê 5:00 AM)
+If TimeValue(LogDate) >= #12:00:00 AM# And TimeValue(LogDate) < #5:00:00 AM# Then
+    ' ≈–« ﬂ«‰  «·»’„… »⁄œ „‰ ’› «··Ì·° ‰⁄ »—Â« ··ÌÊ„ «·”«»ﬁ «·”«⁄… 11:59:59 „”«¡
+    LogDate = DateValue(LogDate) - 1 ' «·ÌÊ„ «·”«»ﬁ
+    logTime = "23:59:59" ' ¬Œ— ·ÕŸ… „‰ «·ÌÊ„ «·”«»ﬁ
+Else
+    ' ≈–« ﬂ«‰  «·»’„… ›Ì Êﬁ  ÿ»Ì⁄Ì° ‰” Œœ„ «·Êﬁ  ﬂ„« ÂÊ
+    logTime = Format(LogDate, "HH:MM:SS")
+    LogDate = DateValue(LogDate)
+End If
+
+        ' «· Õﬁﬁ „„« ≈–« ﬂ«‰ «· «—ÌŒ ÷„‰ «·‰ÿ«ﬁ «·„Õœœ
+        If LogDate >= StartDate And LogDate <= EndDate Then
+            ' «· Õﬁﬁ „‰ ⁄œ„ ÊÃÊœ «·»Ì«‰«  „”»ﬁ« ›Ì «·ÃœÊ·
+            Dim checkSql As String
+            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+                       "WHERE BiometricCode = " & bioCode & _
+                       " AND LogDate = #" & Format(LogDate, "yyyy-mm-dd") & "#" & _
+                       " AND LogTime = #" & logTime & "#"
+            
+            Set rs = db.OpenRecordset(checkSql, dbOpenSnapshot)
+            
+            If rs!RecordCount = 0 Then
+                ' ≈œŒ«· «·”Ã· »«” Œœ«„ QueryDef · Õ”Ì‰ «·√œ«¡
+                qdf.Parameters("p1").value = bioCode
+                qdf.Parameters("p2").value = LogDate
+                qdf.Parameters("p3").value = logTime
+                qdf.Execute
+                successCount = successCount + 1
+            Else
+                duplicateCount = duplicateCount + 1
+            End If
+            
+            rs.Close
+            Set rs = Nothing
+        End If
+        
+NextLine:
+    Loop
+    
+    '  √ﬂÌœ «·„⁄«„·…
+    ws.CommitTrans
+    
+    Close #fileNum
+    Set qdf = Nothing
+    Set db = Nothing
+    Set ws = Nothing
+    
+    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì…
+    Me.pbImport.value = Me.pbImport.Max
+    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ «·«” Ì—«œ »‰Ã«Õ!"
+    DoEvents
+    
+    '  √ŒÌ— »”Ìÿ ·—ƒÌ… ‘—Ìÿ «· ﬁœ„ „ﬂ „·«
+    Dim EndTime As Date
+    EndTime = DateAdd("s", 1, Now())
+    Do While Now() < EndTime
+        DoEvents
+    Loop
+    
+    MsgBox " „ «” Ì—«œ «·»Ì«‰«  »‰Ã«Õ!" & vbCrLf & _
+           "⁄œœ «·”Ã·«  «·„” Ê—œ…: " & successCount & vbCrLf & _
+           "⁄œœ «·”Ã·«  «·„ﬂ——… ( „  ŒÿÌÂ«): " & duplicateCount & vbCrLf & _
+           "⁄œœ «·√Œÿ«¡: " & errorCount, vbInformation, "‰ ÌÃ… «·«” Ì—«œ"
+    
+CleanUp:
+    '  ‰ŸÌ› «·„Ê«—œ
+    On Error Resume Next
+    Close #fileNum
+    If Not rs Is Nothing Then
+        rs.Close
+        Set rs = Nothing
+    End If
+    If Not db Is Nothing Then Set db = Nothing
+    If Not ws Is Nothing Then Set ws = Nothing
+    If Not qdf Is Nothing Then Set qdf = Nothing
+    
+    ' ≈Œ›«¡ ‘—Ìÿ «· ﬁœ„ Ê≈⁄«œ…  ›⁄Ì· «·“—
+    Me.pbImport.Visible = False
+    Me.cmdImport.Enabled = True
+    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+    Exit Sub
+    
+ErrorHandler:
+    ' «· —«Ã⁄ ⁄‰ «·„⁄«„·… ›Ì Õ«·… ÕœÊÀ Œÿ√
+    If Not ws Is Nothing Then ws.Rollback
+    
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·«” Ì—«œ: " & Err.Description & vbCrLf & _
+           "—ﬁ„ «·Œÿ√: " & Err.Number, vbCritical, "Œÿ√"
+    GoTo CleanUp
+End Sub
+
+' œ«·… „”«⁄œ… ·Õ”«» ⁄œœ «·√”ÿ— ›Ì «·„·›
+Private Function CountFileLines(filePath As String) As Long
+    On Error GoTo ErrorHandler
+    
+    Dim fileNum As Integer
+    Dim lineCount As Long
+    Dim dummy As String
+    
+    fileNum = FreeFile()
+    Open filePath For Input As #fileNum
+    
+    lineCount = 0
+    Do While Not EOF(fileNum)
+        Line Input #fileNum, dummy
+        lineCount = lineCount + 1
+    Loop
+    
+    Close #fileNum
+    CountFileLines = lineCount
+    Exit Function
+    
+ErrorHandler:
+    On Error Resume Next
+    Close #fileNum
+    CountFileLines = 0
+End Function
+'======================
+'Õ–› „‰ ÃœÊ· «·»’„Â
+'======================
+Private Sub cmdDeleteMonth_Click()
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    If MsgBox("Â· √‰  „ √ﬂœ „‰ √‰ﬂ  —Ìœ Õ–› Ã„Ì⁄ »Ì«‰«  «·»’„Â " & Me.cboMonth & "/" & Me.cboYear & "ø", _
+              vbYesNo + vbQuestion, " √ﬂÌœ «·Õ–›") = vbNo Then
+        Exit Sub
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_BiometricLog " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+    Set db = Nothing
+    
+    MsgBox " „ Õ–› »Ì«‰«  «·‘Â— «·„Õœœ »‰Ã«Õ", vbInformation, " „ «·Õ–›"
+End Sub
+'======================
+'Õ–› „‰ ÃœÊ· «·Õ÷Ê—
+'======================
+
+Private Sub cmdDeleteMonthAttendnce_Click()
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    If MsgBox("Â· √‰  „ √ﬂœ „‰ √‰ﬂ  —Ìœ Õ–› Ã„Ì⁄ »Ì«‰«  «·Õ÷Ê— " & Me.cboMonth & "/" & Me.cboYear & "ø", _
+              vbYesNo + vbQuestion, " √ﬂÌœ «·Õ–›") = vbNo Then
+        Exit Sub
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_Attendance " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+    Set db = Nothing
+    
+    MsgBox " „ Õ–› »Ì«‰«  «·‘Â— «·„Õœœ »‰Ã«Õ", vbInformation, " „ «·Õ–›"
+End Sub
+
+
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        Exit Sub
+'    End If
+'
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' Õ–› »Ì«‰«  «·‘Â— ≈–« ﬂ«‰  „ÊÃÊœ… „”»ﬁ«
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+'
+'    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì…
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    ROUND((DateDiff('n', MIN(b.LogTime), MAX(b.LogTime)) / 60.0), 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbFailOnError + dbSeeChanges
+'
+'    ' «· ’ÕÌÕ »‰«¡ ⁄·Ï «·Ê—œÌ«  „⁄ „—«⁄«… «· «—ÌŒ «·›⁄«·
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIF(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIF(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = ROUND((DateDiff('n', " & _
+'                       "        IIF(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIF(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut)) / 60.0), 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbFailOnError + dbSeeChanges
+'
+'    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·”Ã·«  «·„÷«›…
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance WHERE LogDate BETWEEN #" & _
+'                              Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    Me.pbImport.Value = 100
+'    DoEvents
+'
+'    MsgBox " „  Ê·Ìœ " & recordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ", vbInformation, " „  «·⁄„·Ì…"
+'
+'CleanUp:
+'    Me.pbImport.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡  Ê·Ìœ »Ì«‰«  «·Õ÷Ê—: " & Err.Description, vbCritical, "Œÿ√"
+'    GoTo CleanUp
+'End Sub
+'======================
+'‘€«· ﬂÊÌ” »” «·„‘ﬂ·… ›Ï Õ”«» ›—ﬁ «·”«⁄«  Ì⁄‰Ï »ÌœÏ „À·« 9.98
+'======================
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·‘Â— Ê«·”‰…
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        Exit Sub
+'    End If
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê ⁄ÿÌ· «·“— „ƒﬁ «
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â—
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' Õ–› »Ì«‰«  «·‘Â— ≈–« ﬂ«‰  „ÊÃÊœ… „”»ﬁ«
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'
+'    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì… - „⁄ «· ’ÕÌÕ
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'
+'    ' «· ’ÕÌÕ »‰«¡ ⁄·Ï «·Ê—œÌ«  „⁄ ≈⁄«œ… Õ”«» «·”«⁄«  »‘ﬂ· ’ÕÌÕ
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('s', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'
+'    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·”Ã·«  «·„÷«›…
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì… Ê≈‰Â«¡ «·⁄„·Ì…
+'    Me.pbImport.Value = 100
+'    DoEvents
+'
+'    MsgBox " „  Ê·Ìœ " & recordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ", vbInformation, " „  «·⁄„·Ì…"
+'
+'CleanUp:
+'    '  ‰ŸÌ› Ê≈Œ›«¡ «·‘—Ìÿ Ê ›⁄Ì· «·“—
+'    Me.pbImport.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡  Ê·Ìœ »Ì«‰«  «·Õ÷Ê—: " & Err.Description, vbCritical, "Œÿ√"
+'    Resume CleanUp
+'End Sub
+'===================
+'œÂ «·ﬂÊœ «·—”„Ï «·Ï ‘€«· ⁄·ÌÂ
+'===========================
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·‘Â— Ê«·”‰…
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        Exit Sub
+'    End If
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê ⁄ÿÌ· «·“— „ƒﬁ «
+'    Me.pbImport1.Visible = True
+'    Me.lblStatus.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â—
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    '  ÕœÌÀ «·Õ«·…
+'    Me.lblStatus.Caption = "Ã«—Ì Õ–› «·»Ì«‰«  «·ﬁœÌ„…..."
+'    DoEvents
+'
+'    ' Õ–› »Ì«‰«  «·‘Â— ≈–« ﬂ«‰  „ÊÃÊœ… „”»ﬁ«
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'    Me.pbImport1.Value = 25
+'    Me.lblStatus.Caption = " „ Õ–› «·»Ì«‰«  «·ﬁœÌ„…. Ã«—Ì «” Ì—«œ «·»Ì«‰«  «·ÃœÌœ…..."
+'    DoEvents
+'
+'    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì… - „⁄ «· ’ÕÌÕ
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 50
+'    Me.lblStatus.Caption = " „ «” Ì—«œ «·»Ì«‰« . Ã«—Ì  ÿ»Ìﬁ ﬁÊ«⁄œ «·Ê—œÌ« ..."
+'    DoEvents
+'
+'    ' «· ’ÕÌÕ »‰«¡ ⁄·Ï «·Ê—œÌ«  „⁄ ≈⁄«œ… Õ”«» «·”«⁄«  »‘ﬂ· ’ÕÌÕ
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('s', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 75
+'    Me.lblStatus.Caption = " „  ÿ»Ìﬁ ﬁÊ«⁄œ «·Ê—œÌ« . Ã«—Ì «· Õﬁﬁ „‰ «·‰ «∆Ã..."
+'    DoEvents
+'
+'    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·”Ã·«  «·„÷«›…
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    ' «· Õﬁﬁ „‰ ÊÃÊœ √Œÿ«¡ ›Ì Õ”«» «·”«⁄« 
+'    Dim rsCheck As DAO.Recordset
+'    Set rsCheck = db.OpenRecordset("SELECT COUNT(*) AS ErrorCount FROM dbo_Attendance " & _
+'                                   "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                                   "AND (TotalHours - Int(TotalHours)) >= 0.6")
+'
+'    Dim errorCount As Long
+'    errorCount = rsCheck!errorCount
+'
+'    rs.Close
+'    rsCheck.Close
+'    Set rs = Nothing
+'    Set rsCheck = Nothing
+'    Set db = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì… Ê≈‰Â«¡ «·⁄„·Ì…
+'    Me.pbImport1.Value = 100
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ ⁄„·Ì… «÷«›Â «·»Ì«‰« "
+'    DoEvents
+'
+'    ' ⁄—÷ —”«·… «·‰ ÌÃ…
+''    If errorCount = 0 Then
+'        MsgBox " „ ≈÷«›… " & recordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ »‰Ã«Õ", vbInformation, " „  «·⁄„·Ì…"
+''    Else
+''        MsgBox " „  Ê·Ìœ " & recordCount & " ”Ã· Õ÷Ê—° Ê·ﬂ‰ Â‰«ﬂ " & errorCount & " ”Ã·  Õ ÊÌ ⁄·Ï √Œÿ«¡ ›Ì Õ”«» «·Êﬁ ", vbExclamation, " ‰»ÌÂ"
+''    End If
+'
+'CleanUp:
+'    '  ‰ŸÌ› Ê≈Œ›«¡ «·‘—Ìÿ Ê ›⁄Ì· «·“— »⁄œ  √ŒÌ— »”Ìÿ
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 2, Now()) '  √ŒÌ— ·„œ… À«‰Ì Ì‰
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    Me.pbImport1.Visible = False
+'    Me.lblStatus.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "ÕœÀ Œÿ√ √À‰«¡ «·„⁄«·Ã…"
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡  Ê·Ìœ »Ì«‰«  «·Õ÷Ê—: " & Err.Description, vbCritical, "Œÿ√"
+'    Resume CleanUp
+'End Sub
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' «· √ﬂœ „‰  ÕœÌœ «·‘Â— Ê«·”‰…
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+'        Exit Sub
+'    End If
+'
+'    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê ⁄ÿÌ· «·“— „ƒﬁ «
+'    Me.pbImport1.Visible = True
+'    Me.lblStatus.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim SelectedMonth As Integer
+'    Dim SelectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'
+'
+'    SelectedMonth = Me.cboMonth
+'    SelectedYear = Me.cboYear
+'
+'    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â—
+'    startDate = DateSerial(SelectedYear, SelectedMonth, 1)
+'    endDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    '  ÕœÌÀ «·Õ«·…
+'    Me.lblStatus.Caption = "Ã«—Ì Õ–› «·»Ì«‰«  «·ﬁœÌ„…..."
+'    DoEvents
+'
+'    ' Õ–› »Ì«‰«  «·‘Â— ≈–« ﬂ«‰  „ÊÃÊœ… „”»ﬁ«
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'    Me.pbImport1.Value = 20
+'    Me.lblStatus.Caption = " „ Õ–› «·»Ì«‰«  «·ﬁœÌ„…. Ã«—Ì «” Ì—«œ «·»Ì«‰«  «·ÃœÌœ…..."
+'    DoEvents
+'
+'
+'
+'    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì…
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    'Õ÷Ê—' AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 40
+'    Me.lblStatus.Caption = " „ «” Ì—«œ «·»Ì«‰« . Ã«—Ì  ÿ»Ìﬁ ﬁÊ«⁄œ «·‘Ì› «  «·Œ«’… »«·„ÊŸ›Ì‰..."
+'    DoEvents
+'
+'    ' «· ’ÕÌÕ »‰«¡ ⁄·Ï «·Ê—œÌ« 
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('n', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 60.0, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'' "    a.TotalHours = Round((DateDiff('s', " & _
+''                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+''                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 60
+'    Me.lblStatus.Caption = " „  ÿ»Ìﬁ ﬁÊ«⁄œ «·‘Ì› « . Ã«—Ì ≈÷«›… «·≈Ã«“«  Ê‰Â«Ì… «·√”»Ê⁄..."
+'    DoEvents
+'
+'    ' «·ŒÿÊ… 1: ≈÷«›… √Ì«„ «·Ã„⁄… ﬂ≈Ã«“… —”„Ì… (··„ÊŸ›Ì‰ «·–Ì‰ ·œÌÂ„ BioEmployeeID ›ﬁÿ)
+'    Dim addFridayHolidaysSql As String
+'    addFridayHolidaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+'                           "SELECT e.BioEmployeeID, c.CalendarDate, '≈Ã«“… —”„Ì…', 8 " & _
+'                           "FROM dbo_Employees e, dbo_Calendar c " & _
+'                           "WHERE c.CalendarDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                           "AND c.DayName = 'Friday' " & _
+'                           "AND c.IsWeekend = 1 " & _
+'                           "AND e.BioEmployeeID IS NOT NULL " & _
+'                           "AND NOT EXISTS ( " & _
+'                           "    SELECT 1 FROM dbo_Attendance a " & _
+'                           "    WHERE a.BiometricCode = e.BioEmployeeID " & _
+'                           "    AND a.LogDate = c.CalendarDate " & _
+'                           ")"
+'
+'    db.Execute addFridayHolidaysSql, dbSeeChanges
+'    Me.pbImport1.Value = 80
+'    Me.lblStatus.Caption = " „ ≈÷«›… «·≈Ã«“«  «·—”„Ì…. Ã«—Ì „⁄«·Ã… «·√Ì«„ «·„ »ﬁÌ…..."
+'    DoEvents
+'
+'    ' «·ŒÿÊ… 2: „⁄«·Ã… «·√Ì«„ «· Ì ·„ Ì „ «·»’„ ›ÌÂ« (··„ÊŸ›Ì‰ «·–Ì‰ ·œÌÂ„ BioEmployeeID ›ﬁÿ)
+'    Dim addMissingDaysSql As String
+'    addMissingDaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+'                        "SELECT e.BioEmployeeID, c.CalendarDate, '€«∆»', 0 " & _
+'                        "FROM dbo_Employees e, dbo_Calendar c " & _
+'                        "WHERE c.CalendarDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                        "AND c.DayName <> 'Friday' " & _
+'                        "AND c.IsWeekend = 0 " & _
+'                        "AND e.BioEmployeeID IS NOT NULL " & _
+'                        "AND NOT EXISTS ( " & _
+'                        "SELECT 1 FROM dbo_Attendance a " & _
+'                        "WHERE a.BiometricCode = e.BioEmployeeID " & _
+'                        "AND a.LogDate = c.CalendarDate " & _
+'                        ")"
+'
+'    db.Execute addMissingDaysSql, dbSeeChanges
+'
+'    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·”Ã·«  «·„÷«›…
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·„ÊŸ›Ì‰ «·–Ì‰ ·Ì” ·œÌÂ„ BioEmployeeID
+'    Dim nullBioCountRS As DAO.Recordset
+'    Set nullBioCountRS = db.OpenRecordset("SELECT COUNT(*) AS NullCount FROM dbo_Employees WHERE BioEmployeeID IS NULL", dbOpenSnapshot)
+'    Dim nullBioCount As Long
+'    nullBioCount = nullBioCountRS!nullCount
+'    nullBioCountRS.Close
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì… Ê≈‰Â«¡ «·⁄„·Ì…
+'    Me.pbImport1.Value = 100
+'    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ ⁄„·Ì… «÷«›… «·»Ì«‰« "
+'    DoEvents
+'
+'    If nullBioCount > 0 Then
+'        MsgBox " „ «÷«›… " & recordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ" & vbCrLf & _
+'               "„·«ÕŸ…: Â‰«ﬂ " & nullBioCount & " „ÊŸ› ·Ì” ·œÌÂ„ ﬂÊœ »’„… Ê·„ Ì „ «÷«›… ”Ã·«  ·Â„", vbInformation, " „  «·⁄„·Ì…"
+'    Else
+'        MsgBox " „ «÷«›… " & recordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ" & vbCrLf & _
+'               "‘«„·« √Ì«„ «·Õ÷Ê— Ê«·≈Ã«“«  «·—”„Ì… Ê«·√Ì«„ «·€Ì«»", vbInformation, " „  «·⁄„·Ì…"
+'    End If
+'
+'Cleanup:
+'    '  ‰ŸÌ› Ê≈Œ›«¡ «·‘—Ìÿ Ê ›⁄Ì· «·“— »⁄œ  √ŒÌ— »”Ìÿ
+'    Dim EndTime As Date
+'    EndTime = DateAdd("s", 2, Now())
+'    Do While Now() < EndTime
+'        DoEvents
+'    Loop
+'
+'    Me.pbImport1.Visible = False
+'    Me.lblStatus.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "ÕœÀ Œÿ√ √À‰«¡ «·„⁄«·Ã…"
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡  Ê·Ìœ »Ì«‰«  «·Õ÷Ê—: " & Err.Description, vbCritical, "Œÿ√"
+'    Resume Cleanup
+'End Sub
+
+Private Sub cmdGenerateAttendance_Click()
+    On Error GoTo ErrorHandler
+
+    ' «· √ﬂœ „‰  ÕœÌœ «·‘Â— Ê«·”‰…
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "ÌÃ»  ÕœÌœ «·‘Â— Ê«·”‰… √Ê·«", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    Dim MonthName As String
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    
+
+    ' Õ”«»  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… ··‘Â—
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    ' «· Õﬁﬁ „‰ ÊÃÊœ »Ì«‰«  »’„… ··‘Â— «·„Õœœ
+    Dim checkBioSql As String
+    checkBioSql = "SELECT COUNT(*) AS BioCount FROM dbo_BiometricLog " & _
+                  "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    Dim rsCheck As DAO.Recordset
+    Set rsCheck = db.OpenRecordset(checkBioSql)
+    
+    Dim bioCount As Long
+    bioCount = rsCheck!bioCount
+    rsCheck.Close
+    Set rsCheck = Nothing
+    
+    If bioCount = 0 Then
+        MsgBox "·«  ÊÃœ »Ì«‰«  »’„… ··‘Â—: " & cboMonth.value & " Ê«·”‰…: " & SelectedYear, vbInformation, "«‰ »Â"
+        Set db = Nothing
+        Exit Sub
+    End If
+
+    ' ≈ŸÂ«— ‘—Ìÿ «· ﬁœ„ Ê ⁄ÿÌ· «·“— „ƒﬁ «
+    Me.pbImport1.Visible = True
+    Me.lblStatus.Visible = True
+    Me.pbImport1.value = 0
+    Me.cmdGenerateAttendance.Enabled = False
+    DoEvents
+
+    '  ÕœÌÀ «·Õ«·…
+    Me.lblStatus.Caption = "Ã«—Ì Õ–› «·»Ì«‰«  «·ﬁœÌ„…..."
+    DoEvents
+
+    ' Õ–› »Ì«‰«  «·‘Â— ≈–« ﬂ«‰  „ÊÃÊœ… „”»ﬁ«
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_Attendance " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+
+    db.Execute deleteSql, dbSeeChanges
+    Me.pbImport1.value = 20
+    Me.lblStatus.Caption = " „ Õ–› «·»Ì«‰«  «·ﬁœÌ„…. Ã«—Ì «” Ì—«œ «·»Ì«‰«  «·ÃœÌœ…..."
+    DoEvents
+    
+'    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì…
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    'Õ÷Ê—' AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 40
+'    Me.lblStatus.Caption = " „ «” Ì—«œ «·»Ì«‰« . Ã«—Ì  ÿ»Ìﬁ ﬁÊ«⁄œ «·‘Ì› «  «·Œ«’… »«·„ÊŸ›Ì‰..."
+'    DoEvents
+    
+    ' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì… (»„« ›Ì –·ﬂ «·Õ÷Ê— »œÊ‰ «‰’—«›)
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    IIf(COUNT(b.LogTime) = 1, 'Õ÷Ê— ›ﬁÿ', 'Õ÷Ê—') AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate"
+
+' «” ⁄·«„ · Ê·Ìœ »Ì«‰«  «·Õ÷Ê— «·√”«”Ì…
+Dim attendanceSql As String
+attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+                "SELECT " & _
+                "    b.BiometricCode, " & _
+                "    b.LogDate, " & _
+                "    MIN(b.LogTime) AS TimeIn, " & _
+                "    MAX(b.LogTime) AS TimeOut, " & _
+                "    IIf(Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) > 8, 8, " & _
+                "         Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2)) AS TotalHours, " & _
+                "    IIf(COUNT(b.LogTime) = 1, 'Õ÷Ê— ›ﬁÿ', 'Õ÷Ê—') AS Status " & _
+                "FROM dbo_BiometricLog b " & _
+                "WHERE b.LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                "GROUP BY b.BiometricCode, b.LogDate"
+                
+    db.Execute attendanceSql, dbSeeChanges
+    Me.pbImport1.value = 40
+    Me.lblStatus.Caption = " „ «” Ì—«œ «·»Ì«‰« . Ã«—Ì  ÿ»Ìﬁ ﬁÊ«⁄œ «·‘Ì› «  «·Œ«’… »«·„ÊŸ›Ì‰..."
+    DoEvents
+    
+    
+    
+'    ' «· ’ÕÌÕ »‰«¡ ⁄·Ï «·Ê—œÌ« 
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('n', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 60.0, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 50
+'    Me.lblStatus.Caption = " „  ÿ»Ìﬁ ﬁÊ«⁄œ «·‘Ì› « . Ã«—Ì „⁄«·Ã… «·Õ÷Ê— »œÊ‰ «‰’—«›..."
+'    DoEvents
+    
+    ' „⁄«·Ã… «·Õ«·«  «· Ì »Â« »’„… Ê«Õœ… ›ﬁÿ (Õ÷Ê— »œÊ‰ «‰’—«›)
+'    Dim singlePunchSql As String
+'    singlePunchSql = "UPDATE dbo_Attendance " & _
+'                     "SET Status = 'Õ÷Ê— ›ﬁÿ', " & _
+'                     "    TotalHours = 4 " & _
+'                     "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                     "AND ((TimeIn IS NOT NULL AND TimeOut IS NULL) OR (TimeIn = TimeOut))"
+' „⁄«·Ã… «·Õ«·«  «· Ì »Â« »’„… Ê«Õœ… ›ﬁÿ (Õ÷Ê— »œÊ‰ «‰’—«›)
+Dim singlePunchSql As String
+singlePunchSql = "UPDATE dbo_Attendance " & _
+                 "SET Status = 'Õ÷Ê— ›ﬁÿ', " & _
+                 "    TimeOut = Null, " & _
+                 "    TotalHours = 0 " & _
+                 "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                 "AND ((TimeIn IS NOT NULL AND TimeOut IS NULL) OR (TimeIn = TimeOut))"
+
+    db.Execute singlePunchSql, dbSeeChanges
+    Me.pbImport1.value = 60
+    Me.lblStatus.Caption = " „ „⁄«·Ã… «·Õ÷Ê— »œÊ‰ «‰’—«›. Ã«—Ì ≈÷«›… «·≈Ã«“«  Ê‰Â«Ì… «·√”»Ê⁄..."
+    DoEvents
+
+    
+    ' «·ŒÿÊ… 1: ≈÷«›… √Ì«„ «·Ã„⁄… ﬂ≈Ã«“… —”„Ì… (··„ÊŸ›Ì‰ «·–Ì‰ ·œÌÂ„ BioEmployeeID ›ﬁÿ)
+    Dim addFridayHolidaysSql As String
+    addFridayHolidaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+                           "SELECT e.BioEmployeeID, c.CalendarDate, '≈Ã«“… —”„Ì…', 8 " & _
+                           "FROM dbo_Employees e, dbo_Calendar c " & _
+                           "WHERE c.CalendarDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                           "AND c.DayName = 'Friday' " & _
+                           "AND c.IsWeekend = 1 " & _
+                           "AND e.BioEmployeeID IS NOT NULL " & _
+                           "AND NOT EXISTS ( " & _
+                           "    SELECT 1 FROM dbo_Attendance a " & _
+                           "    WHERE a.BiometricCode = e.BioEmployeeID " & _
+                           "    AND a.LogDate = c.CalendarDate " & _
+                           ")"
+
+    db.Execute addFridayHolidaysSql, dbSeeChanges
+    Me.pbImport1.value = 80
+    Me.lblStatus.Caption = " „ ≈÷«›… «·≈Ã«“«  «·—”„Ì…. Ã«—Ì „⁄«·Ã… «·√Ì«„ «·„ »ﬁÌ…..."
+    DoEvents
+
+    ' «·ŒÿÊ… 2: „⁄«·Ã… «·√Ì«„ «· Ì ·„ Ì „ «·»’„ ›ÌÂ« (··„ÊŸ›Ì‰ «·–Ì‰ ·œÌÂ„ BioEmployeeID ›ﬁÿ)
+    Dim addMissingDaysSql As String
+    addMissingDaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+                        "SELECT e.BioEmployeeID, c.CalendarDate, '€«∆»', 0 " & _
+                        "FROM dbo_Employees e, dbo_Calendar c " & _
+                        "WHERE c.CalendarDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                        "AND c.DayName <> 'Friday' " & _
+                        "AND c.IsWeekend = 0 " & _
+                        "AND e.BioEmployeeID IS NOT NULL " & _
+                        "AND NOT EXISTS ( " & _
+                        "SELECT 1 FROM dbo_Attendance a " & _
+                        "WHERE a.BiometricCode = e.BioEmployeeID " & _
+                        "AND a.LogDate = c.CalendarDate " & _
+                        ")"
+
+    db.Execute addMissingDaysSql, dbSeeChanges
+
+    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·”Ã·«  «·„÷«›…
+    Dim rs As DAO.Recordset
+    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+                              "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#")
+
+    Dim RecordCount As Long
+    RecordCount = rs!recCount
+
+    ' «·Õ’Ê· ⁄·Ï ⁄œœ «·„ÊŸ›Ì‰ «·–Ì‰ ·Ì” ·œÌÂ„ BioEmployeeID
+    Dim nullBioCountRS As DAO.Recordset
+    Set nullBioCountRS = db.OpenRecordset("SELECT COUNT(*) AS NullCount FROM dbo_Employees WHERE BioEmployeeID IS NULL", dbOpenSnapshot)
+    Dim nullBioCount As Long
+    nullBioCount = nullBioCountRS!nullCount
+    nullBioCountRS.Close
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    '  ÕœÌÀ ‘—Ìÿ «· ﬁœ„ ··‰Â«Ì… Ê≈‰Â«¡ «·⁄„·Ì…
+    Me.pbImport1.value = 100
+    Me.lblStatus.Caption = " „ «·«‰ Â«¡ „‰ ⁄„·Ì… «÷«›… «·»Ì«‰« "
+    DoEvents
+
+    If nullBioCount > 0 Then
+        MsgBox " „ «÷«›… " & RecordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ" & vbCrLf & _
+               "„·«ÕŸ…: Â‰«ﬂ " & nullBioCount & " „ÊŸ› ·Ì” ·œÌÂ„ ﬂÊœ »’„… Ê·„ Ì „ «÷«›… ”Ã·«  ·Â„", vbInformation, " „  «·⁄„·Ì…"
+    Else
+        MsgBox " „ «÷«›… " & RecordCount & " ”Ã· Õ÷Ê— ··‘Â— «·„Õœœ" & vbCrLf & _
+               "‘«„·« √Ì«„ «·Õ÷Ê— Ê«·≈Ã«“«  «·—”„Ì… Ê«·√Ì«„ «·€Ì«»", vbInformation, " „  «·⁄„·Ì…"
+    End If
+
+CleanUp:
+    '  ‰ŸÌ› Ê≈Œ›«¡ «·‘—Ìÿ Ê ›⁄Ì· «·“— »⁄œ  √ŒÌ— »”Ìÿ
+    Dim EndTime As Date
+    EndTime = DateAdd("s", 2, Now())
+    Do While Now() < EndTime
+        DoEvents
+    Loop
+    
+    Me.pbImport1.Visible = False
+    Me.lblStatus.Visible = False
+    Me.cmdGenerateAttendance.Enabled = True
+    Exit Sub
+
+ErrorHandler:
+    Me.lblStatus.Caption = "ÕœÀ Œÿ√ √À‰«¡ «·„⁄«·Ã…"
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡  Ê·Ìœ »Ì«‰«  «·Õ÷Ê—: " & Err.Description, vbCritical, "Œÿ√"
+    Resume CleanUp
+End Sub
+
+
+' œ«·… ·„⁄«·Ã… «·»’„«  »⁄œ „‰ ’› «··Ì·
+Public Function AdjustPunchDateTime(originalDateTime As Date) As Date
+    Dim adjustedDate As Date
+    Dim adjustedTime As Date
+    
+    ' ≈–« ﬂ«‰  «·»’„… »Ì‰ „‰ ’› «··Ì· Ê 5 ’»«Õ«° ‰⁄ »—Â« ··??? «·”«»ﬁ
+    If TimeValue(originalDateTime) >= #12:00:00 AM# And TimeValue(originalDateTime) < #5:00:00 AM# Then
+        adjustedDate = DateValue(originalDateTime) - 1
+        adjustedTime = TimeValue(originalDateTime)
+        AdjustPunchDateTime = adjustedDate + adjustedTime
+    Else
+        AdjustPunchDateTime = originalDateTime
+    End If
+End Function
+
+Private Sub Command20_Click()
+    Dim importMonth As Integer
+    Dim importYear As Integer
+
+    If Me.txtFilePath = "" Then
+        MsgBox "«Œ — „·› «·»’„… √Ê·«", vbExclamation
+        Exit Sub
+    End If
+
+    If Not IsNull(Me.cboMonth) Then importMonth = Me.cboMonth
+    If Not IsNull(Me.cboYear) Then importYear = Me.cboYear
+
+    ' «” œ⁄«¡ «·ﬂÊœ «·ÃœÌœ „⁄ ProgressBar
+    Call ImportBiometricBATWithProgress(Me.txtFilePath, Me, importMonth, importYear)
+
+    '  ÃÂÌ“ ÃœÊ· «·„·Œ’ «·ÌÊ„Ì
+    Call ProcessAttendance
+
+    ' ≈⁄«œ…  ⁄ÌÌ‰ ProgressBar
+    Me.pbImport.value = 0
+
+    MsgBox " „ «·«” Ì—«œ Ê ÃÂÌ“ „·Œ’ «·Õ÷Ê— «·ÌÊ„Ì.", vbInformation
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

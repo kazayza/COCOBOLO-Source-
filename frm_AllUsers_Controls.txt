@@ -1,0 +1,17 @@
+Form: frm_AllUsers
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label2		Label		FullName
+Label1		Label		Username
+Label0		Label		UserID
+Box21		Rectangle		
+Line22		Line		
+btnClose		Button		Command60
+Label23		Label		&All Users
+Image24		Image		
+UserID		TextBox		UserID
+Username		TextBox		Username
+FullName		TextBox		FullName
+btnDetalis		Button		 ›«’Ì·

@@ -1,0 +1,77 @@
+Option Compare Database
+
+
+Option Explicit
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    
+    ' «· Õﬁﬁ „‰ ≈œŒ«· «”„ «·’·«ÕÌ…
+    If IsNull(Me.txtPermissionName) Or Trim(Me.txtPermissionName) = "" Then
+        MsgBox "ÌÃ» ≈œŒ«· «”„ «·’·«ÕÌ…", vbExclamation, "»Ì«‰«  ‰«ﬁ’…"
+        Me.txtPermissionName.SetFocus
+        Exit Sub
+    End If
+    
+    ' «· Õﬁﬁ „‰ ⁄œ„  ﬂ—«— «”„ «·’·«ÕÌ…
+    Set db = CurrentDb
+   Set rs = db.OpenRecordset("SELECT PermissionID FROM dbo_Permissions " & _
+       "WHERE PermissionName = '" & Replace(Me.txtPermissionName, "'", "''") & "'", _
+       dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rs.EOF Then
+        MsgBox "«”„ «·’·«ÕÌ… „ÊÃÊœ „”»ﬁ«", vbExclamation, "Œÿ√ ›Ì «·»Ì«‰« "
+        Me.txtPermissionName.SetFocus
+        GoTo CleanExit
+    End If
+    
+    ' › Õ Recordset ··≈÷«›…
+    Set rs = db.OpenRecordset("dbo_Permissions", dbOpenDynaset, dbSeeChanges)
+    
+    ' ≈÷«›… ”Ã· ÃœÌœ
+    rs.AddNew
+    rs!PermissionName = Me.txtPermissionName
+    rs!Description = Nz(Me.txtDescription, Null)
+    rs!Category = Nz(Me.cboCategory, "")
+    rs!FormName = Nz(Me.txtFormName, "")
+    rs!CreatedBy = currentUser.UserName
+    rs!CreatedAt = Now()
+    rs.Update
+    
+    MsgBox " „  ≈÷«›… «·’·«ÕÌ… «·ÃœÌœ… »‰Ã«Õ", vbInformation, "‰Ã«Õ"
+    
+    '  ‰ŸÌ› «·‰„Ê–Ã
+    Me.txtPermissionName = ""
+    Me.txtDescription = ""
+    Me.cboCategory = Null
+    Me.txtFormName = Null
+    Me.txtPermissionName.SetFocus
+
+CleanExit:
+    If Not rs Is Nothing Then
+        rs.Close
+        Set rs = Nothing
+    End If
+    Set db = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ Õ›Ÿ «·’·«ÕÌ…: " & Err.Description & vbCrLf & _
+           "—ﬁ„ «·Œÿ√: " & Err.Number, vbCritical, "Œÿ√"
+    Resume CleanExit
+End Sub
+
+Private Sub cmdCancel_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

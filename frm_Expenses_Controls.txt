@@ -1,0 +1,43 @@
+Form: frm_Expenses
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box13		Rectangle		
+Line14		Line		
+Image124		Image		
+Label15		Label		≈÷«›… „’—Ê›
+Box21		Rectangle		
+ExpenseID		TextBox		
+Label0		Label		ExpenseID
+ExpenseDate		TextBox		
+Label2		Label		 «—ÌŒ «·„’—Ê›
+Amount		TextBox		
+Label4		Label		«·„»·€
+Notes		TextBox		
+Label5		Label		»Ì«‰ ÊÊ’›
+CreatedBy		TextBox		
+Label6		Label		CreatedBy
+CreatedAt		TextBox		
+Label7		Label		CreatedAt
+cboCashBox		ComboBox		SELECT dbo_CashBoxes.CashBoxID, dbo_CashBoxes.CashBoxName FROM dbo_CashBoxes; 
+Label3		Label		«·Œ“Ì‰…
+cboExpenseGroup		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID) Is Not Null)); 
+Label1		Label		«·„’—Ê›
+ExpenseName		TextBox		
+Label10		Label		ExpenseName
+Box11		Rectangle		
+Box12		Rectangle		
+btnaddGroup		Button		Command17
+Label22		Label		*
+Label23		Label		*
+Label24		Label		*
+chkIsAdvance		CheckBox		
+Label29		Label		„’—Ê› „ﬁœ„
+txtAdvanceMonths		TextBox		
+lblAdvanceMonths		Label		⁄œœ «·«‘Â—
+Torecipient		TextBox		
+Label31		Label		«·„” ›Ìœ
+btnSaveExpense		Button		Õ›Ÿ «·„’—Ê›
+Line16		Line		
+btnCancel		Button		«·€«¡

@@ -1,0 +1,13 @@
+Form: frm_ExpenseCrosstab
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtStartDate		TextBox		
+Label1		Label		דה
+txtEndDate		TextBox		
+Label3		Label		ַבל
+cmdRun		Button		Command4
+cmdRefresh		Button		Refresh
+cmdExport		Button		Export
+subData		Subform		

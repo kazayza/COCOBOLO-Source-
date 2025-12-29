@@ -1,0 +1,35 @@
+Form: frm_LogIn
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box33		Rectangle		
+FullName		TextBox		FullName
+Label23		Label		FullName
+UserId		TextBox		UserId
+Label22		Label		UserId
+Password		TextBox		Password
+Label21		Label		Password
+UserName		TextBox		UserName
+Label20		Label		UserName
+cmdLogin		Button		&Login
+cmdcancel		Button		&Cancel
+Box32		Rectangle		
+Command34		Button		
+txtUsername		TextBox		
+Command35		Button		
+txtPassword		TextBox		
+Text36		TextBox		=DLookUp("CompanyName","dbo_CompanyInfo")
+Label38		Label		Login
+Label40		Label		Please enter a valid username and password to access the program 
+Line41		Line		
+Image43		Image		
+Image45		Image		
+Line46		Line		
+Label47		Label		UserName
+Label48		Label		Password
+imgchk		Image		
+imgLogo		Image		
+complogo		TextBox		=DLookUp("company_logo","tbl_company")
+Image52		Image		
+Command53		Button		Quit

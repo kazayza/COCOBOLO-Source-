@@ -1,0 +1,58 @@
+Form: frm_Employees
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Line63		Line		
+Label66		Label		 ⁄œÌ· »Ì«‰«  «·„ÊŸ› «·Õ«·Ï
+Line67		Line		
+btnClose		Button		Close
+btnSave		Button		Õ›Ÿ
+btnEdit		Button		 ⁄œÌ·
+EmployeeID		TextBox		
+Label70		Label		EmployeeID
+Box60		Rectangle		
+FullName		TextBox		
+Label0		Label		«·«”„ »«·ﬂ«„·
+JobTitle		TextBox		
+Label1		Label		«·ÊŸÌ›…
+NationalID		TextBox		
+Label3		Label		«·—ﬁ„ «·ﬁÊ„Ï
+Gender		TextBox		
+Label4		Label		«·‰Ê⁄
+BirthDate		TextBox		
+Label5		Label		 «—ÌŒ «·„Ì·«œ
+HireDate		TextBox		
+Label6		Label		 «—ÌŒ «·«· Õ«ﬁ »«·ÊŸÌ›…
+CurrentSalaryBase		TextBox		
+Label7		Label		«·«Ã— «·«”«”Ï
+Image54		Image		
+Address		TextBox		
+Label55		Label		«·⁄‰Ê«‰
+MobilePhone		TextBox		
+Label56		Label		—ﬁ„ Â« ›
+MobilePhone2		TextBox		
+Label57		Label		—ﬁ„ Â« › 2
+EmailAddress		TextBox		
+Label58		Label		EmailAddress
+Notes		TextBox		
+Label59		Label		„·«ÕŸ« 
+Label61		Label		*
+Label62		Label		*
+Label74		Label		*
+qualification		TextBox		
+Label76		Label		«·„ƒÂ· «·œ—«”Ï
+yearqualification		TextBox		
+Label78		Label		”‰Â «· Œ—Ã
+BioEmployeeID		TextBox		
+Label81		Label		ﬂÊœ «·»’„…
+EndDate		TextBox		
+Label83		Label		 «—ÌŒ ‰Â«Ì… «·Œœ„…
+Status		ComboBox		"‰‘ÿ";"„ÊﬁÊ›"
+Label8		Label		Õ«·Â «·„ÊŸ›
+cmdEnterNumber		Button		ChangeBasicSalary
+chkBio		CheckBox		
+Label87		Label		„⁄›Ï „‰ «·»’„…
+Department		ComboBox		"«·≈œ«—… «·⁄«„Â";"«·„»Ì⁄« ";"«·„«·ÌÂ"
+Label2		Label		«·≈œ«—… «· «»⁄ ·Â«
+Line73		Line		

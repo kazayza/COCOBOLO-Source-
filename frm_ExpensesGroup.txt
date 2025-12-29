@@ -1,0 +1,73 @@
+Option Compare Database
+
+Private Sub btnCancel_Click()
+ 
+         DoCmd.Close acForm, "frm_ExpensesGroup"
+End Sub
+
+Private Sub btnSve_Click()
+   
+
+    On Error GoTo ErrorHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim GroupName As String
+    Dim parentID As Variant
+    Dim CreatedBy As String
+
+    ' Ã·» «·ﬁÌ„ „‰ ⁄‰«’— «·›Ê—„
+    GroupName = Trim(Nz(Me.ExpenseGroupName.value, ""))
+    CreatedBy = currentUser.UserName '"System" ' √Ê «Ã·»Â „‰ „ €Ì— ⁄«„ √Ê œ«·…
+
+    ' «· Õﬁﬁ „‰ ≈œŒ«· «”„ «·„Ã„Ê⁄…
+    If GroupName = "" Then
+        MsgBox "„‰ ›÷·ﬂ √œŒ· «”„ «·„Ã„Ê⁄…", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+
+    '  ÕœÌœ ﬁÌ„… ParentGroupID
+    If IsNull(Me.cboParentGroup.value) Or Me.cboParentGroup.value = "" Then
+        parentID = Null
+    Else
+        parentID = Me.cboParentGroup.value
+    End If
+
+    ' › Õ « ’«· »«·ÃœÊ·
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_ExpenseGroups", dbOpenDynaset, dbSeeChanges)
+
+    ' ≈÷«›… ”Ã· ÃœÌœ
+    rs.AddNew
+    rs!ExpenseGroupName = GroupName
+    rs!ParentGroupID = parentID
+    rs!CreatedBy = CreatedBy
+    rs.Update
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    MsgBox " „ Õ›Ÿ «·„Ã„Ê⁄… »‰Ã«Õ", vbInformation
+    Me.ExpenseGroupName = ""
+    Me.cboParentGroup = ""
+    Me.Requery
+    Exit Sub
+
+
+
+
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ Õ›Ÿ «·„Ã„Ê⁄…: " & Err.Description & vbCrLf & _
+           "—ﬁ„ «·Œÿ√: " & Err.Number, vbCritical
+
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

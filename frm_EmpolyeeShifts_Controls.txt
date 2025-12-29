@@ -1,0 +1,28 @@
+Form: frm_EmpolyeeShifts
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+EmployeeShiftID		TextBox		
+Label0		Label		ﬂÊœ
+BiometricCode		TextBox		
+Label2		Label		ﬂÊœ «·»’„…
+StartTime		TextBox		
+Label4		Label		Êﬁ  »œ«Ì… «·‘Ì› 
+EndTime		TextBox		
+Label5		Label		Êﬁ  ‰Â«∆… «·‘Ì› 
+EffectiveFrom		TextBox		
+Label6		Label		»œ«Ì… „‰  «—ÌŒ
+EffectiveTo		TextBox		
+Label7		Label		«·Ï
+ShiftType		ComboBox		"’»«ÕÏ";"„”«∆Ï"
+Label3		Label		‰Ê⁄ «·‘Ì› 
+EmployeeID		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName, dbo_Employees.BioEmployeeID FROM dbo_Employees WHERE (((dbo_Employees.Status)="‰‘ÿ")); 
+Label1		Label		«·„ÊŸ›
+btnSave		Button		Õ›Ÿ
+Image9		Image		
+btnCancel		Button		Cancel
+Box10		Rectangle		
+Box11		Rectangle		
+Command12		Button		ÃœÌœ
+Label13		Label		≈÷«›… Ê ⁄œÌ· ‘Ì›  «·„ÊŸ›Ì‰

@@ -1,0 +1,24 @@
+Form: frm_CashFlow
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		Year
+Label1		Label		Month
+Label2		Label		CashInSales
+Label3		Label		CashOutPurchases
+Label4		Label		CashInOther
+Label5		Label		CashOutOther
+Label6		Label		Expenses
+Label7		Label		Salaries
+Label8		Label		NetCashFlow
+Year		TextBox		Year
+Month		TextBox		Month
+CashInSales		TextBox		CashInSales
+CashOutPurchases		TextBox		CashOutPurchases
+CashInOther		TextBox		CashInOther
+Expenses		TextBox		Expenses
+Salaries		TextBox		Salaries
+NetCashFlow		TextBox		NetCashFlow
+CashOutOther		TextBox		CashOutOther
+Chart37		Other (133)		qry_CashFlow

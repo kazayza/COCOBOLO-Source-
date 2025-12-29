@@ -1,0 +1,132 @@
+Option Compare Database
+
+
+Private Sub btnClear_Click()
+On Error Resume Next
+    Me.FilterOn = False
+    Me.cboCashBox = -1
+    Me.cboTransactionType = "«·ﬂ·"
+    Me.cboReferenceType = "«·ﬂ·"
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    Me.Requery
+End Sub
+
+Private Sub btnFilter_Click()
+    Dim strFilter As String
+    strFilter = "1=1"
+
+    ' ›· —… »«·Œ“‰…: -1 = («·ﬂ·) => ·« ‰÷Ì› ‘—ÿ
+    If Not IsNull(Me.cboCashBox) Then
+        If Me.cboCashBox <> -1 Then
+            strFilter = strFilter & " AND CashBoxID = " & CLng(Me.cboCashBox)
+        End If
+    End If
+
+    ' ‰Ê⁄ «·⁄„·Ì… (ﬁ»÷/’—›)
+    If Not IsNull(Me.cboTransactionType) And Me.cboTransactionType <> "«·ﬂ·" Then
+        strFilter = strFilter & " AND TransactionType = '" & Replace(Me.cboTransactionType, "'", "''") & "'"
+    End If
+
+    ' ‰Ê⁄ «·„—Ã⁄
+    If Not IsNull(Me.cboReferenceType) And Me.cboReferenceType <> "«·ﬂ·" Then
+        strFilter = strFilter & " AND ReferenceType = '" & Replace(Me.cboReferenceType, "'", "''") & "'"
+    End If
+
+    ' «·› —… (transactionDate)
+    If Not IsNull(Me.txtDateFrom) Then
+        strFilter = strFilter & " AND transactionDate >= #" & Format(Me.txtDateFrom, "yyyy\/mm\/dd") & "#"
+    End If
+    If Not IsNull(Me.txtDateTo) Then
+        strFilter = strFilter & " AND transactionDate <= #" & Format(Me.txtDateTo, "yyyy\/mm\/dd") & "#"
+    End If
+
+    '  ÿ»Ìﬁ «·›· — ⁄·Ï «·›Ê—„
+    Me.Filter = strFilter
+    Me.FilterOn = True
+    Me.Requery
+End Sub
+
+Private Sub cboCashBox_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cboReferenceType_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cboTransactionType_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cmdReport_Click()
+
+    ' «Ã⁄· «·›· — ›Ì «·›Ê—„ „ıÿÛ»¯Ûﬁ« (·Ê ·„ Ìÿ»ﬁ)
+    If Not Me.FilterOn Then
+        Call btnFilter_Click   ' Ì› —÷ ≈‰ ⁄‰œﬂ œ«·… ·⁄„· «·›· —
+    End If
+
+    Dim sWhere As String
+    sWhere = ""
+    If Me.FilterOn Then sWhere = Me.Filter
+
+    DoCmd.OpenReport "rptCashboxTransactions", acViewPreview, , sWhere
+End Sub
+
+
+
+Private Sub Form_Load()
+    On Error GoTo ErrHandler
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sRowSource As String
+    Dim safeName As String
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT CashBoxID, CashBoxName FROM dbo_CashBoxes ORDER BY CashBoxName", dbOpenSnapshot)
+
+    ' ‰»œ√ »«·⁄‰’— («·ﬂ·) »«” Œœ«„ -1 ﬂﬁÌ„… „⁄—›
+    sRowSource = "-1;(«·ﬂ·)"
+
+    If Not (rs.BOF And rs.EOF) Then
+        rs.MoveFirst
+        Do While Not rs.EOF
+            ' ‰ƒ„‰ «”„ «·Œ“‰… „‰ «·›Ê«’· √Ê ⁄·«„«  «ﬁ »«” ﬁœ  ﬂ”— RowSource
+            safeName = Nz(rs!CashBoxName, "")
+            safeName = Replace(safeName, ";", " ")     ' ‰‘Ì· «·›Ê«’·
+            safeName = Replace(safeName, """", "'")    ' ‰»œ¯· «·«ﬁ »«”«  «·„“œÊÃ…
+            sRowSource = sRowSource & ";" & Nz(rs!CashBoxID, 0) & ";" & safeName
+            rs.MoveNext
+        Loop
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    With Me.cboCashBox
+        .RowSourceType = "Value List"
+        .rowSource = sRowSource
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0cm;4cm"   ' ‰Œ›Ì «·‹ ID Ê‰ŸÂ— «·«”„
+        .LimitToList = True
+        .value = -1                 ' «› —«÷Ì: «·ﬂ·
+    End With
+
+    ' «› —«÷Ì«  ·»«ﬁÌ «·›·« —
+    Me.cboTransactionType = "«·ﬂ·"   '  √ﬂœ ≈‰ RowSource ›ÌÂ« "«·ﬂ·","ﬁ»÷","’—›"
+    Me.cboReferenceType = "«·ﬂ·"     '  √ﬂœ ≈‰ RowSource ›ÌÂ« "«·ﬂ·","Expense",...
+    Exit Sub
+
+ErrHandler:
+    MsgBox "Œÿ√ ›Ï Form_Load: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

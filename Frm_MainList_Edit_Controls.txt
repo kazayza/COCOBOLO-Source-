@@ -1,0 +1,36 @@
+Form: Frm_MainList_Edit
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label39		Label		‰’ «·—”«·…
+Label38		Label		ﬁ«∆„… «·‰„«–Ã/«· ﬁ«—Ì—
+Label37		Label		«·√„—
+Label36		Label		«· ”„Ì… ⁄·Ï «·“—
+Label35		Label		›—⁄Ì „‰:
+Label34		Label		“— —∆Ì”Ì/›—⁄Ì
+Label33		Label		«· — Ì»
+Label32		Label		ID
+Label11		Label		 Õ—Ì— «·ﬁ«∆„… «·—∆Ì”Ì…
+Label63		Label		«·√ÌﬁÊ‰…
+Label70		Label		„·«ÕŸ«  „Â„… :
+Label71		Label		1 -  — Ì» «·√“—«— ›Ì «·ﬁ«∆„… Ì⁄ „œ »‘ﬂ· —∆Ì”Ì ⁄·Ï  — Ì» «·√—ﬁ«„ ›Ì «·⁄„Êœ ( «· — Ì» ) .
+2- ÌÃ» ≈”‰«œ «·√“—«— «·›—⁄Ì… ≈·Ï «·“— «·—∆Ì”Ì «·’ÕÌÕ ·ﬂÌ  ŸÂ— »‘ﬂ· ”·Ì„ „‰ Œ·«· «·⁄„Êœ (›—⁄Ì „‰).
+UpdateMainList		Button		 ÕœÌÀ
+«·ﬁ«∆„…
+Label84		Label		 ﬂ»Ì— «·‰«›–…
+Maximize		CheckBox		Maximize
+ID		TextBox		ID
+Order		TextBox		Order
+MainOrSub		ComboBox		MainOrSub
+Sub_Of		ComboBox		Sub_Of
+BtnCaption		TextBox		BtnCaption
+Action		ComboBox		Action
+FormsReportsList		ComboBox		FormsReportsList
+MsgBoxText		TextBox		MsgBoxText
+DeleteBtn		Button		Õ–›
+AddIconBtn		Button		«·√ÌﬁÊ‰…
+IconAtt		Other (126)		IconAtt
+R		TextBox		
+DeleteIconBtn		Button		x
+MaxText		TextBox		=IIf([Maximize]=-1,ChrW(10004),ChrW(10008))

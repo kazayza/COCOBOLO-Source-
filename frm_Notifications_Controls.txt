@@ -1,0 +1,21 @@
+Form: frm_Notifications
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		„‰ ....
+Label1		Label		«·«‘⁄«—
+Label2		Label		 ›«’Ì· «·«‘⁄«— .........
+Label4		Label		RelatedID
+Label5		Label		RecipientUser
+Label34		Label		FormName
+Text79		TextBox		=Count([Title])
+Text81		TextBox		
+NotificationID		TextBox		NotificationID
+Title		TextBox		Title
+Message		TextBox		Message
+RelatedID		TextBox		RelatedID
+RecipientUser		TextBox		RecipientUser
+Text33		TextBox		FormName
+Command61		Button		Show
+CreatedBy		TextBox		CreatedBy

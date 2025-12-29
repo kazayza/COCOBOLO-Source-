@@ -1,0 +1,199 @@
+Option Compare Database
+
+Private Sub btnAddExpense_Click()
+If Not currentUser.HasPermission("frm_Employees") Then
+        
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_Employees"
+End Sub
+
+
+
+Private Sub btnClearSearch_Click()
+ Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+Private Sub btnDetails_Click()
+  If Not currentUser.HasPermission("frm_Employees") Then
+        
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+    
+    
+    Dim EmpId As Long
+    EmpId = Me.EmployeeID  ' „⁄—› «·„ÊŸ› «·Õ«·Ì
+
+    If EmpId = 0 Then
+        MsgBox "«Œ — „ÊŸ›« √Ê·«.", vbExclamation
+        Exit Sub
+    End If
+
+    ' «› Õ «·›Ê—„ «·€Ì— „—»Êÿ° Ê„—— EmployeeID »«” Œœ«„ OpenArgs
+    DoCmd.OpenForm "frm_Employees", , , , , , EmpId
+End Sub
+
+
+Private Sub btnRefresh_Click()
+Me.Requery
+End Sub
+
+Private Sub btnSearch_Click()
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+End Sub
+Private Sub ApplyProductFilter()
+    Dim strFilter As String
+    Dim strSQL As String
+    Dim patternFilter As String
+
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT EmployeeID, FullName, JobTitle, Department,Status FROM dbo_Employees WHERE Status = '‰‘ÿ' ORDER BY EmployeeID;"
+    Else
+        ' ≈‰‘«¡ «·»« —‰ ··Â„“« 
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' «·»ÕÀ »«” Œœ«„ «·»« —‰
+        strSQL = "SELECT EmployeeID, FullName, JobTitle, Department,Status FROM dbo_Employees " & _
+                 "WHERE Status = '‰‘ÿ' " & _
+                 "AND (FullName LIKE '*" & patternFilter & "*' " & _
+                 "OR JobTitle LIKE '*" & patternFilter & "*' " & _
+                 "OR Department LIKE '*" & patternFilter & "*') " & _
+                 "ORDER BY EmployeeID;"
+    End If
+
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' œ«·… ≈‰‘«¡ »« —‰ ··Â„“«  - „⁄œ·… „‰ «·ﬂÊœ «··Ì »⁄  Â
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "√", "≈", "¬", "«"
+                tempend = tempend & "[√≈¬«]"
+            Case "…"
+                tempend = tempend & "[…Â]"
+            Case "Ï", "∆"
+                tempend = tempend & "[Ï∆Ì]"
+            Case "ƒ"
+                tempend = tempend & "[ƒÊ]"
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+' œ«·…  ‰ŸÌ› «·‰’ - ‰›” «·œ«·… »«·Ÿ»ÿ
+Private Function CleanArabicTextClient(text As String) As String
+    If text = "" Then
+        CleanArabicTextClient = ""
+        Exit Function
+    End If
+    
+    Dim result As String
+    result = text
+    
+    ' «” »œ«· «·Õ—Ê› «·„Œ ·›…
+  result = Replace(result, "√", "«")
+    result = Replace(result, "≈", "«")
+    result = Replace(result, "¬", "«")
+    result = Replace(result, "ƒ", "Ê")
+    result = Replace(result, "∆", "Ì")
+    result = Replace(result, "¡", "")
+    result = Replace(result, "…", "Â")
+    result = Replace(result, "Ï", "Ì")
+    
+    CleanArabicTextClient = result
+End Function
+
+Private Sub btnShifts_Click()
+If Not currentUser.HasPermission("frm_EmpolyeeShifts") Then
+        
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_EmpolyeeShifts", , , , , , Me.EmployeeID
+End Sub
+
+
+Private Sub btnActive_Click()
+  Me.txtSearch = ""
+'   ApplyProductFilter
+'   Me.Requery
+    Me.Filter = "Status = '‰‘ÿ'"
+    Me.FilterOn = True
+    Me.Caption = "«·„ÊŸ›Ì‰ - «·‰‘ÿÌ‰ ›ﬁÿ"
+    Me.Label45.Caption = Me.Caption
+    ' √Ê ≈–« ﬂ‰   —Ìœ  €ÌÌ— «·‹ Record Source „»«‘—…
+Me.RecordSource = "SELECT * FROM dbo_Employees WHERE Status = '‰‘ÿ' ORDER BY EmployeeID"
+End Sub
+
+
+
+Private Sub btnInactive_Click()
+  Me.txtSearch = ""
+    Me.Filter = "Status = '„ÊﬁÊ›'"
+    Me.FilterOn = True
+    Me.Caption = "«·„ÊŸ›Ì‰ - «·„ÊﬁÊ›Ì‰ ›ﬁÿ"
+    Me.Label45.Caption = Me.Caption
+    ' √Ê ≈–« ﬂ‰   —Ìœ  €ÌÌ— «·‹ Record Source „»«‘—…
+     Me.RecordSource = "SELECT * FROM dbo_Employees WHERE Status = '„ÊﬁÊ›' ORDER BY EmployeeID"
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+Function NormalizeArabicText(txt As String) As String
+    If txt = "" Then NormalizeArabicText = "": Exit Function
+    
+    txt = UCase(txt)
+    txt = Replace(txt, "√", "«")
+    txt = Replace(txt, "≈", "«")
+    txt = Replace(txt, "¬", "«")
+    txt = Replace(txt, "Ï", "Ì")
+    txt = Replace(txt, "ƒ", "Ê")
+    txt = Replace(txt, "∆", "Ì")
+    txt = Replace(txt, "…", "Â")
+    
+    NormalizeArabicText = txt
+End Function
+
+Private Sub txtSearch_AfterUpdate()
+If Nz(Me.txtSearch.value, "") = "" Then
+'        Exit Sub
+Me.txtSearch = ""
+ApplyProductFilter
+    Else
+ApplyProductFilter
+End If
+End Sub

@@ -1,0 +1,87 @@
+Option Compare Database
+Option Explicit
+
+Private Sub Command18_Click()
+Call LoadKPIs
+Me.Chart12.Requery
+Me.Chart15.Requery
+End Sub
+
+Private Sub Form_Load()
+UpdateAppIcon
+    Call LoadKPIs
+    DoCmd.Maximize
+End Sub
+
+Private Sub btnRefresh_Click()
+    Call LoadKPIs
+End Sub
+
+Private Sub LoadKPIs()
+    On Error GoTo ErrHandler
+    Dim curAmt As Currency, prevAmt As Currency, yrAmt As Currency
+    Dim topAmt As Currency, cnt As Long
+    Dim growth As Double
+    
+    curAmt = GetMonthlyExpenses()           ' «·‘Â— «·Õ«·Ì
+    prevAmt = GetPrevMonthlyExpenses()      ' «·‘Â— «·”«»ﬁ
+    yrAmt = GetYearlyExpenses()             ' «·”‰… «·Õ«·Ì…
+    topAmt = GetTopExpense()                ' √ﬂ»— „’—Ê› ›Ì «·‘Â— «·Õ«·Ì
+    cnt = GetExpenseCount()                 ' ⁄œœ «·›Ê« Ì— ›Ì «·‘Â— «·Õ«·Ì
+    
+    Me.txtCurrentMonth = curAmt
+    Me.txtPrevMonth = prevAmt
+    If prevAmt = 0 Then
+        If curAmt = 0 Then
+            Me.txtGrowthRate = "0%"
+        Else
+            Me.txtGrowthRate = "?" ' √Ê "N/A"
+        End If
+    Else
+        growth = (curAmt - prevAmt) / prevAmt
+        Me.txtGrowthRate = Format(growth, "0.00%")
+    End If
+    Me.txtYearTotal = yrAmt
+    Me.txtTopExpense = topAmt
+    Me.txtCountMonth = cnt
+    
+    '  ÿ»Ìﬁ √·Ê«‰ »”Ìÿ…:
+    Call ApplyKPIColors(curAmt, prevAmt)
+    Exit Sub
+
+ErrHandler:
+    MsgBox "Œÿ√ ⁄‰œ  Õ„Ì· «·‹ KPI: " & Err.Description, vbCritical
+End Sub
+
+Private Sub ApplyKPIColors(curAmt As Currency, prevAmt As Currency)
+    ' „À«· ﬁÊ«⁄œ √·Ê«‰:
+    ' - ·Ê «·„’—Ê› «‰Œ›÷ „ﬁ«—‰… »«·‘Â— «·”«»ﬁ => √Œ÷—
+    ' - ·Ê “«œ √ﬂÀ— „‰ 10% => √Õ„—
+    ' - €Ì— –·ﬂ => √’›—
+    Dim Pct As Double
+    If prevAmt = 0 Then
+        If curAmt = 0 Then
+            Me.txtCurrentMonth.BackColor = vbWhite
+        Else
+            Me.txtCurrentMonth.BackColor = vbYellow
+        End If
+        Exit Sub
+    End If
+    
+    Pct = (curAmt - prevAmt) / prevAmt
+    If Pct <= 0 Then
+        Me.txtCurrentMonth.BackColor = RGB(198, 239, 206) ' √Œ÷— ›« Õ
+    ElseIf Pct > 0.1 Then
+        Me.txtCurrentMonth.BackColor = RGB(255, 199, 206) ' √Õ„— ›« Õ
+    Else
+        Me.txtCurrentMonth.BackColor = RGB(255, 242, 204) ' √’›— ›« Õ
+    End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

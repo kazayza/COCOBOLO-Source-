@@ -1,0 +1,22 @@
+Option Compare Database
+
+Private Sub btnDetalis_Click()
+  Dim uID As Long
+    uID = Me.UserId  ' „⁄—› «·„” Œœ„ «·Õ«·Ì
+
+    If uID = 0 Then
+        MsgBox "«Œ — „” Œœ„ √Ê·«.", vbExclamation
+        Exit Sub
+    End If
+
+    ' «› Õ «·›Ê—„ «·€Ì— „—»Êÿ° Ê„—— UserID »«” Œœ«„ OpenArgs
+    DoCmd.OpenForm "frm_AddUser", , , , , , uID
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

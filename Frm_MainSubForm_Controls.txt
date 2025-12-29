@@ -1,0 +1,7 @@
+Form: Frm_MainSubForm
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+F		TextBox		
+imgLogo		Image		

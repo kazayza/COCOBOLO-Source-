@@ -1,0 +1,42 @@
+Form: frm_CashBoxTransaction
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box52		Rectangle		
+Box51		Rectangle		
+cboTransactionType		ComboBox		"’—›";"ﬁ»÷";"«·ﬂ·"
+Col1_Label		Label		ﬁ»÷ / ’—›
+cboReferenceType		ComboBox		"«·ﬂ·";"Expense";"Charge";"Payment";"Payroll";"Manual";"Transfer"
+Label3		Label		«·‰Ê⁄
+txtDateFrom		TextBox		
+Label5		Label		„‰  «—ÌŒ
+txtDateTo		TextBox		
+Label7		Label		«·Ï  «—ÌŒ
+btnFilter		Button		Filter
+btnClear		Button		ClearFilter
+cmdReport		Button		Report
+Label14		Label		«·„»·€
+Label13		Label		«·„—Ã⁄
+Label12		Label		«· «—ÌŒ
+Label11		Label		«·‰Ê⁄
+Label16		Label		CashboxTransactionID
+Label15		Label		»Ì«‰ ÊÊ’› «·⁄„·Ì…
+cboCashBox		ComboBox		
+Label44		Label		«·Œ“Ì‰…
+Line53		Line		
+Image54		Image		
+Label55		Label		ﬂ· Õ—ﬂ«  «·Œ“Ì‰…
+btnClose		Button		Command60
+TransactionType		TextBox		TransactionType
+TransactionDate		TextBox		TransactionDate
+ReferenceType		TextBox		ReferenceType
+Amount		TextBox		Amount
+Notes		TextBox		Notes
+CashboxTransactionID		TextBox		CashboxTransactionID
+txtTotalIn		TextBox		=Sum(IIf([TransactionType]="ﬁ»÷",Nz([Amount],0),0))
+Label38		Label		≈Ã„«·Ï «·ﬁ»÷
+txtTotalOut		TextBox		=Sum(IIf([TransactionType]="’—›",Nz([Amount],0),0))
+Label42		Label		≈Ã„«·Ï «·’—›
+txtNet		TextBox		=[txtTotalIn]-[txtTotalOut]
+Label50		Label		«·’«›Ï / «·—’Ìœ

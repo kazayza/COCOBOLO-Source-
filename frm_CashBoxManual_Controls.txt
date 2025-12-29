@@ -1,0 +1,31 @@
+Form: frm_CashBoxManual
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box21		Rectangle		
+Line22		Line		
+Label23		Label		Cash Box Manual
+Image25		Image		
+Box24		Rectangle		
+Box3		Rectangle		
+cboTranType		ComboBox		ﬁ»÷;’—›; ÕÊÌ·
+Col1_Label		Label		«·‰Ê⁄
+cboCashBoxFrom		ComboBox		SELECT dbo_CashBoxes.CashBoxID, dbo_CashBoxes.CashBoxName, dbo_CashBoxes.Description FROM dbo_CashBoxes; 
+Label5		Label		«·Œ“Ì‰… „’œ— «·’—›
+Box6		Rectangle		
+cboCashBoxTo		ComboBox		SELECT dbo_CashBoxes.CashBoxID, dbo_CashBoxes.CashBoxName, dbo_CashBoxes.Description FROM dbo_CashBoxes; 
+Label8		Label		«·Œ“Ì‰… «·„ÕÊ· «·ÌÂ«
+Box9		Rectangle		
+txtAmount		TextBox		
+Label11		Label		«·„»·€
+txtDate		TextBox		
+Label13		Label		«· «—ÌŒ
+txtNotes		TextBox		
+Label15		Label		„·«ÕŸ« 
+txtCreatedBy		TextBox		
+Label20		Label		CreatedBy
+txtBalance		TextBox		
+Label17		Label		Balanse
+btnSave		Button		Save
+Command27		Button		Cancel

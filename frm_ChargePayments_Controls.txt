@@ -1,0 +1,7 @@
+Form: frm_ChargePayments
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboInvoice		ComboBox		SELECT dbo_Transactions.TransactionID AS [—ﬁ„ «·›« Ê—…], dbo_Parties.PartyName AS [«·⁄„Ì·/«·„Ê—œ], Sum(dbo_AdditionalCharges.ChargeAmount) AS [≈Ã„«·Ï «·—”Ê„] FROM (dbo_Transactions INNER JOIN dbo_Parties ON dbo_Transactions.PartyID = dbo_Parties.PartyID) INNER JOIN dbo_AdditionalCharges ON dbo_Transactions.TransactionID = dbo_AdditionalCharges.TransactionID GROUP BY dbo_Transactions.TransactionID, dbo_Parties.PartyName; 
+Label1		Label		«·›« Ê—…

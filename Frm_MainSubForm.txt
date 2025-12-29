@@ -1,0 +1,40 @@
+Option Compare Database
+
+Private Sub Form_Load()
+
+    On Error GoTo ErrHandler
+
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim tempPath As String
+    Dim fileNum As Integer
+
+    '«› Õ «·ÃœÊ· ÊÃÌ» √Ê· ”Ã· (·Ê ⁄‰œﬂ √ﬂ — „‰ ”Ã· „„ﬂ‰  Õœœ WHERE)
+    Set rs = CurrentDb.OpenRecordset("SELECT TOP 1 Logo FROM dbo_CompanyInfo", dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        If Not IsNull(rs!Logo) Then
+            '«ﬁ—√ «·’Ê—… ﬂ»«Ì « 
+            fileData = rs!Logo
+
+            'Õœœ „ﬂ«‰ „ƒﬁ  ··„·›
+            tempPath = Environ("TEMP") & "\CompanyLogo.jpg"
+
+            '«ﬂ » «·„·› «·„ƒﬁ 
+            fileNum = FreeFile
+            Open tempPath For Binary As #fileNum
+                Put #fileNum, , fileData
+            Close #fileNum
+
+            '«⁄—÷ «·’Ê—… ›Ì ⁄‰’— imgLogo
+            Me.imgLogo.Picture = tempPath
+        End If
+    End If
+
+    rs.Close
+    Exit Sub
+
+ErrHandler:
+    MsgBox "Œÿ√ " & Err.Number & ": " & Err.Description, vbCritical
+
+End Sub

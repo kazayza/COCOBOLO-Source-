@@ -1,0 +1,32 @@
+Form: frm_CashFlowNew
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboYear		ComboBox		"2025";"2026";"2027";"2028";"2029";"2030"
+Label1		Label		«·”‰Â
+cboMonth		ComboBox		SELECT tbl_months.MonthNo, tbl_months.MonthName FROM tbl_months; 
+lblMonth		Label		«·‘Â—
+cboViewType		ComboBox		"‘Â—Ì";"”‰ÊÌ";"Ã„Ì⁄ «·»Ì«‰« "
+Label5		Label		‰Ê⁄ «·⁄—÷
+cmdRefresh		Button		 ÕœÌÀ
+cmdExportExcel		Button		 ’œÌ— «·Ï «ﬂ”Ì·
+cmdPrintReport		Button		„⁄«Ì‰Â «· ﬁ—Ì—
+lblTotalIncome		Label		253,930.50
+lblTotalExpenses		Label		207,545.30
+lblNetFlow		Label		46,385.20
+lblRecordCount		Label		⁄œœ «·√‘Â—: 1
+subData		Subform		
+Label17		Label		≈Ã„«·Ï «·œŒ·
+Label18		Label		≈Ã„«·Ï «·„’—Ê›« 
+Label19		Label		’«›Ï «· œ›ﬁ «·‰ﬁœÏ
+txtFinancialInsights		TextBox		
+lblGrossMargin		Label		18.27%
+lblNetMargin		Label		32.05%
+lblOperatingRatio		Label		81.73%
+lblEfficiency		Label		ÃÌœ
+Label31		Label		Â«„‘ «·—»Õ
+Label32		Label		’«›Ï «·—»Õ
+Label33		Label		‰”»… «·„’—Ê›« 
+Label34		Label		«· ﬁÌÌ„
+Box35		Rectangle		

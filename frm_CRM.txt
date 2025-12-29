@@ -1,0 +1,42 @@
+Option Compare Database
+
+' ÚäÏ ÊÍãíá ÇáİæÑã
+Private Sub Form_Load()
+    RefreshDashboard
+End Sub
+
+' ÒÑ ÇáÊÍÏíË
+Private Sub cmdRefresh_Click()
+    RefreshDashboard
+End Sub
+
+' ÏÇáÉ ÇáÊÍÏíË ÇáãÍáíÉ
+Private Sub RefreshDashboard()
+    ' ÇÓÊÏÚÇÁ ÇáÏæÇá ãä ÇáãæÏíæá
+    Dim stats As Variant
+    stats = GetQuickStats()
+    
+    ' ÊÚÈÆÉ ÇáÈíÇäÇÊ İí ÇáÜ Labels
+    lblTotalClients.Caption = stats(1)
+    lblActiveClients.Caption = stats(2)
+    lblMonthlySales.Caption = stats(3)
+   lblTotalOverdue.Caption = stats(4)
+   lblOverdueInvoices.Caption = stats(5)
+    lblTopSource.Caption = stats(6)
+    ' ... æåßĞÇ
+End Sub
+' İí ÇáÜ Dashboard Form
+Private Sub ShowOverdueAlerts()
+    Dim overdueCount As Integer
+    overdueCount = DCount("*", "dbo_Transactions", "PaidAmount < GrandTotal ") 'AND DueDate <= Date()
+    
+    If overdueCount > 0 Then
+        Me.lblAlert.Caption = "?? áÏíß " & overdueCount & " İÇÊæÑÉ ãÊÃÎÑÉ"
+        Me.lblAlert.Visible = True
+        Me.lblAlert.BackColor = vbYellow
+    Else
+        Me.lblAlert.Visible = False
+    End If
+End Sub
+
+

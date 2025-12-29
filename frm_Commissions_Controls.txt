@@ -1,0 +1,31 @@
+Form: frm_Commissions
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box64		Rectangle		
+Label10		Label		«”„ «·„ÊŸ›
+Label16		Label		«·⁄„Ê·…
+Label14		Label		‰”»… «·⁄„Ê·…
+Label12		Label		ﬁÌ„… «·›« Ê—…
+Label8		Label		ﬂÊœ «·„ÊŸ›
+Label6		Label		«·›« Ê—…
+btnLoadTransactions		Button		≈÷«›… «·„ÊŸ›Ì‰
+Label18		Label		«·⁄„Ì·
+cboInvoice		ComboBox		SELECT t.TransactionID AS [—ﬁ„ «·›« Ê—…], t.NetTotalAmount AS [„»·€ «·›« Ê—…], p.PartyName AS «·⁄„Ì· FROM dbo_Transactions AS t INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID WHERE (((t.TransactionID) Not In (SELECT TransactionID FROM dbo_CommissionAssignments)) AND ((t.TransactionType)='Sale') AND ((t.PaidAmount)=[t].[NetTotalAmount])) ORDER BY t.TransactionID; 
+Label56		Label		«·›« Ê—…
+cboEmployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.[Status])='‰‘ÿ')) ORDER BY dbo_Employees.EmployeeID, dbo_Employees.FullName; 
+Label58		Label		«·„ÊŸ›
+btnAddEmployee		Button		&AddEmployee
+btnSaveCommissions		Button		«—”«· ··„Ê«›ﬁ…
+Box65		Rectangle		
+Line66		Line		
+Line67		Line		
+txtTransactionID		TextBox		TransactionID
+txtEmployeeID		TextBox		EmployeeID
+txtEmployeeName		TextBox		EmployeeName
+txtCommissionRate		TextBox		CommissionRate
+txtCommissionAmount		TextBox		CommissionAmount
+txtApprovedBy		TextBox		CustomerName
+txtTotalAmount		TextBox		TransactionAmount
+Command60		Button		Command60

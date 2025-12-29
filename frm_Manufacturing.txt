@@ -1,0 +1,105 @@
+Option Compare Database
+Option Explicit
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrorHandler
+    
+    ' «· Õﬁﬁ „‰ ÊÃÊœ ﬁÌ„… ·„⁄—› «·„‰ Ã
+    If IsNull(Me.txtProductID) Or Me.txtProductID = "" Then
+        MsgBox "„⁄—› «·„‰ Ã €Ì— „Õœœ", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    '  ÕœÌÀ «·»Ì«‰«  ›Ì ÃœÊ· «·„‰ Ã« 
+    CurrentDb.Execute "UPDATE dbo_Products SET " & _
+        "ProductName = '" & Replace(Nz(Me.txtProductName, ""), "'", "''") & "', " & _
+        "ManufacturingDescription = '" & Replace(Nz(Me.txtManufacturing, ""), "'", "''") & "' " & _
+        "WHERE ProductID = " & Me.txtProductID, dbSeeChanges
+    
+    MsgBox " „ Õ›Ÿ «·»Ì«‰«  »‰Ã«Õ", vbInformation, " „"
+    
+    '  ÕœÌÀ «·‰„Ê–Ã «·—∆Ì”Ì ≈–« ﬂ«‰ „› ÊÕ«
+    If CurrentProject.AllForms("frm_ProductPricing").IsLoaded Then
+        Forms!frm_ProductPricing.Requery
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·Õ›Ÿ: " & Err.Description, vbCritical, "Œÿ√"
+
+End Sub
+
+Private Sub Form_Load()
+    Dim ProductID As Long
+    
+    ' «·Õ’Ê· ⁄·Ï „⁄—¯› «·„‰ Ã «·„ı„—— „‰ «·‰„Ê–Ã «·—∆Ì”Ì
+    If Not IsNull(Me.OpenArgs) Then
+        ProductID = CLng(Me.OpenArgs)
+        Me.txtProductID = ProductID
+        LoadProductData ProductID
+    Else
+        MsgBox "·„ Ì „  ÕœÌœ „‰ Ã", vbExclamation, " ‰»ÌÂ"
+        DoCmd.Close acForm, Me.Name
+    End If
+    Me.Caption = "«·„Ê«’›«  «· ›’Ì·ÌÂ · ’‰Ì⁄ «·„‰ Ã :  " & txtProductName
+End Sub
+
+' œ«·… · Õ„Ì· »Ì«‰«  «·„‰ Ã
+Private Sub LoadProductData(ProductID As Long)
+    Dim rs As DAO.Recordset
+    
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT ProductName, ManufacturingDescription FROM dbo_Products WHERE ProductID = " & ProductID)
+    
+    If Not rs.EOF Then
+        Me.txtProductName = Nz(rs!ProductName, "")
+        Me.txtManufacturing = Nz(rs!ManufacturingDescription, "")
+    Else
+        MsgBox "·„ Ì „ «·⁄ÀÊ— ⁄·Ï «·„‰ Ã", vbExclamation, " ‰»ÌÂ"
+        Me.txtProductName = ""
+        Me.txtManufacturing = ""
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+End Sub
+
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+    
+    ' «· Õﬁﬁ „‰ ÊÃÊœ ﬁÌ„… ·„⁄—› «·„‰ Ã
+    If IsNull(Me.txtProductID) Or Me.txtProductID = "" Then
+        MsgBox "„⁄—› «·„‰ Ã €Ì— „Õœœ", vbExclamation, " ‰»ÌÂ"
+        Exit Sub
+    End If
+    
+    '  ÕœÌÀ «·»Ì«‰«  ›Ì ÃœÊ· «·„‰ Ã« 
+    CurrentDb.Execute "UPDATE dbo_Products SET " & _
+        "ProductName = '" & Replace(Nz(Me.txtProductName, ""), "'", "''") & "', " & _
+        "ManufacturingDescription = '" & Replace(Nz(Me.txtManufacturingDesc, ""), "'", "''") & "' " & _
+        "WHERE ProductID = " & Me.txtProductID, dbSeeChanges
+    
+    MsgBox " „ Õ›Ÿ «·»Ì«‰«  »‰Ã«Õ", vbInformation, " „"
+    
+    '  ÕœÌÀ «·‰„Ê–Ã «·—∆Ì”Ì ≈–« ﬂ«‰ „› ÊÕ«
+    If CurrentProject.AllForms("frmProductPricing").IsLoaded Then
+        Forms!frmProductPricing.Requery
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·Õ›Ÿ: " & Err.Description, vbCritical, "Œÿ√"
+End Sub
+
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+' («Œ Ì«—Ì) «·”„«Õ »»ÕÀ „‰ Ã „Œ ·› ÌœÊÌ«
+Private Sub txtProductID_AfterUpdate()
+    If Not IsNull(Me.txtProductID) Then
+        LoadProductData CLng(Me.txtProductID)
+    End If
+End Sub

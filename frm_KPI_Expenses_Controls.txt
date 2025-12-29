@@ -1,0 +1,36 @@
+Form: frm_KPI_Expenses
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Command38		Button		 
+Command36		Button		 
+txtGrowthRate		TextBox		
+Label5		Label		«·›—ﬁ (%)
+txtTopExpense		TextBox		
+txtCountMonth		TextBox		
+Label11		Label		⁄œœ «·›Ê« Ì— ›Ì «·‘Â—
+Chart12		Other (133)		qry_TotalMonthlyExpenses
+Chart15		Other (133)		qry_ExpenseMothlyExpenseName
+Text16		TextBox		=IIf(DSum("Amount","dbo_Expenses","Month([ExpenseDate])=Month(Date()) And Year([ExpenseDate])=Year(Date())")>[txtPrevMonth],"? ⁄«·Ì","? ﬂÊÌ”")
+Command18		Button		Update
+txtTopGroup		TextBox		=DLookUp("ExpenseGroupName","qry_ExpenseTopGroup")
+txtAvgMonthly		TextBox		=Nz([txtYearTotal]/Month(Date()),0)
+Label22		Label		„ Ê”ÿ ‘Â—Ï
+Chart23		Other (133)		
+Image33		Image		
+Image35		Image		
+Command40		Button		 
+Image30		Image		
+txtYearTotal		TextBox		
+Label7		Label		„’—Ê›«  «·”‰Â «·Õ«·Ì…
+Command42		Button		 
+Box43		Rectangle		
+Image32		Image		
+Box31		Rectangle		
+txtPrevMonth		TextBox		
+Label3		Label		„’—Ê›«  «·‘Â— «·”«»ﬁ
+Command44		Button		 
+Image28		Image		
+txtCurrentMonth		TextBox		
+Label1		Label		„’—Ê›«  «·‘Â— «·Õ«·Ï

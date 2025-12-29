@@ -1,0 +1,23 @@
+Form: DashBoard
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Tt1		TextBox		=DCount("EmployeeID","dbo_Employees","status = 'äÔØ'")
+Im1		Image		
+Label85		Label		ÇáãæÙİíä
+t3		TextBox		=DCount("TransactionID","dbo_Transactions","TotalAmount>PaidAmount")
+Label79		Label		# ÇáİæÇÊíÑ ÛíÑ ÇáãÓÏÏå
+Image12		Image		
+Text14		TextBox		=DSum("NetSalary","qry_PaidPayroll","PaymentStatus='ÛíÑ ãÏİæÚ'")
+Label15		Label		$ ÇáÑæÇÊÈ ÛíÑ ÇáãÏİæÚå
+Image16		Image		
+Text17		TextBox		=DLookUp("total","qry_thismonthExpese")
+Label18		Label		$ ãÕÑæİÇÊ ÇáÔåÑ ÇáÍÇáì
+Image19		Image		
+Text20		TextBox		=DSum("GrandTotal - PaidAmount","dbo_Transactions","TransactionType='Sale'")
+Image21		Image		
+Label22		Label		ãÏíæíäÇÊ ÇáÚãáÇÁ
+Text23		TextBox		=DSum("GrandTotal - PaidAmount","dbo_Transactions","TransactionType='Purchase'")
+Image24		Image		
+Label25		Label		ãÏíæäíÇÊ ááãæÑÏíä

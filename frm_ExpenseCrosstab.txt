@@ -1,0 +1,57 @@
+Private Sub Form_Load()
+    ' ÊÚííä ÊæÇÑíÎ ÇİÊÑÇÖíÉ İŞØ
+    Me.txtStartDate = DateSerial(Year(Date), 1, 1)
+    Me.txtEndDate = Date
+    Me.subData.SourceObject = ""  ' ÇÊÑß ÇáÜ Subform İÇÑÛ
+End Sub
+
+Private Sub cmdRun_Click()
+    On Error GoTo ErrorHandler
+    
+    ' ÇáÊÍŞŞ ãä ÇáÊæÇÑíÎ
+    If IsNull(Me.txtStartDate) Or IsNull(Me.txtEndDate) Then
+        MsgBox "íÌÈ ÅÏÎÇá ÊÇÑíÎ ÇáÈÏÇíÉ æÇáäåÇíÉ", vbExclamation
+        Exit Sub
+    End If
+    
+    ' ÅÎİÇÁ ÇáÜ Subform ãÄŞÊÇğ
+    Me.subData.Visible = False
+    Me.subData.SourceObject = ""
+    
+    ' ÃæáÇğ: ÊÍÏíË ÈÇÑÇãíÊÑÇÊ ÇáÇÓÊÚáÇã
+    Call UpdateQueryParameters(Me.txtStartDate, Me.txtEndDate)
+    
+    ' ËÇäíÇğ: ÊÚííä ÇáÜ Subform
+    Me.subData.SourceObject = "Query.qry_ExpenseByGroupParameter"
+    
+    ' ËÇáËÇğ: ÌÚáå ãÑÆí æÊÍÏíËå
+    Me.subData.Visible = True
+    Me.subData.Requery
+    
+    MsgBox "Êã ÊÍãíá ÇáÈíÇäÇÊ", vbInformation
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÎØÃ: " & Err.Description, vbCritical
+    Me.subData.Visible = True
+End Sub
+
+Private Sub UpdateQueryParameters(pStart As Date, pEnd As Date)
+    On Error GoTo ErrorHandler
+    
+    Dim qdf As Object
+    Set qdf = CurrentDb.QueryDefs("qry_ExpenseByGroupParameter")
+    
+    ' ÊÚííä ÇáÈÇÑÇãíÊÑÇÊ ŞÈá İÊÍ ÇáÇÓÊÚáÇã
+    qdf.Parameters("pStart").value = pStart
+    qdf.Parameters("pEnd").value = pEnd
+    
+    ' ÍİÙ ÇáÊÛííÑÇÊ
+    ' qdf.Close  ' áÇ ÊÓÊÎÏã Close ãÚ QueryDefs
+    
+    Set qdf = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÎØÃ İí ÊÚííä ÇáÈÇÑÇãíÊÑÇÊ: " & Err.Description
+End Sub

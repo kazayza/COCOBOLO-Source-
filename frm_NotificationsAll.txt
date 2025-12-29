@@ -1,0 +1,196 @@
+Option Compare Database
+
+
+Private Sub btnClearSearch_Click()
+Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+Private Sub btnSearch_Click()
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+   
+
+End Sub
+Private Sub ApplyProductFilter()
+    Dim patternFilter As String
+    Dim strFilter As String
+    Dim strSQL As String
+ 
+    Dim currentUserName As String
+
+    ' Ã·» «”„ «·„” Œœ„ «·Õ«·Ì
+    currentUserName = currentUser.UserName
+    
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT * FROM dbo_Notifications " & _
+          "WHERE IsRead = 1 " & _
+          "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'"
+    Else
+        ' ≈‰‘«¡ «·»« —‰ ··Â„“« 
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' «·»ÕÀ »«” Œœ«„ «·»« —‰ ⁄·Ï Ã„Ì⁄ «·ÕﬁÊ·
+    strSQL = "SELECT *FROM dbo_Notifications " & _
+                  "WHERE (Message LIKE '*" & patternFilter & "*') " & _
+                  "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'" & _
+         "ORDER BY NotificationID;"
+    End If
+
+    ' ÿ»«⁄… «·»« —‰ ··  debug
+'    Debug.Print "«·»« —‰: " & patternFilter
+'    Debug.Print "SQL: " & strSQL
+    
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' œ«·… ≈‰‘«¡ »« —‰ ··Â„“«  - „⁄œ·…
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "√", "≈", "¬", "«"
+                tempend = tempend & "[√≈¬«]"
+            Case "…", "Â"
+                tempend = tempend & "[…Â]"  ' «· «¡ «·„—»Êÿ… Ê«·Â«¡
+            Case "Ï", "∆", "Ì"
+                tempend = tempend & "[Ï∆Ì]"  ' ﬂ· √‰Ê«⁄ «·Ì«¡
+            Case "ƒ", "Ê"
+                tempend = tempend & "[ƒÊ]"   ' «·Ê«Ê „⁄ «·Â„“… Ê«·Ê«Ê «·⁄«œÌ…
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+'Private Sub Command61_Click()
+'
+'    Dim nid As Long
+'    Dim targetForm As String
+'    Dim relID As Long
+'
+'    nid = Nz(Me!NotificationID, 0)
+'    If nid = 0 Then Exit Sub
+'
+'    ' ⁄·„ «·«‘⁄«— ﬂ„ﬁ—Ê¡
+'    MarkNotificationRead nid   ' «” Œœ„ œ«· ﬂ «·„ÊÃÊœ… („⁄ dbSeeChanges)
+'
+'    ' «› Õ «·›Ê—„ «·„— »ÿ ≈‰ ÊıÃœ
+'    targetForm = Nz(Me!formName, "")
+'    relID = Nz(Me!RelatedID, 0)
+'
+'    If targetForm <> "" Then
+'        OpenFormFromNotification targetForm, relID
+'    Else
+'        ' ·Ê „›Ì‘ ›Ê—„ „— »ÿ° «› Õ ”Ã· «·«‘⁄«— »«· ›’Ì·
+'        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nid
+'    End If
+'    Me.Requery
+'    ' ÕœÀ «·»«œÃ ›Ì «·›Ê—„ «·—∆Ì”Ì (Parent)
+'    On Error Resume Next
+'    Me.Parent.UpdateUnreadBadge
+'    DoCmd.Close acForm, "frm_Notifications"
+'    On Error GoTo 0
+'End Sub
+Private Sub Command61_Click()
+    Dim nID As Long
+    Dim targetForm As String
+    Dim relID As Long
+    Dim reminderChoice As VbMsgBoxResult
+    Dim reminderDays As Integer
+    Dim reminderIntervalHours As Integer
+    Dim ReminderEndAt As Date
+    Dim ReminderNextAt As Date
+    Dim sql As String
+
+    nID = Nz(Me!NotificationID, 0)
+    If nID = 0 Then Exit Sub
+
+'    ' ? ”ƒ«· «·„” Œœ„ ≈–« ﬂ«‰ Ì—Ìœ «· –ﬂÌ—
+'    reminderChoice = MsgBox("Â·  —Ìœ  ›⁄Ì· «· –ﬂÌ— ·Â–« «·≈‘⁄«—ø", vbYesNo + vbQuestion, " ›⁄Ì· «· –ﬂÌ—")
+'    If reminderChoice = vbYes Then
+'        ' ≈œŒ«· ⁄œœ «·√Ì«„ ·· –ﬂÌ— («·„œ… «·ﬂ·Ì…)
+'        reminderDays = Val(InputBox("√œŒ· ⁄œœ «·√Ì«„ «· Ì  —€» ›Ì  ›⁄Ì· «· –ﬂÌ— Œ·«·Â«:", "„œ… «· –ﬂÌ—", "2"))
+'        If reminderDays <= 0 Then reminderDays = 1   ' ﬁÌ„… «› —«÷Ì…
+'
+'        ' ≈œŒ«· ⁄œœ «·”«⁄«  »Ì‰ ﬂ·  –ﬂÌ—
+'        reminderIntervalHours = Val(InputBox("ﬂ· ﬂ„ ”«⁄…  —Ìœ  ﬂ—«— «· –ﬂÌ—ø", "›«’· «· –ﬂÌ—", "2"))
+'        If reminderIntervalHours <= 0 Then reminderIntervalHours = 2   ' ﬁÌ„… «› —«÷Ì…
+'
+'        ' Õ”«» «· Ê«—ÌŒ
+'        ReminderNextAt = DateAdd("h", reminderIntervalHours, Now)
+'        ReminderEndAt = DateAdd("d", reminderDays, Now)
+'
+'        ' ?  ÕœÌÀ »Ì«‰«  «· –ﬂÌ— ›Ì «·ÃœÊ·
+'        sql = "UPDATE dbo_Notifications SET " & _
+'              "ReminderEnabled = 1, " & _
+'              "ReminderIntervalMinutes = " & (reminderIntervalHours * 60) & ", " & _
+'              "ReminderNextAt = #" & Format(ReminderNextAt, "yyyy\/mm\/dd hh:nn:ss") & "#, " & _
+'              "ReminderEndAt = #" & Format(ReminderEndAt, "yyyy\/mm\/dd hh:nn:ss") & "# " & _
+'              "WHERE NotificationID = " & nid
+'
+'        CurrentDb.Execute sql, dbSeeChanges
+'    End If
+'
+'    ' ? ⁄·„ «·≈‘⁄«— ﬂ„ﬁ—Ê¡
+'    MarkNotificationRead nid
+'
+    ' ? «› Õ «·›Ê—„ «·„— »ÿ
+    targetForm = Nz(Me!FormName, "")
+  
+   relID = Nz(Me!RelatedID, 0)
+   
+'
+    If targetForm <> "" Then
+      If targetForm = "frm_SalesInvoiveNew" Then
+      
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & relID
+ Else
+                OpenFormFromNotification targetForm, relID
+        End If
+    Else
+        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nID
+    End If
+
+    Me.Requery
+
+    ' ?  ÕœÌÀ «·»«œÃ ›Ì «·›Ê—„ «·—∆Ì”Ì
+    On Error Resume Next
+    Me.Parent.UpdateUnreadBadge
+    DoCmd.Close acForm, "frm_NotificationsAll"
+    On Error GoTo 0
+End Sub
+
+Private Sub Form_Load()
+DoCmd.Maximize
+    Dim sql As String
+    Dim currentUserName As String
+
+    ' Ã·» «”„ «·„” Œœ„ «·Õ«·Ì
+    currentUserName = currentUser.UserName  ' √Ê Environ$("USERNAME") ·Ê CurrentUser „‘ „ÊÃÊœ
+
+    '  ﬂÊÌ‰ «·«” ⁄·«„ ··œ« « «·Œ«’… »«·„” Œœ„ «·Õ«·Ì
+    sql = "SELECT * FROM dbo_Notifications " & _
+          "WHERE IsRead = 1 " & _
+          "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'"
+Me.Text81 = "  «·«‘⁄«—«  «·Œ«’… »‹ :  " & currentUser.FullName
+    '  ⁄ÌÌ‰ «·«” ⁄·«„ ﬂ„’œ— ··›Ê—„
+    Me.RecordSource = sql
+    Me.Requery  ' ≈⁄«œ…  Õ„Ì· «·»Ì«‰«  ›Ì «·›Ê—„
+End Sub
+

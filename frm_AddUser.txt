@@ -1,0 +1,131 @@
+Option Compare Database
+
+
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrorHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim uID As Long
+    Dim whereCondition As String
+    
+    '  ÕœÌœ ≈–« ﬂ«‰ ›Ì Ê÷⁄ «· ⁄œÌ· √Ê «·≈÷«›…
+    If IsNull(Me.OpenArgs) Then
+        uID = 0
+    Else
+        uID = CLng(Me.OpenArgs)
+    End If
+    
+    ' «· Õﬁﬁ „‰ «·»Ì«‰«  «·„ÿ·Ê»… (‰›” «·ﬂÊœ «·”«»ﬁ)
+    ' ... [«·ﬂÊœ «·”«»ﬁ ·· Õﬁﬁ „‰ «·»Ì«‰« ]
+    
+    ' «· Õﬁﬁ „‰ ⁄œ„ «· ﬂ—«— (‰›” «·ﬂÊœ «·”«»ﬁ)
+    ' ... [«·ﬂÊœ «·”«»ﬁ ·· Õﬁﬁ „‰ «· ﬂ—«—]
+
+    Set db = CurrentDb
+    
+    If uID = 0 Then
+        ' «·≈÷«›…
+        Set rs = db.OpenRecordset("dbo_Users", dbOpenDynaset, dbSeeChanges)
+        rs.AddNew
+        rs!UserName = Me.txtUsername
+        rs!Password = Me.txtPassword
+        rs!FullName = Me.txtFullName
+        rs!Email = Nz(Me.txtEmail, Null)
+        rs!EmployeeID = Nz(Me.txtempolyeeID, Null)
+        rs!IsActive = Me.chkIsActive
+        rs!CreatedBy = currentUser.UserName
+        ' «” Œœ„ ›ﬁÿ «·ÕﬁÊ· «·√”«”Ì… «·„ƒﬂœ… ÊÃÊœÂ«
+        rs.Update
+        rs.Close
+        
+        MsgBox " „  ”ÃÌ· «·„” Œœ„ «·ÃœÌœ »‰Ã«Õ", vbInformation
+        ' ≈⁄«œ…  ⁄ÌÌ‰ «·ÕﬁÊ·
+    Else
+        ' «· ⁄œÌ· - «” Œœ„ UPDATE query „»«‘—… · Ã‰» „‘«ﬂ· «·ÕﬁÊ·
+        Dim sql As String
+        sql = "UPDATE dbo_Users SET " & _
+              "FullName = '" & Replace(Me.txtFullName, "'", "''") & "', " & _
+              "Password = '" & Replace(Me.txtPassword, "'", "''") & "', " & _
+              "Email = " & IIf(IsNull(Me.txtEmail), "Null", "'" & Replace(Me.txtEmail, "'", "''") & "'") & ", " & _
+              "EmployeeID = " & IIf(IsNull(Me.txtempolyeeID), "Null", "'" & Replace(Me.txtempolyeeID, "'", "''") & "'") & ", " & _
+              "IsActive = " & Me.chkIsActive & " " & _
+              "WHERE UserID = " & uID
+        '""UserName = '" & Replace(Me.txtUsername, "'", "''") & "', " & _"
+        db.Execute sql, dbSeeChanges
+        MsgBox " „  ⁄œÌ· »Ì«‰«  «·„” Œœ„ »‰Ã«Õ", vbInformation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    Set db = Nothing
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ Õ›Ÿ »Ì«‰«  «·„” Œœ„: " & Err.Description & vbCrLf & _
+           "—ﬁ„ «·Œÿ√: " & Err.Number, vbCritical
+          
+End Sub
+
+
+Private Sub cmdCancel_Click()
+    DoCmd.Close
+End Sub
+Private Sub Form_Load()
+    Dim uID As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "·„ Ì „  ÕœÌœ „ÊŸ› ··⁄—÷.", vbExclamation
+'        Me.txtPassword.Visible = True
+'        Me.F.Visible = True
+       
+        Me.Label17.Caption = "≈÷«›… „” Œœ„ ÃœÌœ"
+        Exit Sub
+        Else
+'        Me.txtPassword.Visible = False
+'        Me.F.Visible = False
+        
+        Me.Label17.Caption = " ⁄œÌ· »Ì«‰«  «·„” Œœ„ «·Õ«·Ï"
+    End If
+
+    uID = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Users WHERE UserID = " & uID
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        Me.txtUsername = Nz(rs!UserName, "")
+        Me.txtPassword = Nz(rs!Password, "")
+        Me.txtFullName = Nz(rs!FullName, "")
+        Me.chkIsActive = Nz(rs!IsActive, "")
+        Me.txtempolyeeID = Nz(rs!EmployeeID, "")
+        Me.txtEmail = Nz(rs!Email, "")
+        ' ... «„·√ »«ﬁÌ «·ÕﬁÊ· »‰›” «·ÿ—Ìﬁ…
+    Else
+        MsgBox "«·„”Œœ„ €Ì— „ÊÃÊœ.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+    
+    
+'    If Not CurrentUser.HasPermission(Me.Name, "View") Then
+'        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+'        Cancel = True
+'        Exit Sub
+'    End If
+End Sub

@@ -1,0 +1,187 @@
+Option Compare Database
+
+Private Sub btnAddExpense_Click()
+DoCmd.OpenForm "frm_Expenses"
+End Sub
+
+Private Sub btnAddExpensesGroup_Click()
+DoCmd.OpenForm "frm_ExpensesGroup"
+End Sub
+
+Private Sub btnClearSearch_Click()
+
+    ' „”Õ «·›·« —
+    Me.txtSearch = Null
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    Me.cbomaingroup = Null
+    Me.cboexpense = Null
+    
+    ' ⁄—÷ ﬂ· «·»Ì«‰«  „‰ €Ì— ‘—Êÿ
+    Me.RecordSource = "SELECT e.ExpenseID, eg.ExpenseGroupName, pg.ExpenseGroupName AS ParentGroupName, " & _
+                      "e.ExpenseDate, e.Amount, cb.CashBoxName, e.Notes, e.CreatedBy, e.CreatedAt " & _
+                      "FROM ((dbo_Expenses AS e " & _
+                      "INNER JOIN dbo_ExpenseGroups AS eg ON e.ExpenseGroupID = eg.ExpenseGroupID) " & _
+                      "LEFT JOIN dbo_ExpenseGroups AS pg ON eg.ParentGroupID = pg.ExpenseGroupID) " & _
+                      "INNER JOIN dbo_CashBoxes AS cb ON e.CashBoxID = cb.CashBoxID " & _
+                      "ORDER BY e.ExpenseDate DESC;"
+    
+    Me.Requery
+
+
+End Sub
+
+Private Sub btnOpen_Click()
+    Dim expID As Long
+    expID = Me.ExpenseID  ' „⁄—› «·„’—Ê› «·Õ«·Ì
+
+    If expID = 0 Then
+        MsgBox "«Œ — „’—Ê› √Ê·«.", vbExclamation
+        Exit Sub
+    End If
+
+    ' «› Õ «·›Ê—„ «·€Ì— „—»Êÿ° Ê„—— EexpenseID »«” Œœ«„ OpenArgs
+    DoCmd.OpenForm "frm_Expenses", , , , , , expID
+End Sub
+
+
+Private Sub btnOpenReport_Click()
+    On Error GoTo ErrorHandler
+   
+    
+    ' › Õ «· ﬁ—Ì— „⁄ „⁄«ÌÌ— «·»ÕÀ «·Õ«·Ì…
+    DoCmd.OpenReport "rptExpensesReport", acViewPreview
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ › Õ «· ﬁ—Ì—: " & Err.Description, vbCritical
+End Sub
+
+
+
+Private Sub btnRefresh_Click()
+Me.Requery
+ Me.RecordSource = "SELECT e.ExpenseID, eg.ExpenseGroupName, pg.ExpenseGroupName AS ParentGroupName, " & _
+                      "e.ExpenseDate, e.Amount, cb.CashBoxName, e.Notes, e.CreatedBy, e.CreatedAt " & _
+                      "FROM ((dbo_Expenses AS e " & _
+                      "INNER JOIN dbo_ExpenseGroups AS eg ON e.ExpenseGroupID = eg.ExpenseGroupID) " & _
+                      "LEFT JOIN dbo_ExpenseGroups AS pg ON eg.ParentGroupID = pg.ExpenseGroupID) " & _
+                      "INNER JOIN dbo_CashBoxes AS cb ON e.CashBoxID = cb.CashBoxID " & _
+                      "ORDER BY e.ExpenseDate DESC;"
+End Sub
+
+
+Private Sub ApplyExpenseFilter()
+    Dim strSQL As String
+    Dim strWhere As String
+    
+    ' «·«” ⁄·«„ «·√”«”Ì
+    strSQL = "SELECT e.ExpenseID, eg.ExpenseGroupName, pg.ExpenseGroupName AS ParentGroupName, " & _
+             "e.ExpenseDate, e.Amount, cb.CashBoxName, e.Notes, e.CreatedBy, e.CreatedAt " & _
+             "FROM ((dbo_Expenses AS e " & _
+             "INNER JOIN dbo_ExpenseGroups AS eg ON e.ExpenseGroupID = eg.ExpenseGroupID) " & _
+             "LEFT JOIN dbo_ExpenseGroups AS pg ON eg.ParentGroupID = pg.ExpenseGroupID) " & _
+             "INNER JOIN dbo_CashBoxes AS cb ON e.CashBoxID = cb.CashBoxID "
+             
+    ' »‰«¡ ‘—Êÿ «·»ÕÀ
+    strWhere = ""
+    
+    ' »ÕÀ ‰’Ì
+    If Nz(Me.txtSearch, "") <> "" Then
+        strWhere = strWhere & " (e.ExpenseName LIKE '*" & Me.txtSearch & "*' " & _
+                              "OR e.Notes LIKE '*" & Me.txtSearch & "*') AND"
+    End If
+    
+    ' ›· —… » «—ÌŒ „‰
+    If Not IsNull(Me.txtDateFrom) Then
+        strWhere = strWhere & " e.ExpenseDate >= #" & Format(Me.txtDateFrom, "yyyy-mm-dd") & "# AND"
+    End If
+    
+    ' ›· —… » «—ÌŒ ≈·Ï
+    If Not IsNull(Me.txtDateTo) Then
+        strWhere = strWhere & " e.ExpenseDate <= #" & Format(Me.txtDateTo, "yyyy-mm-dd") & "# AND"
+    End If
+    
+    ' ≈“«·… AND «·√ŒÌ— ·Ê „ÊÃÊœ
+    If Right(strWhere, 3) = "AND" Then
+        strWhere = Left(strWhere, Len(strWhere) - 3)
+    End If
+    
+    ' ≈÷«›… WHERE ≈–« ›ÌÂ ‘—Êÿ
+    If strWhere <> "" Then
+        strSQL = strSQL & " WHERE " & strWhere
+    End If
+    
+    '  — Ì» «·‰ «∆Ã
+    strSQL = strSQL & " ORDER BY e.ExpenseDate DESC;"
+    
+    '  ÿ»Ìﬁ «·«” ⁄·«„ ⁄·Ï «·›Ê—„
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+
+
+Private Sub btnSearch_Click()
+ApplyExpenseFilter
+End Sub
+
+Private Sub cboexpense_AfterUpdate()
+Me.txtSearch = Me.cboexpense.Column(1)
+ApplyExpenseFilter
+End Sub
+
+Private Sub cbomaingroup_AfterUpdate()
+Me.cboexpense.Requery
+End Sub
+
+
+' “— «· ’œÌ— ·≈ﬂ”·
+Private Sub btnExportExcel_Click()
+    On Error GoTo ErrorHandler
+    
+   
+    
+    '  ’œÌ— «·«” ⁄·«„ ≈·Ï Excel
+    Dim exportPath As String
+    exportPath = CurrentProject.Path & "\ ﬁ—Ì—_«·„’—Ê›« _" & Format(Now(), "yyyy-mm-dd_hh-mm") & ".xlsx"
+    
+    DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel12Xml, "qryExpensesReport2", exportPath, True
+    
+    MsgBox " „ «· ’œÌ— »‰Ã«Õ ≈·Ï: " & exportPath, vbInformation
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «· ’œÌ—: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub Command81_Click()
+   On Error GoTo ErrorHandler
+   
+    
+    ' › Õ «· ﬁ—Ì— „⁄ „⁄«ÌÌ— «·»ÕÀ «·Õ«·Ì…
+    DoCmd.OpenReport "rpt_AdvansedExpenseNew", acViewPreview
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ › Õ «· ﬁ—Ì—: " & Err.Description, vbCritical
+End Sub
+
+Private Sub Form_Load()
+Me.Requery
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+
+    If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "·Ì” ·œÌﬂ ’·«ÕÌ… ·⁄—÷ Â–Â «·‘«‘….", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+
+End Sub
+

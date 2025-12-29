@@ -1,0 +1,20 @@
+Form: Frm_Main_Page
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+SubFrm		Subform		
+Frm_MainList_SubForm		Subform		
+Box3		Rectangle		
+TitleTxt		TextBox		
+Box13		Rectangle		
+lblWelcome		Label		„—Õ»«° „œÌ— «·‰Ÿ«„
+Image10		Image		
+Line16		Line		
+btnNotifications		Button		 
+lblUnread		Label		.
+lblusername		Label		admin
+Command23		Button		 
+lblReminderAlert		Label		Remember
+Command28		Button		 
+Command29		Button		 

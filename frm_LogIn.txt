@@ -1,0 +1,141 @@
+Option Compare Database
+Option Explicit
+
+Private Sub cmdCancel_Click()
+    DoCmd.Quit
+End Sub
+Private Sub cmdLogin_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim lngUserID As Long
+    Dim strPassword As String
+    Dim strUsername As String
+    Dim rs As DAO.Recordset
+    Dim strSQL As String
+    
+    ' «· Õﬁﬁ „‰ «·≈œŒ«·
+    If Nz(Me.txtUsername, "") = "" Then
+        MsgBox "„‰ ›÷·ﬂ √œŒ· «”„ «·„” Œœ„", vbExclamation, "COCOBOLO SYSTEM"
+        Me.txtUsername.SetFocus
+        Exit Sub
+    End If
+
+    If Nz(Me.txtPassword, "") = "" Then
+        MsgBox "„‰ ›÷·ﬂ √œŒ· ﬂ·„… «·„—Ê—", vbExclamation, "COCOBOLO SYSTEM"
+        Me.txtPassword.SetFocus
+        Exit Sub
+    End If
+
+    strUsername = Replace(Me.txtUsername, "'", "''")
+
+    ' Ã·» »Ì«‰«  «·„” Œœ„ œ›⁄… Ê«Õœ…
+    strSQL = "SELECT UserID, Password, IsActive ,LastLogin FROM dbo_Users WHERE Username = '" & strUsername & "'"
+    Set rs = CurrentDb.OpenRecordset(strSQL, dbOpenSnapshot)
+
+    If rs.EOF Then
+        MsgBox "«”„ «·„” Œœ„ €Ì— ’ÕÌÕ", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    If rs!IsActive <> True Then
+        MsgBox "«·Õ”«» €Ì— „›⁄·", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    If rs!Password <> Me.txtPassword Then
+        MsgBox "ﬂ·„… «·„—Ê— €Ì— ’ÕÌÕ…", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    lngUserID = rs!UserId
+    rs.Close
+    Set rs = Nothing
+
+    '  ÕœÌÀ ¬Œ— œŒÊ·
+    CurrentDb.Execute "UPDATE dbo_Users SET LastLogin=Now() WHERE UserID=" & lngUserID, dbSeeChanges
+
+    '  Õ„Ì· »Ì«‰«  «·„” Œœ„
+    Set currentUser = New CUser
+    currentUser.LoadUserData lngUserID
+
+    ' › Õ «·‰„Ê–Ã «·—∆Ì”Ì
+    DoCmd.OpenForm "Frm_Main_Page"
+    DoCmd.Close acForm, Me.Name
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡  ”ÃÌ· «·œŒÊ·: " & Err.Description, vbCritical
+End Sub
+
+Private Sub Form_Load()
+
+DoCmd.Maximize
+    On Error GoTo ErrHandler
+
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim tempPath As String
+    Dim fileNum As Integer
+
+    '«› Õ «·ÃœÊ· ÊÃÌ» √Ê· ”Ã· (·Ê ⁄‰œﬂ √ﬂ — „‰ ”Ã· „„ﬂ‰  Õœœ WHERE)
+    Set rs = CurrentDb.OpenRecordset("SELECT TOP 1 Logo FROM dbo_CompanyInfo", dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        If Not IsNull(rs!Logo) Then
+            '«ﬁ—√ «·’Ê—… ﬂ»«Ì « 
+            fileData = rs!Logo
+
+            'Õœœ „ﬂ«‰ „ƒﬁ  ··„·›
+            tempPath = Environ("TEMP") & "\CompanyLogo.jpg"
+
+            '«ﬂ » «·„·› «·„ƒﬁ 
+            fileNum = FreeFile
+            Open tempPath For Binary As #fileNum
+                Put #fileNum, , fileData
+            Close #fileNum
+
+            '«⁄—÷ «·’Ê—… ›Ì ⁄‰’— imgLogo
+            Me.imgLogo.Picture = tempPath
+        End If
+    End If
+
+    rs.Close
+    Exit Sub
+
+ErrHandler:
+    MsgBox "Œÿ√ " & Err.Number & ": " & Err.Description, vbCritical
+End Sub
+
+Private Sub CheckUserExists()
+    Dim strUsername As String
+    Dim lngCount As Long
+    Dim strSQL As String
+
+    strUsername = Nz(Me.txtUsername, "")
+    If strUsername = "" Then
+        Me.imgchk.Visible = False
+        Exit Sub
+    End If
+
+    ' «” ⁄·«„ ·Õ”«» ⁄œœ «·„” Œœ„Ì‰ »‰›” «·«”„
+    strSQL = "SELECT COUNT(*) FROM dbo_Users WHERE Username = '" & Replace(strUsername, "'", "''") & "'"
+
+ lngCount = DCount("*", "dbo_Users", "Username = '" & Replace(strUsername, "'", "''") & "'")
+
+    If lngCount > 0 Then
+        Me.imgchk.Visible = True
+    Else
+        Me.imgchk.Visible = False
+    End If
+End Sub
+
+Private Sub txtUsername_AfterUpdate()
+CheckUserExists
+End Sub
+

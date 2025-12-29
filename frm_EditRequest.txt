@@ -1,0 +1,108 @@
+Option Compare Database
+
+Private Sub btnApprove_Click()
+    On Error GoTo ErrorHandler
+    
+    ' ÇáÊÍŞŞ ãä æÌæÏ ÓÌá ãÍÏÏ İí ÇáäãæĞÌ
+    If Me.Recordset.EOF And Me.Recordset.BOF Then
+        MsgBox "áÇ ÊæÌÏ İæÇÊíÑ ááÚÑÖ", vbExclamation
+        Exit Sub
+    End If
+    
+    If IsNull(Me.TransactionID) Then
+        MsgBox "ãä İÖáß ÇÎÊÑ İÇÊæÑÉ ááãæÇİŞÉ ÚáíåÇ", vbExclamation
+        Exit Sub
+    End If
+    
+      Dim Reason As String
+    Reason = InputBox("İÖáÇ ÇÏÎá ÑÃíß :", "ãæÇİŞÉ Úáì ØáÈ ÇáÊÚÏíá")
+    
+    If Reason = "" Then
+        MsgBox "íÌÈ ÅÏÎÇá ÓÈÈ ááãæÇİŞÉ", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim strSQL As String
+    Dim CurrentTransactionID As Long
+    
+    CurrentTransactionID = Me.TransactionID.value ' ÇÓÊÎÏÇã .Value ááÊÃßÏ
+    
+    ' ÊÍÏíË ÍÇáÉ ÇáİÇÊæÑÉ
+   strSQL = "UPDATE dbo_Transactions SET " & _
+         "EditStatus = 2, " & _
+         "EditDone =  'ÊãÊ ÇáãæÇİŞÉ Úáì ÇáÊÚÏíá - " & Replace(Reason, "'", "''") & "' " & _
+         "WHERE TransactionID = " & CurrentTransactionID
+    
+    CurrentDb.Execute strSQL, dbSeeChanges
+    
+    ' ÅÑÓÇá ÅÔÚÇÑ ááãÓÊÎÏã
+'    Call SendApprovalNotification(CurrentTransactionID)
+    Call SendNotification(CreatedBy, "ØáÈ ÊÚÏíá İÇÊæÑÉ", _
+            "  ÊãÊ ÇáãæÇİŞÉ ÊÚÏíá ÇáİÇÊæÑÉ ÑŞã : " & Nz(Me.TransactionID, "") & " ÈÇÓã ÇáÚãíá  " & " - " & PartyName & " - " & Nz(Reason, ""), _
+            "frm_SalesInvoiveNew", Nz(Me.TransactionID, 0), True, currentUser.UserName)
+    MsgBox "ÊãÊ ÇáãæÇİŞÉ Úáì ÇáÊÚÏíá ÈäÌÇÍ" & vbCrLf & _
+           "íãßä ááãÓÊÎÏã ÇáÂä ÊÚÏíá ÇáİÇÊæÑÉ   ", vbInformation
+    
+    ' ÊÍÏíË ÇáÈíÇäÇÊ İí ÇáäãæĞÌ
+    Me.Requery
+    
+    Exit Sub
+'    DoCmd.Close acForm, Me.Name
+ErrorHandler:
+    MsgBox "ÍÏË ÎØÃ ÃËäÇÁ ÇáãæÇİŞÉ: " & Err.Description, vbCritical
+End Sub
+
+Private Sub btnReject_Click()
+    On Error GoTo ErrorHandler
+    
+    ' ÇáÊÍŞŞ ãä æÌæÏ ÓÌá ãÍÏÏ İí ÇáäãæĞÌ
+    If Me.Recordset.EOF And Me.Recordset.BOF Then
+        MsgBox "áÇ ÊæÌÏ İæÇÊíÑ ááÚÑÖ", vbExclamation
+        Exit Sub
+    End If
+    
+    If IsNull(Me.TransactionID) Then
+        MsgBox "ãä İÖáß ÇÎÊÑ İÇÊæÑÉ ááÑİÖ", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim Reason As String
+    Reason = InputBox("ÇÏÎá ÓÈÈ ÇáÑİÖ:", "ÑİÖ ØáÈ ÇáÊÚÏíá")
+    
+    If Reason = "" Then
+        MsgBox "íÌÈ ÅÏÎÇá ÓÈÈ ÇáÑİÖ", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim strSQL As String
+    Dim CurrentTransactionID As Long
+    
+    CurrentTransactionID = Me.TransactionID.value
+    
+    ' ÊÍÏíË ÍÇáÉ ÇáİÇÊæÑÉ
+    strSQL = "UPDATE dbo_Transactions SET " & _
+             "EditStatus = 0, " & _
+             "EditDone = 'ãÑİæÖ - " & Replace(Reason, "'", "''") & "' " & _
+             "WHERE TransactionID = " & CurrentTransactionID
+    
+    CurrentDb.Execute strSQL, dbSeeChanges
+    
+    ' ÅÑÓÇá ÅÔÚÇÑ ÈÇáÑİÖ
+'    Call SendRejectionNotification(CurrentTransactionID, Reason)
+    Call SendNotification(CreatedBy, "ØáÈ ÊÚÏíá İÇÊæÑÉ", _
+            " Êã ÑİÖ ØáÈß ÇáÎÇÕ ÈÊÚÏíá ÇáİÇÊæÑÉ ÑŞã : " & Nz(Me.TransactionID, "") & " æĞáß ÈÓÈÈ " & Nz(Reason, ""), _
+            "frm_SalesInvoiveNew", Nz(Me.TransactionID, 0), True, currentUser.UserName)
+            
+    MsgBox "Êã ÑİÖ ØáÈ ÇáÊÚÏíá ", vbInformation
+    Me.Requery
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "ÍÏË ÎØÃ ÃËäÇÁ ÇáÑİÖ: " & Err.Description, vbCritical
+End Sub
+
+
+Private Sub TransactionID_Click()
+DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & TransactionID
+End Sub

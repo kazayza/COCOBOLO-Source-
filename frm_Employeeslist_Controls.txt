@@ -1,0 +1,31 @@
+Form: frm_Employeeslist
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box36		Rectangle		
+Label2		Label		«·«”„ »«·ﬂ«„·
+Label1		Label		«·«œ«—…
+Label0		Label		ID
+btnSearch		Button		»ÕÀ
+btnClearSearch		Button		«·€«¡ «·»ÕÀ
+btnAddExpense		Button		«÷«›… „ÊŸ›
+Label28		Label		«·ÊŸÌ›…
+Line37		Line		
+btnRefresh		Button		Refresh
+Line40		Line		
+btnClose		Button		Close
+Label45		Label		ﬂ«›… «·„ÊŸ›Ì‰ «·„ «ÕÌ‰ 
+btnActive		Button		«·„ «ÕÌ‰
+btnInactive		Button		«·„‰ ÂÌ… Œœ„ Â„
+Command64		Button		
+Command63		Button		
+txtSearch		TextBox		
+Line65		Line		
+ExpenseID		TextBox		EmployeeID
+ExpenseGroupName		TextBox		Department
+ExpenseDate		TextBox		FullName
+ParentGroupName		TextBox		JobTitle
+Line35		Line		
+btnDetails		Button		 ›«’Ì·
+btnShifts		Button		&Shifts

@@ -1,0 +1,19 @@
+Form: frm_EditRequest
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		—ﬁ„ «·›« Ê—…
+Label1		Label		 «—ÌŒ «·›« Ê—…
+Label2		Label		«·⁄„Ì·
+Label3		Label		«·”»»
+Label4		Label		 «—ÌŒ «·ÿ·»
+Label5		Label		„—”· «·«‘⁄«—
+TransactionID		TextBox		TransactionID
+TransactionDate		TextBox		TransactionDate
+PartyName		TextBox		PartyName
+EditReason		TextBox		EditReason
+EditRequestDate		TextBox		EditRequestDate
+CreatedBy		TextBox		CreatedBy
+btnapprove		Button		„Ê«›ﬁ…
+btnReject		Button		—›÷

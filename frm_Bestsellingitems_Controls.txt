@@ -1,0 +1,11 @@
+Form: frm_Bestsellingitems
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label1		Label		TotalSold
+Label0		Label		ProductName
+Label6		Label		Best selling items
+ProductName		TextBox		ProductName
+TotalSold		TextBox		TotalSold
+Chart7		Other (133)		qry_BestSelleinItems

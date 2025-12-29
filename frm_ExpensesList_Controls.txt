@@ -1,0 +1,49 @@
+Form: frm_ExpensesList
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box36		Rectangle		
+Label7		Label		 ”ÃÌ· ›Ï
+Label6		Label		 ”ÃÌ· »Ê«”ÿÂ
+Label5		Label		„·«ÕŸ« 
+Label4		Label		«·Œ“Ì‰…
+Label3		Label		«·„»·€
+Label2		Label		 «—ÌŒ
+Label1		Label		«·„’—Ê›
+Label0		Label		ID
+txtSearch		TextBox		
+Label11		Label		»ÕÀ
+btnSearch		Button		»ÕÀ
+btnClearSearch		Button		«·€«¡
+btnAddExpense		Button		„’—Ê› ÃœÌœ
+Label28		Label		„Ã„Ê⁄Â
+Line37		Line		
+btnAddExpensesGroup		Button		„Ã„Ê⁄«  «·„’—Ê›« 
+btnRefresh		Button		 ÕœÌÀ
+Line40		Line		
+Command41		Button		Command41
+Label42		Label		ﬂ«›… «·„’—Ê›« 
+txtDateFrom		TextBox		
+Label44		Label		„‰  «—ÌŒ
+txtDateTo		TextBox		
+Label46		Label		«·Ï  «—ÌŒ
+btnOpenReport		Button		 ﬁ—Ì—
+cbomaingroup		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID) Is Null)); 
+Label49		Label		»ÕÀ 
+cboexpense		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID)=[Forms]![frm_ExpensesList]![cbomaingroup])); 
+EmptyCell54		Other (127)		
+btnExportExcel		Button		 ’œÌ— «·Ï «ﬂ”Ì·
+Command81		Button		 ﬁ—Ì— «·„’—Ê› «·„ﬁœ„
+Text82		TextBox		="≈Ã„«·Ï «·„’—Ê›«  : " & Sum([Amount])
+ExpenseID		TextBox		ExpenseID
+ExpenseGroupName		TextBox		ExpenseGroupName
+ExpenseDate		TextBox		ExpenseDate
+Amount		TextBox		Amount
+CashBoxName		TextBox		CashBoxName
+Notes		TextBox		Notes
+CreatedBy		TextBox		CreatedBy
+CreatedAt		TextBox		CreatedAt
+ParentGroupName		TextBox		ParentGroupName
+Line35		Line		
+btnOpen		Button		 ›«’Ì·

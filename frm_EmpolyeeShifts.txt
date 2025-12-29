@@ -1,0 +1,324 @@
+Option Compare Database
+
+'Private Sub btnSave_Click()
+'    On Error GoTo ErrHandler
+'
+'    Dim db As DAO.Database
+'    Dim sql As String
+'    Dim safeUser As String
+'    Dim newID As Long
+'
+'    Set db = CurrentDb
+'    safeUser = currentUser.UserName   'Replace(Environ("USERNAME"), "'", "''")   ' «”„ «·„” Œœ„
+'
+'    ' «· Õﬁﬁ „‰ ≈œŒ«· «·»Ì«‰«  «·√”«”Ì…
+'    If IsNull(Me.EmployeeID) Or IsNull(Me.ShiftType) _
+'       Or IsNull(Me.StartTime) Or IsNull(Me.EndTime) _
+'       Or IsNull(Me.EffectiveFrom) Then
+'        MsgBox "„‰ ›÷·ﬂ «œŒ· Ã„Ì⁄ «·»Ì«‰«  «·√”«”Ì… («·„ÊŸ›° ‰Ê⁄ «·‘Ì› ° «·»œ«Ì… Ê«·‰Â«Ì…°  «—ÌŒ «·”—Ì«‰).", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    ' Â· ”Ã· ﬁœÌ„ („› ÊÕ „‰ ‰„Ê–Ã «·„ÊŸ›Ì‰)ø
+'    If Not IsNull(Me.EmployeeShiftID) And Me.EmployeeShiftID <> 0 Then
+'        ' ‰ÃÌ» «· «—ÌŒ «·ﬁœÌ„ „‰ «·ÃœÊ·
+'        oldEffectiveFrom = Nz(DLookup("EffectiveFrom", "dbo_EmployeeShifts", "EmployeeShiftID=" & Me.EmployeeShiftID), 0)
+'
+'        If oldEffectiveFrom <> 0 And DateValue(oldEffectiveFrom) <> DateValue(Me.EffectiveFrom) Then
+'            ' 1?? «· «—ÌŒ « €Ì— ? ‰ﬁ›· «·ﬁœÌ„
+'            sql = "UPDATE dbo_EmployeeShifts " & _
+'                  "SET EffectiveTo = #" & Format(Me.EffectiveFrom - 1, "yyyy-mm-dd") & "# " & _
+'                  "WHERE EmployeeShiftID=" & Me.EmployeeShiftID & ";"
+'            db.Execute sql, dbFailOnError + dbSeeChanges
+'
+'            ' 2?? ‰÷Ì› ”Ã· ÃœÌœ
+'            sql = "INSERT INTO dbo_EmployeeShifts " & _
+'                  "(EmployeeID, BiometricCode, ShiftType, StartTime, EndTime, EffectiveFrom, EffectiveTo, CreatedAt, CreatedBy) " & _
+'                  "VALUES (" & _
+'                  Nz(Me.EmployeeID, 0) & ", " & _
+'                  IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+'                  "'" & Me.ShiftType.value & "', " & _
+'                "'" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+'              "'" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+'                  "#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+'                  IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+'                  "Now(), '" & safeUser & "');"
+'
+'            db.Execute sql, dbFailOnError + dbSeeChanges
+'
+'            newID = DMax("EmployeeShiftID", "dbo_EmployeeShifts", "EmployeeID=" & Me.EmployeeID)
+'            Me.EmployeeShiftID = newID
+'
+'            MsgBox " „ ≈€·«ﬁ «·‘Ì›  «·ﬁœÌ„ Ê≈÷«›… ‘Ì›  ÃœÌœ.", vbInformation, "COCOBOLO SYSTEM"
+'        Else
+'            ' «· «—ÌŒ „« « €Ì—‘ ? „Ã—œ  ⁄œÌ· ⁄«œÌ
+'            sql = "UPDATE dbo_EmployeeShifts SET " & _
+'                  "BiometricCode=" & IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+'                  "ShiftType='" & Me.ShiftType & "', " & _
+'                  "StartTime='" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+'                  "EndTime='" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+'                  "EffectiveFrom=#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+'                  "EffectiveTo=" & IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+'                  "CreatedAt=Now(), CreatedBy='" & safeUser & "' " & _
+'                  "WHERE EmployeeShiftID=" & Me.EmployeeShiftID & ";"
+'
+'            db.Execute sql, dbFailOnError + dbSeeChanges
+'            MsgBox " „  ⁄œÌ· »Ì«‰«  «·‘Ì› .", vbInformation, "COCOBOLO SYSTEM"
+'        End If
+'
+'    Else
+'        ' ”Ã· ÃœÌœ ⁄«œÌ
+'        sql = "INSERT INTO dbo_EmployeeShifts " & _
+'              "(EmployeeID, BiometricCode, ShiftType, StartTime, EndTime, EffectiveFrom, EffectiveTo, CreatedAt, CreatedBy) " & _
+'              "VALUES (" & _
+'              Nz(Me.EmployeeID, 0) & ", " & _
+'              IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+'              "'" & Me.ShiftType & "', " & _
+'              "StartTime='" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+'                  "EndTime='" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+'              "#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+'              IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+'              "Now(), '" & safeUser & "');"
+'
+'        db.Execute sql, dbFailOnError + dbSeeChanges
+'
+'        newID = DMax("EmployeeShiftID", "dbo_EmployeeShifts", "EmployeeID=" & Me.EmployeeID)
+'        Me.EmployeeShiftID = newID
+'
+'        MsgBox " „ Õ›Ÿ «·‘Ì›  «·ÃœÌœ »‰Ã«Õ.", vbInformation, "COCOBOLO SYSTEM"
+'    End If
+'
+'    Me.Refresh
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "Œÿ√ √À‰«¡ «·Õ›Ÿ: " & Err.Number & " - " & Err.Description, vbCritical
+'End Sub
+Private Sub btnSave_Click()
+    On Error GoTo ErrHandler
+    
+    Dim db As DAO.Database
+    Dim sql As String
+    Dim safeUser As String
+    Dim newID As Long
+    Dim oldEffectiveFrom As Date
+
+    Set db = CurrentDb
+    safeUser = currentUser.UserName 'Replace(Environ("USERNAME"), "'", "''")   ' «”„ «·„” Œœ„ „⁄ „⁄«·Ã… «·ŒÊ« „
+    
+    ' «· Õﬁﬁ „‰ ≈œŒ«· «·»Ì«‰«  «·√”«”Ì…
+    If IsNull(Me.EmployeeID) Or IsNull(Me.ShiftType) _
+       Or IsNull(Me.StartTime) Or IsNull(Me.EndTime) _
+       Or IsNull(Me.EffectiveFrom) Then
+        MsgBox "„‰ ›÷·ﬂ «œŒ· Ã„Ì⁄ «·»Ì«‰«  «·√”«”Ì… («·„ÊŸ›° ‰Ê⁄ «·‘Ì› ° «·»œ«Ì… Ê«·‰Â«Ì…°  «—ÌŒ «·”—Ì«‰).", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Â· ”Ã· ﬁœÌ„ („› ÊÕ „‰ ‰„Ê–Ã «·„ÊŸ›Ì‰)ø
+    If Not IsNull(Me.EmployeeShiftID) And Me.EmployeeShiftID <> 0 Then
+        ' ‰ÃÌ» «· «—ÌŒ «·ﬁœÌ„ „‰ «·ÃœÊ·
+        oldEffectiveFrom = Nz(DLookup("EffectiveFrom", "dbo_EmployeeShifts", "EmployeeShiftID=" & Me.EmployeeShiftID), #1/1/1900#)
+        
+        If oldEffectiveFrom <> #1/1/1900# And DateValue(oldEffectiveFrom) <> DateValue(Me.EffectiveFrom) Then
+            ' 1?? «· «—ÌŒ « €Ì— ? ‰ﬁ›· «·ﬁœÌ„
+            sql = "UPDATE dbo_EmployeeShifts " & _
+                  "SET EffectiveTo = #" & Format(Me.EffectiveFrom - 1, "yyyy-mm-dd") & "# " & _
+                  "WHERE EmployeeShiftID=" & Me.EmployeeShiftID & ";"
+            db.Execute sql, dbFailOnError + dbSeeChanges
+            
+            ' 2?? ‰÷Ì› ”Ã· ÃœÌœ
+            sql = "INSERT INTO dbo_EmployeeShifts " & _
+                  "(EmployeeID, BiometricCode, ShiftType, StartTime, EndTime, EffectiveFrom, EffectiveTo, CreatedAt, CreatedBy) " & _
+                  "VALUES (" & _
+                  Nz(Me.EmployeeID, 0) & ", " & _
+                  IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+                  "'" & Me.ShiftType & "', " & _
+                  "'" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+                  "'" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+                  "#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+                  IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+                  "Now(), '" & safeUser & "');"
+            
+            db.Execute sql, dbFailOnError + dbSeeChanges
+            
+            newID = DMax("EmployeeShiftID", "dbo_EmployeeShifts", "EmployeeID=" & Me.EmployeeID)
+            Me.EmployeeShiftID = newID
+            
+            MsgBox " „ ≈€·«ﬁ «·‘Ì›  «·ﬁœÌ„ Ê≈÷«›… ‘Ì›  ÃœÌœ.", vbInformation, "COCOBOLO SYSTEM"
+        Else
+            ' «· «—ÌŒ „« « €Ì—‘ ? „Ã—œ  ⁄œÌ· ⁄«œÌ
+            sql = "UPDATE dbo_EmployeeShifts SET " & _
+                  "BiometricCode=" & IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+                  "ShiftType='" & Me.ShiftType & "', " & _
+                  "StartTime='" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+                  "EndTime='" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+                  "EffectiveFrom=#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+                  "EffectiveTo=" & IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+                  "CreatedAt=Now(), CreatedBy='" & safeUser & "' " & _
+                  "WHERE EmployeeShiftID=" & Me.EmployeeShiftID & ";"
+            
+            db.Execute sql, dbFailOnError + dbSeeChanges
+            MsgBox " „  ⁄œÌ· »Ì«‰«  «·‘Ì› .", vbInformation, "COCOBOLO SYSTEM"
+        End If
+    
+    Else
+        ' ”Ã· ÃœÌœ ⁄«œÌ
+        sql = "INSERT INTO dbo_EmployeeShifts " & _
+              "(EmployeeID, BiometricCode, ShiftType, StartTime, EndTime, EffectiveFrom, EffectiveTo, CreatedAt, CreatedBy) " & _
+              "VALUES (" & _
+              Nz(Me.EmployeeID, 0) & ", " & _
+              IIf(IsNull(Me.BiometricCode), "Null", "'" & Me.BiometricCode & "'") & ", " & _
+              "'" & Me.ShiftType & "', " & _
+              "'" & Format(Me.StartTime, "hh:mm:ss") & "', " & _
+              "'" & Format(Me.EndTime, "hh:mm:ss") & "', " & _
+              "#" & Format(Me.EffectiveFrom, "yyyy-mm-dd") & "#, " & _
+              IIf(IsNull(Me.EffectiveTo), "Null", "#" & Format(Me.EffectiveTo, "yyyy-mm-dd") & "#") & ", " & _
+              "Now(), '" & safeUser & "');"
+        
+        db.Execute sql, dbFailOnError + dbSeeChanges
+        
+        newID = DMax("EmployeeShiftID", "dbo_EmployeeShifts", "EmployeeID=" & Me.EmployeeID)
+        Me.EmployeeShiftID = newID
+        
+        MsgBox " „ Õ›Ÿ «·‘Ì›  «·ÃœÌœ »‰Ã«Õ.", vbInformation, "COCOBOLO SYSTEM"
+    End If
+    
+    Me.Refresh
+    
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "Œÿ√ √À‰«¡ «·Õ›Ÿ: " & Err.Number & " - " & Err.Description, vbCritical
+    If Not db Is Nothing Then Set db = Nothing
+End Sub
+
+Private Sub Command12_Click()
+Me.EmployeeShiftID = ""
+Me.EmployeeID = ""
+Me.BiometricCode = ""
+Me.ShiftType = ""
+Me.StartTime = ""
+Me.EndTime = ""
+Me.EffectiveFrom = ""
+Me.EffectiveTo = ""
+Me.Requery
+DoCmd.Close acForm, Me.Name
+DoCmd.OpenForm "frm_EmpolyeeShifts"
+End Sub
+
+Private Sub EmployeeID_AfterUpdate()
+Me.BiometricCode = Me.EmployeeID.Column(2)
+End Sub
+
+
+'Private Sub Form_Load()
+'    If Not IsNull(Me.OpenArgs) Then
+'        Me.EmployeeID = Me.OpenArgs   '  ⁄»∆… EmployeeID ›Ì «·ﬂ‰ —Ê·
+'        '  Õ„Ì· ¬Œ— ‘Ì›  ·Ê „ÊÃÊœ
+'        Dim rs As DAO.Recordset
+'        Dim sql As String
+'
+'        sql = "SELECT TOP 1 * FROM dbo_EmployeeShifts " & _
+'              "WHERE EmployeeID=" & Me.EmployeeID & " " & _
+'              "ORDER BY EffectiveFrom DESC;"
+'
+'        Set rs = CurrentDb.OpenRecordset(sql, dbOpenDynaset, dbSeeChanges)
+'
+'        If Not (rs.EOF And rs.BOF) Then
+'            ' ⁄»¯Ì «·ﬂ‰ —Ê·« 
+'           Me.EmployeeShiftID = rs!EmployeeShiftID
+'            Me.BiometricCode = rs!BiometricCode
+'            Me.ShiftType = rs!ShiftType
+'            Me.StartTime = rs!StartTime
+'            Me.EndTime = rs!EndTime
+'            Me.EffectiveFrom = rs!EffectiveFrom
+'            Me.EffectiveTo = rs!EffectiveTo
+'        End If
+'
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'End Sub
+Private Sub Form_Load()
+    If Not IsNull(Me.OpenArgs) Then
+        Dim args As String
+        args = Me.OpenArgs
+        
+        ' ›’· «·‹ OpenArgs ≈–« ﬂ«‰ ÌÕ ÊÌ ⁄·Ï EmployeeShiftID
+        If InStr(args, "|") > 0 Then
+            ' › Õ »‘Ì›  „Õœœ (EmployeeShiftID ›ﬁÿ)
+            Dim shiftID As Variant
+            shiftID = Split(args, "|")(0)
+            
+            '  Õ„Ì· ‘›  „Õœœ »‹ EmployeeShiftID
+            Dim rs As DAO.Recordset
+            Dim sql As String
+            
+            sql = "SELECT * FROM dbo_EmployeeShifts " & _
+                  "WHERE EmployeeShiftID=" & shiftID & ";"
+            
+            Set rs = CurrentDb.OpenRecordset(sql, dbOpenDynaset, dbSeeChanges)
+            
+            If Not (rs.EOF And rs.BOF) Then
+                ' ⁄»¯Ì «·ﬂ‰ —Ê·« 
+                Me.EmployeeShiftID = rs!EmployeeShiftID
+                Me.EmployeeID = rs!EmployeeID  ' ‰√Œ– EmployeeID „‰ «·”Ã·
+                Me.BiometricCode = rs!BiometricCode
+                Me.ShiftType = rs!ShiftType
+                Me.StartTime = rs!StartTime
+                Me.EndTime = rs!EndTime
+                Me.EffectiveFrom = rs!EffectiveFrom
+                Me.EffectiveTo = rs!EffectiveTo
+            End If
+            
+            rs.Close
+            Set rs = Nothing
+            
+        Else
+            ' › Õ »¬Œ— ‘Ì›  ··„ÊŸ› (EmployeeID ›ﬁÿ)
+            Me.EmployeeID = args
+            
+            '  Õ„Ì· ¬Œ— ‘›  ··„ÊŸ›
+            Dim rs2 As DAO.Recordset
+            Dim sql2 As String
+            
+            sql2 = "SELECT TOP 1 * FROM dbo_EmployeeShifts " & _
+                   "WHERE EmployeeID=" & Me.EmployeeID & " " & _
+                   "ORDER BY EffectiveFrom DESC;"
+            
+            Set rs2 = CurrentDb.OpenRecordset(sql2, dbOpenDynaset, dbSeeChanges)
+            
+            If Not (rs2.EOF And rs2.BOF) Then
+                ' ⁄»¯Ì «·ﬂ‰ —Ê·« 
+                Me.EmployeeShiftID = rs2!EmployeeShiftID
+                Me.BiometricCode = rs2!BiometricCode
+                Me.ShiftType = rs2!ShiftType
+                Me.StartTime = rs2!StartTime
+                Me.EndTime = rs2!EndTime
+                Me.EffectiveFrom = rs2!EffectiveFrom
+                Me.EffectiveTo = rs2!EffectiveTo
+            End If
+            
+            rs2.Close
+            Set rs2 = Nothing
+        End If
+    End If
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "⁄–—« Ì»‘„Â‰œ” :  " & currentUser.FullName & " €Ì— „’—Õ ·ﬂ »«·œŒÊ·  ", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub ShiftType_AfterUpdate()
+If Me.ShiftType = "’»«ÕÏ" Then
+Me.StartTime = "11:00:00"
+Me.EndTime = "19:00:00"
+ElseIf Me.ShiftType = "„”«∆Ï" Then
+Me.StartTime = "15:00:00"
+Me.EndTime = "23:00:00"
+End If
+End Sub

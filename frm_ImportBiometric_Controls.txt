@@ -1,0 +1,26 @@
+Form: frm_ImportBiometric
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+btnBrowseFile		Button		«Œ Ì«— „·› «·»’„…
+txtFilePath		TextBox		
+Label2		Label		„”«— «·„·›
+cmdApplyDeductions		Button		 ÿ»Ìﬁ «·Œ’„
+cboMonth		ComboBox		SELECT tbl_months.MonthNo, tbl_months.MonthName FROM tbl_months; 
+Label5		Label		«·‘Â—
+cboYear		ComboBox		2023;2024;2025;2026;2027
+
+Label7		Label		«·”‰Â
+pbImport		Other (119)		
+cmdImport		Button		Import
+lblStatus		Label		 „ «·«‰ Â«¡ „‰ „⁄«·Ã… 160 ”Ã· »‰Ã«Õ
+cmdDeleteMonth		Button		delete
+cmdGenerateAttendance		Button		Attendance
+cmdDeleteMonthAttendnce		Button		DeleteAttendance
+pbImport1		Other (119)		
+Box17		Rectangle		
+Box18		Rectangle		
+Image19		Image		
+Command20		Button		«” Ì—«œ „Õ·Ï
+Command41		Button		Command41

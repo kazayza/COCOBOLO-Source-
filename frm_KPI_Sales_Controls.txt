@@ -1,0 +1,24 @@
+Form: frm_KPI_Sales
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtTotalMonth		TextBox		
+Label3		Label		„»Ì⁄«  «·‘Â— «·Õ«·Ï
+txtTotalPrevMonth		TextBox		
+Label5		Label		„»Ì⁄«  «·‘Â— «·”«»ﬁ
+txtPctChange		TextBox		
+Label7		Label		‰”»Â «· €Ì— %
+subTopEmployees		Subform		
+txtTopEmployeeSales		TextBox		
+Chart12		Other (133)		qry_ChartSalesKPI
+txtTotalYear		TextBox		
+Label1		Label		≈Ã„«·Ï «·„»Ì⁄«  «·⁄«„ «·Õ«·Ï
+Chart14		Other (133)		qry_Sales
+Im1		Image		
+Image19		Image		
+imgup		Image		
+imgdown		Image		
+Image22		Image		
+Image23		Image		
+Label24		Label		„ƒ‘—«  √œ«¡ «·„»Ì⁄« 

@@ -1,0 +1,480 @@
+Option Compare Database
+
+Private Sub btnInvoices_Click()
+  On Error GoTo ErrHandler
+    
+    If IsNull(Me.PartyID) Then
+        MsgBox "·„ Ì „  ÕœÌœ ⁄„Ì·.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' › Õ ‰„Ê–Ã «·›Ê« Ì— Ê⁄—÷ «·›Ê« Ì— «·Œ«’… »«·⁄„Ì· «·Õ«·Ì
+DoCmd.OpenForm "frm_PartiesInvoices", acNormal, , "PartyID=" & Me.PartyID
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "ÕœÀ Œÿ√: " & Err.Description, vbCritical
+    
+End Sub
+
+
+'Private Sub btnSave_Click()
+'    On Error GoTo ErrorHandler
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Dim isEdit As Boolean
+'    Dim nid As String
+'    Dim vBT As Variant
+'    Dim phoneExists As Boolean
+'
+'    '====  Õﬁﬁ √”«”Ì ====
+'    If Trim$(Nz(Me.cboPartyType, "")) = "" Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«— ‰Ê⁄ «·ÃÂ… (⁄„Ì·/„Ê—œ).", vbExclamation: Exit Sub
+'    End If
+'    If Trim$(Nz(Me.cboReferralSourceID, "")) = "" Then
+'        MsgBox "Ì—ÃÏ «Œ Ì«—  —‘ÌÕ «·⁄„Ì· „‰ («⁄·«‰ / ⁄„Ì· ”«»ﬁ / ...)", vbExclamation: Exit Sub
+'    End If
+'    If Trim$(Nz(Me.PartyName, "")) = "" Then
+'        MsgBox "Ì—ÃÏ ≈œŒ«· «”„ «·⁄„Ì·.", vbExclamation: Exit Sub
+'    End If
+'
+'    '==== «· Õﬁﬁ „‰ ÊÃÊœ —ﬁ„ «· ·Ì›Ê‰ (··Õ›Ÿ «·ÃœÌœ ›ﬁÿ) ====
+'    If Nz(Me.PartyID, 0) = 0 Then ' ≈–« ﬂ«‰ Õ›Ÿ ÃœÌœ
+'        If Trim$(Nz(Me.Phone, "")) <> "" Then
+'            Set db = CurrentDb
+'            ' «· Õﬁﬁ „‰ ÊÃÊœ «·—ﬁ„ ›Ì Phone √Ê Phone2
+'            phoneExists = DCount("*", "dbo_Parties", "Phone = '" & Replace(Me.Phone, "'", "''") & "' OR Phone2 = '" & Replace(Me.Phone, "'", "''") & "'") > 0
+'
+'            If phoneExists Then
+'                MsgBox "—ﬁ„ «· ·Ì›Ê‰ „”Ã· „”»ﬁ«. Ì—ÃÏ «” Œœ«„ —ﬁ„ ¬Œ—.", vbExclamation
+'                Exit Sub
+'            End If
+'        End If
+'
+'        ' «· Õﬁﬁ „‰ Phone2 √Ì÷« ≈–« ﬂ«‰ „œŒ·«
+'        If Trim$(Nz(Me.Phone2, "")) <> "" Then
+'            If Not phoneExists Then ' ≈–« ·„ Ìﬂ‰ Phone „ÊÃÊœ«°  Õﬁﬁ „‰ Phone2
+'                phoneExists = DCount("*", "dbo_Parties", "Phone = '" & Replace(Me.Phone2, "'", "''") & "' OR Phone2 = '" & Replace(Me.Phone2, "'", "''") & "'") > 0
+'            End If
+'
+'            If phoneExists Then
+'                MsgBox "—ﬁ„ «· ·Ì›Ê‰ «·À«‰Ì „”Ã· „”»ﬁ«. Ì—ÃÏ «” Œœ«„ —ﬁ„ ¬Œ—.", vbExclamation
+'                Exit Sub
+'            End If
+'        End If
+'    End If
+'
+'    Set db = CurrentDb
+'    Set rs = db.OpenRecordset("dbo_Parties", dbOpenDynaset, dbSeeChanges)
+'
+'    '====  ÕœÌœ ≈÷«›… √„  ⁄œÌ· ====
+'    If Nz(Me.PartyID, 0) > 0 Then
+'        rs.FindFirst "PartyID=" & CLng(Me.PartyID)
+'        If Not rs.NoMatch Then
+'            rs.Edit: isEdit = True
+'        Else
+'            rs.AddNew: isEdit = False
+'        End If
+'    Else
+'        rs.AddNew: isEdit = False
+'    End If
+'
+'    '====  ⁄»∆… «·ÕﬁÊ· „⁄  ÕÊÌ·«  ¬„‰… ··√‰Ê«⁄ ====
+'    ' ... (»ﬁÌ… «·ﬂÊœ ﬂ„« ÂÊ »œÊ‰  €ÌÌ—)
+'    rs!PartyName = Me.PartyName
+'    rs!ContactPerson = Me.ContactPerson
+'    rs!Phone = Me.Phone
+'    rs!Phone2 = Me.Phone2
+'    rs!Address = Me.Address
+'    rs!Email = Me.Email
+'    rs!Notes = Me.Notes
+'    rs!FloorNumber = Me.FloorNumber
+'
+'    If IsNumeric(Nz(Me.cboPartyType, Null)) Then
+'        rs!PartyType = CLng(Me.cboPartyType)
+'    Else
+'        rs!PartyType = Trim$(Nz(Me.cboPartyType, ""))
+'    End If
+'
+'    If Len(Trim$(Nz(Me.cboReferralSourceID, ""))) = 0 Then
+'        rs!ReferralSourceID = Null
+'    Else
+'        rs!ReferralSourceID = CLng(Me.cboReferralSourceID)
+'    End If
+'
+'    If Len(Trim$(Nz(Me.OpeningBalance, ""))) = 0 Then
+'        rs!OpeningBalance = Null
+'    Else
+'        rs!OpeningBalance = CCur(Me.OpeningBalance)
+'    End If
+'
+'    vBT = Nz(Me.BalanceType, Null)
+'    If IsNull(vBT) Or vBT = "" Then
+'        rs!BalanceType = Null
+'    ElseIf IsNumeric(vBT) Then
+'        rs!BalanceType = CLng(vBT)
+'    Else
+'        Select Case LCase$(CStr(vBT))
+'            Case "„œÌ‰", "debit"
+'                If rs.Fields("BalanceType").Type = dbBoolean Then
+'                    rs!BalanceType = True
+'                Else
+'                    rs!BalanceType = 1
+'                End If
+'            Case "œ«∆‰", "credit"
+'                If rs.Fields("BalanceType").Type = dbBoolean Then
+'                    rs!BalanceType = False
+'                Else
+'                    rs!BalanceType = 0
+'                End If
+'            Case Else
+'                If rs.Fields("BalanceType").Type = dbText Or rs.Fields("BalanceType").Type = dbLongText Then
+'                    rs!BalanceType = CStr(vBT)
+'                Else
+'                    rs!BalanceType = Null
+'                End If
+'        End Select
+'    End If
+'
+'    rs!IsActive = True
+'    rs!NationalID = IIf(Len(nid) = 0, Null, nid)
+'
+'    If Not isEdit Then
+'        rs!CreatedBy = Nz(currentUser.UserName)
+'    End If
+'
+'    rs.Update
+'    rs.Close: Set rs = Nothing: Set db = Nothing
+'
+'    If isEdit Then
+'        MsgBox " „  ÕœÌÀ «·»Ì«‰«  »‰Ã«Õ.", vbInformation
+'    Else
+'        MsgBox " „ ≈÷«›… «·»Ì«‰«  »‰Ã«Õ.", vbInformation
+'    End If
+'
+'    Me.Requery
+'
+'    '  ›—Ì€ «·ÕﬁÊ· («Œ Ì«—Ì)
+'    Me.PartyID = Null
+'    Me.PartyName = Null
+'    Me.ContactPerson = Null
+'    Me.cboPartyType = Null
+'    Me.Phone = Null
+'    Me.Phone2 = Null
+'    Me.Address = Null
+'    Me.FloorNumber = Null
+'    Me.Email = Null
+'    Me.cboReferralSourceID = Null
+'    Me.OpeningBalance = Null
+'    Me.BalanceType = Null
+'    Me.IsActive = False
+'    Me.NationalID = Null
+'    Me.CreatedBy = Null
+'    Me.Notes = Null
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·Õ›Ÿ/«· ⁄œÌ·: " & Err.Number & " - " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub btnStatment_Click()
+'   On Error GoTo ErrHandler
+'
+'    Dim lngPartyID As Long
+'
+'    If IsNull(Me.PartyID) Then
+'        MsgBox "„‰ ›÷·ﬂ «Œ — ⁄„Ì· √Ê „Ê—œ √Ê·«.", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    lngPartyID = Me.PartyID
+'
+'    ' › Õ «· ﬁ—Ì— „ ›· — ⁄·Ï «·⁄„Ì· «·Õ«·Ì
+'    DoCmd.OpenReport "rpt_BalanseCustomer", acViewPreview, , "PartyID=" & lngPartyID
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "ÕœÀ Œÿ√ √À‰«¡ › Õ «· ﬁ—Ì—: " & Err.Description, vbCritical
+'End Sub
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim isEdit As Boolean
+    Dim nID As String
+    Dim vBT As Variant
+    Dim phoneExists As Boolean
+    Dim dataDoneValue As String
+    
+    '====  Õﬁﬁ √”«”Ì ====
+    If Trim$(Nz(Me.cboPartyType, "")) = "" Then
+        MsgBox "Ì—ÃÏ «Œ Ì«— ‰Ê⁄ «·ÃÂ… (⁄„Ì·/„Ê—œ).", vbExclamation: Exit Sub
+    End If
+    If Trim$(Nz(Me.cboReferralSourceID, "")) = "" Then
+        MsgBox "Ì—ÃÏ «Œ Ì«—  —‘ÌÕ «·⁄„Ì· „‰ («⁄·«‰ / ⁄„Ì· ”«»ﬁ / ...)", vbExclamation: Exit Sub
+    End If
+    If Trim$(Nz(Me.PartyName, "")) = "" Then
+        MsgBox "Ì—ÃÏ ≈œŒ«· «”„ «·⁄„Ì·.", vbExclamation: Exit Sub
+    End If
+    
+    '==== «· Õﬁﬁ „‰ ÊÃÊœ —ﬁ„ «· ·Ì›Ê‰ (··Õ›Ÿ «·ÃœÌœ ›ﬁÿ) ====
+    If Nz(Me.PartyID, 0) = 0 Then ' ≈–« ﬂ«‰ Õ›Ÿ ÃœÌœ
+        If Trim$(Nz(Me.Phone, "")) <> "" Then
+            Set db = CurrentDb
+            ' «· Õﬁﬁ „‰ ÊÃÊœ «·—ﬁ„ ›Ì Phone √Ê Phone2
+            phoneExists = DCount("*", "dbo_Parties", "Phone = '" & Replace(Me.Phone, "'", "''") & "' OR Phone2 = '" & Replace(Me.Phone, "'", "''") & "'") > 0
+            
+            If phoneExists Then
+                MsgBox "—ﬁ„ «· ·Ì›Ê‰ „”Ã· „”»ﬁ«. Ì—ÃÏ «” Œœ«„ —ﬁ„ ¬Œ—.", vbExclamation, "COCOBOLO SYSTEM"
+                Exit Sub
+            End If
+        End If
+        
+        ' «· Õﬁﬁ „‰ Phone2 √Ì÷« ≈–« ﬂ«‰ „œŒ·«
+        If Trim$(Nz(Me.Phone2, "")) <> "" Then
+            If Not phoneExists Then ' ≈–« ·„ Ìﬂ‰ Phone „ÊÃÊœ«°  Õﬁﬁ „‰ Phone2
+                phoneExists = DCount("*", "dbo_Parties", "Phone = '" & Replace(Me.Phone2, "'", "''") & "' OR Phone2 = '" & Replace(Me.Phone2, "'", "''") & "'") > 0
+            End If
+            
+            If phoneExists Then
+                MsgBox "—ﬁ„ «· ·Ì›Ê‰ «·À«‰Ì „”Ã· „”»ﬁ«. Ì—ÃÏ «” Œœ«„ —ﬁ„ ¬Œ—.", vbExclamation, "COCOBOLO SYSTEM"
+                Exit Sub
+            End If
+        End If
+    End If
+    
+    '====  ÕœÌœ ﬁÌ„… dataDone »‰«¡ ⁄·Ï «ﬂ „«· «·»Ì«‰«  ====
+    If Not IsNull(Me.PartyName) And Trim(Me.PartyName & "") <> "" And _
+       Not IsNull(Me.Phone) And Trim(Me.Phone & "") <> "" And _
+       Not IsNull(Me.cboReferralSourceID) And _
+       Not IsNull(Me.FloorNumber) And Trim(Me.FloorNumber & "") <> "" And _
+       Not IsNull(Me.Address) And Trim(Me.Address & "") <> "" And _
+       Not IsNull(Me.ContactPerson) And Trim(Me.ContactPerson & "") <> "" Then
+        dataDoneValue = "done"
+    Else
+        dataDoneValue = ""
+    End If
+    
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_Parties", dbOpenDynaset, dbSeeChanges)
+    
+    '====  ÕœÌœ ≈÷«›… √„  ⁄œÌ· ====
+    If Nz(Me.PartyID, 0) > 0 Then
+        rs.FindFirst "PartyID=" & CLng(Me.PartyID)
+        If Not rs.NoMatch Then
+            rs.Edit: isEdit = True
+        Else
+            rs.AddNew: isEdit = False
+        End If
+    Else
+        rs.AddNew: isEdit = False
+    End If
+    
+    '====  ⁄»∆… «·ÕﬁÊ· „⁄  ÕÊÌ·«  ¬„‰… ··√‰Ê«⁄ ====
+    rs!PartyName = Me.PartyName
+    rs!ContactPerson = Me.ContactPerson
+    rs!Phone = Me.Phone
+    rs!Phone2 = Me.Phone2
+    rs!Address = Me.Address
+    rs!Email = Me.Email
+    rs!Notes = Me.Notes
+    rs!FloorNumber = Me.FloorNumber
+    rs!dataDone = dataDoneValue  ' ? ≈÷«›…  ÕœÌÀ Õﬁ· dataDone
+    
+    If IsNumeric(Nz(Me.cboPartyType, Null)) Then
+        rs!PartyType = CLng(Me.cboPartyType)
+    Else
+        rs!PartyType = Trim$(Nz(Me.cboPartyType, ""))
+    End If
+    
+    If Len(Trim$(Nz(Me.cboReferralSourceID, ""))) = 0 Then
+        rs!ReferralSourceID = Null
+    Else
+        rs!ReferralSourceID = CLng(Me.cboReferralSourceID)
+    End If
+    
+    If Len(Trim$(Nz(Me.cboReferralSourceClient, ""))) = 0 Then
+        rs!ReferralSourceClient = Null
+    Else
+        rs!ReferralSourceClient = CLng(Me.cboReferralSourceClient)
+    End If
+    
+    If Len(Trim$(Nz(Me.OpeningBalance, ""))) = 0 Then
+        rs!OpeningBalance = Null
+    Else
+        rs!OpeningBalance = CCur(Me.OpeningBalance)
+    End If
+    
+    vBT = Nz(Me.BalanceType, Null)
+    If IsNull(vBT) Or vBT = "" Then
+        rs!BalanceType = Null
+    ElseIf IsNumeric(vBT) Then
+        rs!BalanceType = CLng(vBT)
+    Else
+        Select Case LCase$(CStr(vBT))
+            Case "„œÌ‰", "debit"
+                If rs.Fields("BalanceType").Type = dbBoolean Then
+                    rs!BalanceType = True
+                Else
+                    rs!BalanceType = 1
+                End If
+            Case "œ«∆‰", "credit"
+                If rs.Fields("BalanceType").Type = dbBoolean Then
+                    rs!BalanceType = False
+                Else
+                    rs!BalanceType = 0
+                End If
+            Case Else
+                If rs.Fields("BalanceType").Type = dbText Or rs.Fields("BalanceType").Type = dbLongText Then
+                    rs!BalanceType = CStr(vBT)
+                Else
+                    rs!BalanceType = Null
+                End If
+        End Select
+    End If
+    
+    rs!IsActive = True
+    rs!NationalID = IIf(Len(nID) = 0, Null, nID)
+    
+    If Not isEdit Then
+        rs!CreatedBy = Nz(currentUser.UserName)
+    End If
+    
+    rs.Update
+    rs.Close: Set rs = Nothing: Set db = Nothing
+    
+    ' ⁄—÷ —”«·…  Ê÷Õ Õ«·… «ﬂ „«· «·»Ì«‰« 
+    If dataDoneValue = "done" Then
+        MsgBox " „ Õ›Ÿ «·»Ì«‰«  »‰Ã«Õ - ? »Ì«‰«  «·⁄„Ì· „ﬂ „·…", vbInformation, "COCOBOLO SYSTEM"
+    Else
+        MsgBox " „ Õ›Ÿ «·»Ì«‰«  »‰Ã«Õ - ? »Ì«‰«  «·⁄„Ì· €Ì— „ﬂ „·…", vbInformation, "COCOBOLO SYSTEM"
+    End If
+    
+    Me.Requery
+'    Forms!frm_PartiesList.Requery
+    '  ›—Ì€ «·ÕﬁÊ· («Œ Ì«—Ì)
+    Me.PartyID = Null
+    Me.PartyName = Null
+    Me.ContactPerson = Null
+    Me.cboPartyType = Null
+    Me.Phone = Null
+    Me.Phone2 = Null
+    Me.Address = Null
+    Me.FloorNumber = Null
+    Me.Email = Null
+    Me.cboReferralSourceID = Null
+    Me.cboReferralSourceClient = Null
+    Me.OpeningBalance = Null
+    Me.BalanceType = Null
+    Me.IsActive = False
+    Me.NationalID = Null
+    Me.CreatedBy = Null
+    Me.Notes = Null
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "ÕœÀ Œÿ√ √À‰«¡ «·Õ›Ÿ/«· ⁄œÌ·: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+Private Sub btnStatment_Click()
+If Not currentUser.HasPermission("rpt_BalanseCustomer") Then
+        
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+
+
+
+DoCmd.OpenReport "rpt_BalanseCustomer", acViewPreview, , "PartyID=" & Me.PartyID
+End Sub
+
+Private Sub cboReferralSourceID_AfterUpdate()
+If Me.cboReferralSourceID.Column(1) = "⁄„Ì· ”«»ﬁ" Then
+Me.cboReferralSourceClient.Visible = True
+Else
+Me.cboReferralSourceClient.Visible = False
+End If
+End Sub
+
+Private Sub Form_Current()
+If Me.cboReferralSourceID.Column(1) = "⁄„Ì· ”«»ﬁ" Then
+Me.cboReferralSourceClient.Visible = True
+Else
+Me.cboReferralSourceClient.Visible = False
+End If
+End Sub
+
+Private Sub Form_Load()
+    Dim PRID As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "·„ Ì „  ÕœÌœ „ÊŸ› ··⁄—÷.", vbExclamation
+       ' Me.btnSaveExpense.Visible = True
+       ' Me.btnEdit.Visible = False
+        Me.btnInvoices.Visible = False
+        Me.btnStatment.Visible = False
+        Me.Label66.Caption = "≈÷«›… ⁄„Ì‹‹‹‹‹· ÃœÌœ"
+        Me.CreatedBy.Visible = False
+        Exit Sub
+        Else
+       '  Me.btnSaveExpense.Visible = False
+       ' Me.btnEdit.Visible = True
+        Me.btnInvoices.Visible = True
+        Me.btnStatment.Visible = True
+        Me.Label66.Caption = " ⁄œÌ· »Ì«‰«  «·⁄„Ì‹‹‹‹· «·Õ«·Ï"
+        Me.CreatedBy.Visible = True
+    End If
+
+    PRID = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Parties WHERE PartyID= " & PRID
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+       Me.PartyID = Nz(rs!PartyID, "")
+       Me.PartyName = Nz(rs!PartyName, "")
+       Me.cboPartyType = Nz(rs!PartyType, "")
+       Me.Phone = Nz(rs!Phone, "")
+       Me.Phone2 = Nz(rs!Phone2, "")
+       Me.Address = Nz(rs!Address, "")
+       Me.Email = Nz(rs!Email, "")
+       Me.IsActive = Nz(rs!IsActive, "")
+       Me.NationalID = Nz(rs!NationalID, "")
+       Me.cboReferralSourceID = Nz(rs!ReferralSourceID, "")
+       Me.cboReferralSourceClient = Nz(rs!ReferralSourceClient, "")
+       Me.ContactPerson = Nz(rs!ContactPerson, "")
+       Me.CreatedBy = Nz(rs!CreatedBy, "")
+       Me.FloorNumber = Nz(rs!FloorNumber, "")
+       Me.Notes = Nz(rs!Notes, "")
+        ' ... «„·√ »«ﬁÌ «·ÕﬁÊ· »‰›” «·ÿ—Ìﬁ…
+    Else
+        MsgBox "«·⁄„Ì·/«·„Ê—œ €Ì— „ÊÃÊœ.", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "€Ì— „’—Õ ·ﬂ »«·œŒÊ·", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub PartyName_AfterUpdate()
+Me.ContactPerson = Me.PartyName
+End Sub

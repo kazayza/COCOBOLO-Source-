@@ -1,0 +1,27 @@
+Form: frm_NotificationsAll
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		„—”· «·«‘⁄«—
+Label1		Label		«·«‘⁄«—
+Label2		Label		 ›«’Ì· «·«‘⁄«— .........
+Label4		Label		RelatedID
+Label5		Label		RecipientUser
+Label34		Label		FormName
+Text81		TextBox		
+txtSearch		TextBox		
+btnSearch		Button		    »ÕÀ
+btnClearSearch		Button		    «·€«¡ «·»ÕÀ
+Text79		TextBox		=Count([Title])
+Label85		Label		FormName
+Label100		Label		CreatedAt
+NotificationID		TextBox		NotificationID
+Title		TextBox		Title
+Message		TextBox		Message
+RelatedID		TextBox		RelatedID
+RecipientUser		TextBox		RecipientUser
+Command61		Button		⁄—÷
+CreatedBy		TextBox		CreatedBy
+FormName		TextBox		FormName
+CreatedAt		TextBox		CreatedAt
