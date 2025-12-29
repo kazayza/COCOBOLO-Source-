@@ -1,0 +1,42 @@
+﻿Option Compare Database
+
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+
+    If IsNull(Me.GroupName) Or Trim(Me.GroupName) = "" Then
+        MsgBox "من فضلك أدخل اسم المجموعة", vbExclamation
+        Exit Sub
+    End If
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_ProductGroups", dbOpenDynaset, dbSeeChanges)
+
+    rs.AddNew
+    rs!GroupName = Me.GroupName
+    rs!CreatedBy = currentUser.UserName  ' يُفضل تخزين اسم المستخدم في متغير عام
+    rs.Update
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    MsgBox "تم حفظ المجموعة بنجاح", vbInformation
+    Me.Requery
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء حفظ المجموعة: " & Err.Description, vbCritical
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

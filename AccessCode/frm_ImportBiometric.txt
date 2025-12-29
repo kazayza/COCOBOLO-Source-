@@ -1,0 +1,2644 @@
+﻿Option Compare Database
+
+Private Sub btnBrowseFile_Click()
+    Dim fd As fileDialog
+    Set fd = Application.fileDialog(3) ' msoFileDialogFilePicker
+    
+    With fd
+        .AllowMultiSelect = False
+        .Title = "اختر ملف البصمة"
+        .Filters.Clear
+        .Filters.Add "Text Files", "*.dat;*.txt;*.xlsx"
+        If .Show = True Then
+            Me.txtFilePath = .SelectedItems(1)
+        End If
+    End With
+End Sub
+'===============================
+'هذا الكود شغال تمام للاستيراد لما كانت الجداول محليه وليست سيرفر
+'===============================
+'Private Sub btnImport_Click()
+'    Dim importMonth As Integer
+'    Dim importYear As Integer
+'
+'    If Me.txtFilePath = "" Then
+'        MsgBox "اختر ملف البصمة أولاً", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Not IsNull(Me.cboMonth) Then importMonth = Me.cboMonth
+'    If Not IsNull(Me.cboYear) Then importYear = Me.cboYear
+'
+'    ' استدعاء الكود الجديد مع ProgressBar
+'    Call ImportBiometricBATWithProgress(Me.txtFilePath, Me, importMonth, importYear)
+'
+'    ' تجهيز جدول الملخص اليومي
+'    Call ProcessAttendance
+'
+'    ' إعادة تعيين ProgressBar
+'    Me.pbImport.Value = 0
+'
+'    MsgBox "تم الاستيراد وتجهيز ملخص الحضور اليومي.", vbInformation
+'End Sub
+''الكو ده شغال استيراد منملفالبصمه الى جدول حركات البصمه
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' إظهار شريط التقدم وإخفاء الزر مؤقتاً
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents ' للتأكد من تحديث الواجهة
+'
+'    ' التأكد من تحديد الملف والشهر والسنة
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "يجب تحديد ملف البصمة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    ' تحديد الشهر والسنة المحددين
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر المحدد
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' فتح ملف البصمة للقراءة
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "الملف المحدد غير موجود", vbExclamation, "خطأ"
+'        GoTo CleanUp
+'    End If
+'
+'    ' حساب عدد الأسطر في الملف لتحديد شريط التقدم
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "الملف فارغ أو لا يمكن قراءته", vbExclamation, "خطأ"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "جاري تحضير البيانات... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    ' الاتصال بقاعدة البيانات
+'    Dim db As DAO.Database
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    Set db = CurrentDb()
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    currentLine = 0
+'
+'    ' بدء المعاملة
+'    ws.BeginTrans
+'
+'    ' قراءة الملف سطراً سطراً
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        ' تحديث شريط التقدم كل 50 سطر أو عند نسبة مئوية محددة
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "جاري استيراد البيانات... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " من " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        ' تخطي الأسطر الفارغة
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        ' تقسيم السطر إلى أعمدة (مفصولة بعلامات Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' التأكد من وجود عدد كافٍ من الأعمدة
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' استخراج البيانات من الأعمدة
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        ' تحقق من صحة الكود البيومتري
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        ' تحويل تاريخ ووقت التسجيل
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' استخراج الوقت فقط من التاريخ/الوقت
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' التحقق مما إذا كان التاريخ ضمن النطاق المحدد
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' إدخال السجل في الجدول
+'            Dim sql As String
+'            sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                  "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'            db.Execute sql, dbFailOnError
+'            successCount = successCount + 1
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    ' تأكيد المعاملة
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = "تم الانتهاء من الاستيراد بنجاح!"
+'    DoEvents
+'
+'    ' تأخير بسيط لرؤية شريط التقدم مكتملاً
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox "تم استيراد البيانات بنجاح!" & vbCrLf & _
+'           "عدد السجلات المستوردة: " & successCount & vbCrLf & _
+'           "عدد الأخطاء: " & errorCount, vbInformation, "نتيجة الاستيراد"
+'
+'CleanUp:
+'    ' إخفاء شريط التقدم وإعادة تفعيل الزر
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' التراجع عن المعاملة في حالة حدوث خطأ
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    MsgBox "حدث خطأ أثناء الاستيراد: " & Err.Description, vbCritical, "خطأ"
+'    GoTo CleanUp
+'End Sub
+'والكود ده شغال برده  التانى
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' إظهار شريط التقدم وإخفاء الزر مؤقتاً
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents ' للتأكد من تحديث الواجهة
+'
+'    ' التأكد من تحديد الملف والشهر والسنة
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "يجب تحديد ملف البصمة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    ' تحديد الشهر والسنة المحددين
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر المحدد
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' فتح ملف البصمة للقراءة
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "الملف المحدد غير موجود", vbExclamation, "خطأ"
+'        GoTo CleanUp
+'    End If
+'
+'    ' حساب عدد الأسطر في الملف لتحديد شريط التقدم
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "الملف فارغ أو لا يمكن قراءته", vbExclamation, "خطأ"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "جاري تحضير البيانات... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    ' الاتصال بقاعدة البيانات
+'    Dim db As DAO.Database
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    Set db = CurrentDb()
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim duplicateCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    duplicateCount = 0
+'    currentLine = 0
+'
+'    ' بدء المعاملة
+'    ws.BeginTrans
+'
+'    ' قراءة الملف سطراً سطراً
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        ' تحديث شريط التقدم كل 50 سطر أو عند نسبة مئوية محددة
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "جاري استيراد البيانات... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " من " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        ' تخطي الأسطر الفارغة
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        ' تقسيم السطر إلى أعمدة (مفصولة بعلامات Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' التأكد من وجود عدد كافٍ من الأعمدة
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' استخراج البيانات من الأعمدة
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        ' تحقق من صحة الكود البيومتري
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        ' تحويل تاريخ ووقت التسجيل
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' استخراج الوقت فقط من التاريخ/الوقت
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' التحقق مما إذا كان التاريخ ضمن النطاق المحدد
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' التحقق من عدم وجود البيانات مسبقاً في الجدول
+'            Dim rs As DAO.Recordset
+'            Dim checkSql As String
+'
+'            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+'                       "WHERE BiometricCode = " & bioCode & _
+'                       " AND LogDate = #" & Format(logDate, "yyyy-mm-dd") & "#" & _
+'                       " AND LogTime = #" & logTime & "#"
+'
+'            Set rs = db.OpenRecordset(checkSql)
+'
+'            If rs!RecordCount = 0 Then
+'                ' إدخال السجل في الجدول
+'                Dim sql As String
+'                sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'                db.Execute sql, dbFailOnError
+'                successCount = successCount + 1
+'            Else
+'                duplicateCount = duplicateCount + 1
+'            End If
+'
+'            rs.Close
+'            Set rs = Nothing
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    ' تأكيد المعاملة
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = "تم الانتهاء من الاستيراد بنجاح!"
+'    DoEvents
+'
+'    ' تأخير بسيط لرؤية شريط التقدم مكتملاً
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox "تم استيراد البيانات بنجاح!" & vbCrLf & _
+'           "عدد السجلات المستوردة: " & successCount & vbCrLf & _
+'           "عدد السجلات المكررة (تم تخطيها): " & duplicateCount & vbCrLf & _
+'           "عدد الأخطاء: " & errorCount, vbInformation, "نتيجة الاستيراد"
+'
+'CleanUp:
+'    ' إخفاء شريط التقدم وإعادة تفعيل الزر
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' التراجع عن المعاملة في حالة حدوث خطأ
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    MsgBox "حدث خطأ أثناء الاستيراد: " & Err.Description, vbCritical, "خطأ"
+'    GoTo CleanUp
+'End Sub
+'=================================================================================================
+'هذا الكود شغال بس بطىء بسبب الجدول المؤقت الى اتضاف لانه بيمنع تكرار البيانات اذا كانت مضافة سابقة
+'==================================================================================================
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' إظهار شريط التقدم وإخفاء الزر مؤقتاً
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents
+'
+'    ' التأكد من تحديد الملف والشهر والسنة
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "يجب تحديد ملف البصمة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    ' تحديد الشهر والسنة المحددين
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر المحدد
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' الاتصال بقاعدة البيانات للتحقق
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Set db = CurrentDb()
+'
+'    ' ========== التحقق إذا كان الشهر قد تم استيراده من قبل ==========
+'    Dim checkMonthSql As String
+'    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+'                    "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        rs.Close
+'        Set rs = Nothing
+'
+'        If MsgBox("لقد تم استيراد بيانات " & selectedMonth & "/" & selectedYear & " من قبل." & vbCrLf & _
+'                  "هل تريد الاستيراد مرة أخرى؟", vbYesNo + vbQuestion, "بيانات موجودة مسبقاً") = vbNo Then
+'            Set db = Nothing
+'            GoTo CleanUp
+'        End If
+'    End If
+'
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    ' فتح ملف البصمة للقراءة
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "الملف المحدد غير موجود", vbExclamation, "خطأ"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    ' حساب عدد الأسطر في الملف
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "الملف فارغ أو لا يمكن قراءته", vbExclamation, "خطأ"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "جاري تحضير البيانات... 0%"
+'    DoEvents
+'
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'
+'    ' محاولة حذف الجدول المؤقت إذا كان موجوداً (بمحاولات متعددة)
+'    Dim tableDropped As Boolean
+'    tableDropped = False
+'    Dim attempts As Integer
+'    attempts = 0
+'
+'    On Error Resume Next
+'    Do While attempts < 5 And Not tableDropped
+'        db.Execute "DROP TABLE TempImport", dbFailOnError
+'        If Err.Number = 0 Then
+'            tableDropped = True
+'        Else
+'            attempts = attempts + 1
+'            ' الانتظار لمدة ثانية قبل المحاولة مرة أخرى
+'            Dim waitTime As Date
+'            waitTime = DateAdd("s", 1, Now())
+'            Do While Now() < waitTime
+'                DoEvents
+'            Loop
+'        End If
+'    Loop
+'    On Error GoTo ErrorHandler
+'
+'    ' إنشاء جدول مؤقت بنفس هيكل الجدول الرئيسي
+'    db.Execute "CREATE TABLE TempImport (BiometricCode LONG, LogDate DATE, LogTime TEXT(10))", dbFailOnError
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    Dim recordCount As Long
+'    Dim errorCount As Long
+'    Dim currentLine As Long
+'    recordCount = 0
+'    errorCount = 0
+'    currentLine = 0
+'
+'    ' بدء المعاملة
+'    ws.BeginTrans
+'
+'    ' قراءة الملف سطراً سطراً
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        ' تحديث شريط التقدم
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "جاري تحميل البيانات... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " من " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        ' تخطي الأسطر الفارغة
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        ' تقسيم السطر إلى أعمدة
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' التأكد من وجود عدد كافٍ من الأعمدة
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' استخراج البيانات من الأعمدة
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        ' تحقق من صحة الكود البيومتري
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        ' تحويل تاريخ ووقت التسجيل
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' استخراج الوقت فقط من التاريخ/الوقت
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' التحقق مما إذا كان التاريخ ضمن النطاق المحدد
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' إدخال السجل في الجدول المؤقت
+'            Dim tempSql As String
+'            tempSql = "INSERT INTO TempImport (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, '" & logTime & "')"
+'
+'            db.Execute tempSql
+'            recordCount = recordCount + 1
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    Close #fileNum
+'
+'    ' إدراج البيانات في الجدول الرئيسي مع منع التكرار
+'    Me.lblStatus.Caption = "جاري إدخال البيانات في الجدول الرئيسي..."
+'    DoEvents
+'
+'    ' التحقق من وجود سجلات في الجدول المؤقت قبل المحاولة
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM TempImport", dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        Dim appendSql As String
+'        appendSql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                    "SELECT t.BiometricCode, t.LogDate, t.LogTime FROM TempImport t " & _
+'                    "WHERE NOT EXISTS (" & _
+'                    "   SELECT 1 FROM dbo_BiometricLog b " & _
+'                    "   WHERE b.BiometricCode = t.BiometricCode " & _
+'                    "   AND b.LogDate = t.LogDate " & _
+'                    "   AND b.LogTime = t.LogTime" & _
+'                    ")"
+'
+'        db.Execute appendSql
+'    End If
+'
+'    rs.Close
+'    Set rs = Nothing
+'
+'    ' محاولة حذف الجدول المؤقت (بمحاولات متعددة)
+'    attempts = 0
+'    tableDropped = False
+'
+'    On Error Resume Next
+'    Do While attempts < 5 And Not tableDropped
+'        db.Execute "DROP TABLE TempImport", dbFailOnError
+'        If Err.Number = 0 Then
+'            tableDropped = True
+'        Else
+'            attempts = attempts + 1
+'            ' الانتظار لمدة ثانية قبل المحاولة مرة أخرى
+'            waitTime = DateAdd("s", 1, Now())
+'            Do While Now() < waitTime
+'                DoEvents
+'            Loop
+'        End If
+'    Loop
+'    On Error GoTo ErrorHandler
+'
+'    ' تأكيد المعاملة
+'    ws.CommitTrans
+'
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = "تم الانتهاء من الاستيراد بنجاح!"
+'    DoEvents
+'
+'    ' تأخير بسيط لرؤية شريط التقدم مكتملاً
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox "تم استيراد البيانات بنجاح!" & vbCrLf & _
+'           "عدد السجلات المحملة: " & recordCount & vbCrLf & _
+'           "عدد الأخطاء: " & errorCount, vbInformation, "نتيجة الاستيراد"
+'
+'CleanUp:
+'    ' تنظيف الموارد
+'    On Error Resume Next
+'    Close #fileNum
+'
+'    ' محاولة إغلاق أي recordset مفتوح وإسقاط الجدول المؤقت
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    If Not db Is Nothing Then
+'        attempts = 0
+'        tableDropped = False
+'
+'        Do While attempts < 3 And Not tableDropped
+'            db.Execute "DROP TABLE TempImport", dbFailOnError
+'            If Err.Number = 0 Then
+'                tableDropped = True
+'            Else
+'                attempts = attempts + 1
+'                waitTime = DateAdd("s", 1, Now())
+'                Do While Now() < waitTime
+'                    DoEvents
+'                Loop
+'            End If
+'        Loop
+'
+'        Set db = Nothing
+'    End If
+'
+'    If Not ws Is Nothing Then Set ws = Nothing
+'
+'    ' إخفاء شريط التقدم وإعادة تفعيل الزر
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' التراجع عن المعاملة في حالة حدوث خطأ
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    ' عرض تفاصيل الخطأ للمساعدة في التشخيص
+'    Dim errMsg As String
+'    errMsg = "حدث خطأ أثناء الاستيراد: " & Err.Description & vbCrLf & _
+'             "رقم الخطأ: " & Err.Number & vbCrLf & _
+'             "المصدر: " & Err.Source
+'
+'    ' إذا كان الخطأ متعلقاً بالجدول المؤقت
+'    If Err.Number = 3211 Then
+'        errMsg = errMsg & vbCrLf & "الجدول المؤقت قيد الاستخدام. سيتم المحاولة مرة أخرى تلقائياً."
+'
+'        ' المحاولة مرة أخرى بعد فترة وجيزة
+'        Dim retryTime As Date
+'        retryTime = DateAdd("s", 2, Now())
+'        Do While Now() < retryTime
+'            DoEvents
+'        Loop
+'
+'        Resume
+'    End If
+'
+'    MsgBox errMsg, vbCritical, "خطأ"
+'    GoTo CleanUp
+'End Sub
+'====================
+'مشكلة التوقيت
+'====================
+'Private Sub cmdImport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' إظهار شريط التقدم وإخفاء الزر مؤقتاً
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdImport.Enabled = False
+'    DoEvents
+'
+'    ' التأكد من تحديد الملف والشهر والسنة
+'    If IsNull(Me.txtFilePath) Or Me.txtFilePath = "" Then
+'        MsgBox "يجب تحديد ملف البصمة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        GoTo CleanUp
+'    End If
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    ' تحديد الشهر والسنة المحددين
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر المحدد
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    ' التحقق إذا كان الشهر قد تم استيراده من قبل
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Set db = CurrentDb()
+'
+'    Dim checkMonthSql As String
+'    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+'                    "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+'
+'    If rs!recCount > 0 Then
+'        rs.Close
+'        Set rs = Nothing
+'
+'        If MsgBox("لقد تم استيراد بيانات " & selectedMonth & "/" & selectedYear & " من قبل." & vbCrLf & _
+'                  "هل تريد الاستيراد مرة أخرى؟", vbYesNo + vbQuestion, "بيانات موجودة مسبقاً") = vbNo Then
+'            Set db = Nothing
+'            GoTo CleanUp
+'        End If
+'    End If
+'
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'
+'    ' فتح ملف البصمة للقراءة
+'    Dim filePath As String
+'    filePath = Me.txtFilePath.Value
+'
+'    If Dir(filePath) = "" Then
+'        MsgBox "الملف المحدد غير موجود", vbExclamation, "خطأ"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    ' حساب عدد الأسطر في الملف
+'    Dim totalLines As Long
+'    totalLines = CountFileLines(filePath)
+'    If totalLines = 0 Then
+'        MsgBox "الملف فارغ أو لا يمكن قراءته", vbExclamation, "خطأ"
+'        Set db = Nothing
+'        GoTo CleanUp
+'    End If
+'
+'    Me.pbImport.Max = totalLines
+'    Me.lblStatus.Caption = "جاري تحضير البيانات... 0%"
+'    DoEvents
+'
+'    Dim fileNum As Integer
+'    fileNum = FreeFile()
+'
+'    Open filePath For Input As #fileNum
+'
+'    Dim successCount As Long
+'    Dim errorCount As Long
+'    Dim duplicateCount As Long
+'    Dim currentLine As Long
+'    successCount = 0
+'    errorCount = 0
+'    duplicateCount = 0
+'    currentLine = 0
+'
+'    ' بدء المعاملة
+'    Dim ws As DAO.Workspace
+'    Set ws = DBEngine.Workspaces(0)
+'    ws.BeginTrans
+'
+'    ' قراءة الملف سطراً سطراً
+'    Dim lineText As String
+'
+'    Do While Not EOF(fileNum)
+'        Line Input #fileNum, lineText
+'        currentLine = currentLine + 1
+'
+'        ' تحديث شريط التقدم كل 50 سطر أو عند نسبة مئوية محددة
+'        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+'            Me.pbImport.Value = currentLine
+'            Me.lblStatus.Caption = "جاري استيراد البيانات... " & _
+'                Format(currentLine / totalLines, "0%") & " (" & currentLine & " من " & totalLines & ")"
+'            DoEvents
+'        End If
+'
+'        ' تخطي الأسطر الفارغة
+'        If Trim(lineText) = "" Then GoTo NextLine
+'
+'        ' تقسيم السطر إلى أعمدة (مفصولة بعلامات Tab)
+'        Dim parts() As String
+'        parts = Split(lineText, vbTab)
+'
+'        ' التأكد من وجود عدد كافٍ من الأعمدة
+'        If UBound(parts) < 1 Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        Dim bioCode As String
+'        Dim logDateTime As String
+'        Dim logDate As Date
+'        Dim logTime As String
+'
+'        ' استخراج البيانات من الأعمدة
+'        bioCode = Trim(parts(0))
+'        logDateTime = Trim(parts(1))
+'
+'        ' تحقق من صحة الكود البيومتري
+'        If Not IsNumeric(bioCode) Then
+'            errorCount = errorCount + 1
+'            GoTo NextLine
+'        End If
+'
+'        ' تحويل تاريخ ووقت التسجيل
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' استخراج الوقت فقط من التاريخ/الوقت
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+'
+'        ' التحقق مما إذا كان التاريخ ضمن النطاق المحدد
+'        If logDate >= startDate And logDate <= endDate Then
+'            ' التحقق من عدم وجود البيانات مسبقاً في الجدول
+'            Dim checkSql As String
+'            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+'                       "WHERE BiometricCode = " & bioCode & _
+'                       " AND LogDate = #" & Format(logDate, "yyyy-mm-dd") & "#" & _
+'                       " AND LogTime = #" & logTime & "#"
+'
+'            Set rs = db.OpenRecordset(checkSql, dbOpenSnapshot)
+'
+'            If rs!recordCount = 0 Then
+'                ' إدخال السجل في الجدول
+'                Dim sql As String
+'                sql = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) " & _
+'                      "VALUES (" & bioCode & ", #" & Format(logDate, "yyyy-mm-dd") & "#, #" & logTime & "#)"
+'
+'                db.Execute sql
+'                successCount = successCount + 1
+'            Else
+'                duplicateCount = duplicateCount + 1
+'            End If
+'
+'            rs.Close
+'            Set rs = Nothing
+'        End If
+'
+'NextLine:
+'    Loop
+'
+'    ' تأكيد المعاملة
+'    ws.CommitTrans
+'
+'    Close #fileNum
+'    Set db = Nothing
+'    Set ws = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية
+'    Me.pbImport.Value = Me.pbImport.Max
+'    Me.lblStatus.Caption = "تم الانتهاء من الاستيراد بنجاح!"
+'    DoEvents
+'
+'    ' تأخير بسيط لرؤية شريط التقدم مكتملاً
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 1, Now())
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    MsgBox "تم استيراد البيانات بنجاح!" & vbCrLf & _
+'           "عدد السجلات المستوردة: " & successCount & vbCrLf & _
+'           "عدد السجلات المكررة (تم تخطيها): " & duplicateCount & vbCrLf & _
+'           "عدد الأخطاء: " & errorCount, vbInformation, "نتيجة الاستيراد"
+'
+'CleanUp:
+'    ' تنظيف الموارد
+'    On Error Resume Next
+'    Close #fileNum
+'    If Not rs Is Nothing Then
+'        rs.Close
+'        Set rs = Nothing
+'    End If
+'    If Not db Is Nothing Then Set db = Nothing
+'    If Not ws Is Nothing Then Set ws = Nothing
+'
+'    ' إخفاء شريط التقدم وإعادة تفعيل الزر
+'    Me.pbImport.Visible = False
+'    Me.cmdImport.Enabled = True
+'    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+'    Exit Sub
+'
+'ErrorHandler:
+'    ' التراجع عن المعاملة في حالة حدوث خطأ
+'    If Not ws Is Nothing Then ws.Rollback
+'
+'    MsgBox "حدث خطأ أثناء الاستيراد: " & Err.Description & vbCrLf & _
+'           "رقم الخطأ: " & Err.Number, vbCritical, "خطأ"
+
+'    GoTo CleanUp
+'End Sub
+'*******************************************************
+'========================================
+'تطبيق الخسم قبل اضافة الاستثناءات
+'========================================
+'Private Sub cmdApplyDeductions_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' التحقق من تحديد الشهر والسنة أولاً
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        Exit Sub
+'    End If
+'
+'    Dim rsAttendance As DAO.Recordset
+'    Dim rsShift As DAO.Recordset
+'    Dim db As DAO.Database
+'    Dim strSQL As String
+'    Dim ShiftStart As Date
+'    Dim ShiftEnd As Date
+'    Dim timeIn As Date
+'    Dim timeOut As Date
+'    Dim LateMin As Long
+'    Dim EarlyLeaveMin As Long
+'    Dim totalHrs As Double
+'    Dim PenaltyHrs As Integer
+'    Dim recordCount As Long
+'    Dim totalRecords As Long
+'    Dim CurrentBiometricCode As Long
+'    Dim CurrentDate As Date
+'    Dim ProgressPercent As Integer
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim MonthName As String
+'
+'    Set db = CurrentDb
+'
+'    ' الحصول على الشهر والسنة المحددين
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'
+'
+'    ' إعداد الـ Progress Bar والـ Label
+'    Me.pbImport1.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.lblStatus.Visible = True
+'    Me.lblStatus.Caption = "جاري تحميل البيانات..."
+'    DoEvents ' للتأكد من تحديث الشاشة
+'
+'    ' فتح recordset للحضور حيث هناك حضور وليس غياب مع مراعاة الشهر والسنة المحددين
+'    strSQL = "SELECT a.* FROM dbo_Attendance a " & _
+'             "WHERE a.Status <> 'غائب' AND a.Status IS NOT NULL " & _
+'             "AND a.TimeIn IS NOT NULL " & _
+'             "AND Month(a.logDate) = " & selectedMonth & " " & _
+'             "AND Year(a.logDate) = " & selectedYear
+'
+'    Set rsAttendance = db.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+'
+'    ' حساب العدد الإجمالي للسجلات
+'    If Not rsAttendance.EOF Then
+'        rsAttendance.MoveLast
+'        totalRecords = rsAttendance.recordCount
+'        rsAttendance.MoveFirst
+'    Else
+'        totalRecords = 0
+'    End If
+'
+'    ' التحقق من وجود بيانات للشهر المحدد
+'    If totalRecords = 0 Then
+'        Me.lblStatus.Caption = "لا توجد بيانات للشهر المحدد"
+'        MsgBox "لا توجد بيانات حضور للشهر: " & cboMonth.Value & " والسنة: " & selectedYear, vbInformation, "انتبه"
+'        GoTo CleanUp
+'    End If
+'
+'    Me.lblStatus.Caption = "جاري معالجة 0 من " & totalRecords & " سجل..."
+'    Me.pbImport1.Max = totalRecords
+'    DoEvents
+'
+'    recordCount = 0
+'
+'    If Not rsAttendance.EOF Then
+'        Do Until rsAttendance.EOF
+'            PenaltyHrs = 0
+'            LateMin = 0
+'            EarlyLeaveMin = 0
+''            TotalHrs = 0
+'
+'            CurrentBiometricCode = Nz(rsAttendance!BiometricCode, 0)
+'            CurrentDate = Nz(rsAttendance!logDate, Date)
+'
+'            ' تحديث الـ Progress Bar والـ Label
+'            recordCount = recordCount + 1
+'            ProgressPercent = (recordCount / totalRecords) * 100
+'
+'            Me.pbImport1.Value = recordCount
+'            Me.lblStatus.Caption = "جاري معالجة السجل " & recordCount & " من " & totalRecords & _
+'                                  " (" & Round(ProgressPercent, 0) & "%)" & _
+'                                  " - الموظف: " & CurrentBiometricCode
+'            DoEvents ' مهم جداً لتحديث الشاشة
+'
+'            ' تأكد أن BiometricCode رقمي
+'            If CurrentBiometricCode = 0 Then
+'                rsAttendance.MoveNext
+'                GoTo ContinueLoop
+'            End If
+'
+'            ' البحث عن الشيفت المناسب للموظف
+'            strSQL = "SELECT TOP 1 StartTime, EndTime " & _
+'                     "FROM dbo_EmployeeShifts " & _
+'                     "WHERE BiometricCode = " & CurrentBiometricCode & " " & _
+'                     "AND EffectiveFrom <= #" & Format(CurrentDate, "mm/dd/yyyy") & "# " & _
+'                     "AND (EffectiveTo IS NULL OR EffectiveTo >= #" & Format(CurrentDate, "mm/dd/yyyy") & "#) " & _
+'                     "ORDER BY EffectiveFrom DESC"
+'
+'            Set rsShift = db.OpenRecordset(strSQL)
+'
+'            If Not rsShift.EOF Then
+'                ShiftStart = Nz(rsShift!StartTime, TimeValue("08:00:00"))
+'                ShiftEnd = Nz(rsShift!EndTime, TimeValue("17:00:00"))
+'            Else
+'                ' استخدام قيم افتراضية إذا لم يوجد شيفت
+'                ShiftStart = TimeValue("08:00:00")
+'                ShiftEnd = TimeValue("17:00:00")
+'            End If
+'
+'            If Not rsShift Is Nothing Then
+'                rsShift.Close
+'                Set rsShift = Nothing
+'            End If
+'
+'            ' قراءة أوقات الحضور والانصراف
+'            timeIn = Nz(rsAttendance!timeIn, TimeValue("00:00:00"))
+'            timeOut = Nz(rsAttendance!timeOut, TimeValue("00:00:00"))
+'
+'            ' حساب دقائق التأخير
+'            If timeIn > ShiftStart Then
+'                LateMin = DateDiff("n", ShiftStart, timeIn)
+'            Else
+'                LateMin = 0
+'            End If
+'
+'            ' حساب دقائق الانصراف المبكر
+'            If timeOut < ShiftEnd And timeOut > timeIn Then
+'                EarlyLeaveMin = DateDiff("n", timeOut, ShiftEnd)
+'            Else
+'                EarlyLeaveMin = 0
+'            End If
+'
+'            ' حساب عدد الساعات الكلي
+'            If timeOut > timeIn Then
+'                totalHrs = rsAttendance!totalHours 'DateDiff("n", TimeIn, TimeOut) / 60
+'            Else
+'                totalHrs = 0
+'            End If
+'
+'            ' تطبيق قواعد الخصم كما طلبت بالضبط
+'            PenaltyHrs = 0
+'
+'            ' 1. إذا لم يسجل انصراف إطلاقاً ? يخصم 4 ساعات
+'            If timeOut = TimeValue("00:00:00") Then
+'                PenaltyHrs = 4
+'            ' 2. إذا انصرف مبكراً أكثر من 5 دقائق ? يخصم ساعتين
+'            ElseIf EarlyLeaveMin >= 5 Then
+'                PenaltyHrs = 2
+'            ' 3. إذا كان مجموع ساعات العمل أقل من 4 ساعات ? يخصم 8 ساعات
+'            ElseIf totalHrs > 0 And totalHrs < 4 Then
+'                PenaltyHrs = 8
+'            ' 4. عقوبات التأخير
+'            ElseIf LateMin > 30 Then
+'                PenaltyHrs = 4
+'            ElseIf LateMin > 20 Then
+'                PenaltyHrs = 2
+'            ElseIf LateMin > 10 Then
+'                PenaltyHrs = 1
+'            End If
+'
+'            ' تحديث سجل الحضور
+'            rsAttendance.Edit
+'            rsAttendance!lateMinutes = LateMin
+'            rsAttendance!EarlyLeaveMinutes = EarlyLeaveMin
+''            rsAttendance!totalHours = Round(TotalHrs, 2)
+'            rsAttendance!penaltyHours = PenaltyHrs
+'            rsAttendance.Update
+'
+'ContinueLoop:
+'            rsAttendance.MoveNext
+'        Loop
+'
+'        ' إظهار رسالة الانتهاء
+'        Me.lblStatus.Caption = "تم الانتهاء من معالجة " & totalRecords & " سجل بنجاح"
+'        Me.pbImport1.Value = Me.pbImport1.Max
+'        MsgBox "تم تطبيق الخصومات على " & totalRecords & " سجل حضور بنجاح", vbInformation
+'
+'    Else
+'        Me.lblStatus.Caption = "لا توجد سجلات للمعالجة"
+'        MsgBox "لا توجد سجلات حضور تحتاج إلى تطبيق خصومات", vbInformation
+'    End If
+'
+'CleanUp:
+'    On Error Resume Next
+'    If Not rsShift Is Nothing Then
+'        rsShift.Close
+'        Set rsShift = Nothing
+'    End If
+'    If Not rsAttendance Is Nothing Then
+'        rsAttendance.Close
+'        Set rsAttendance = Nothing
+'    End If
+'
+'    ' إخفاء الـ Progress Bar بعد 3 ثواني
+'    If Me.pbImport1.Visible Then
+'        DoEvents
+'        Application.Run "Sleep", 3000 ' انتظار 3 ثواني
+'        Me.pbImport1.Visible = False
+'        Me.lblStatus.Visible = False
+'    End If
+'
+'    Set db = Nothing
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "حدث خطأ أثناء المعالجة"
+'    MsgBox "حدث خطأ: " & Err.Description & " للموظف: " & CurrentBiometricCode & " في التاريخ: " & Format(CurrentDate, "yyyy-mm-dd"), vbCritical
+'    Resume CleanUp
+'End Sub
+Private Sub cmdApplyDeductions_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من تحديد الشهر والسنة أولاً
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+
+    Dim rsAttendance As DAO.Recordset
+    Dim rsShift As DAO.Recordset
+    Dim db As DAO.Database
+    Dim strSQL As String
+    Dim ShiftStart As Date
+    Dim ShiftEnd As Date
+    Dim TimeIn As Date
+    Dim TimeOut As Date
+    Dim LateMin As Long
+    Dim EarlyLeaveMin As Long
+    Dim totalHrs As Double
+    Dim PenaltyHrs As Integer
+    Dim RecordCount As Long
+    Dim totalRecords As Long
+    Dim CurrentBiometricCode As Long
+    Dim currentDate As Date
+    Dim ProgressPercent As Integer
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+
+    Set db = CurrentDb
+    
+    ' الحصول على الشهر والسنة المحددين
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+
+    ' إعداد الـ Progress Bar والـ Label
+    Me.pbImport1.Visible = True
+    Me.pbImport1.value = 0
+    Me.lblStatus.Visible = True
+    Me.lblStatus.Caption = "جاري تحميل البيانات..."
+    DoEvents
+
+    ' فتح recordset للحضور حيث هناك حضور وليس غياب مع مراعاة الشهر والسنة المحددين
+    strSQL = "SELECT a.* FROM dbo_Attendance a " & _
+             "WHERE a.Status <> 'غائب' AND a.Status IS NOT NULL " & _
+             "AND a.TimeIn IS NOT NULL " & _
+             "AND Month(a.logDate) = " & SelectedMonth & " " & _
+             "AND Year(a.logDate) = " & SelectedYear
+
+    Set rsAttendance = db.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+    ' حساب العدد الإجمالي للسجلات
+    If Not rsAttendance.EOF Then
+        rsAttendance.MoveLast
+        totalRecords = rsAttendance.RecordCount
+        rsAttendance.MoveFirst
+    Else
+        totalRecords = 0
+    End If
+
+    ' التحقق من وجود بيانات للشهر المحدد
+    If totalRecords = 0 Then
+        Me.lblStatus.Caption = "لا توجد بيانات للشهر المحدد"
+        MsgBox "لا توجد بيانات حضور للشهر: " & cboMonth.value & " والسنة: " & SelectedYear, vbInformation, "انتبه"
+        GoTo CleanUp
+    End If
+
+    Me.lblStatus.Caption = "جاري معالجة 0 من " & totalRecords & " سجل..."
+    Me.pbImport1.Max = totalRecords
+    DoEvents
+
+    RecordCount = 0
+
+    If Not rsAttendance.EOF Then
+        Do Until rsAttendance.EOF
+            PenaltyHrs = 0
+            LateMin = 0
+            EarlyLeaveMin = 0
+
+            CurrentBiometricCode = Nz(rsAttendance!BiometricCode, 0)
+            currentDate = Nz(rsAttendance!LogDate, Date)
+
+            ' تحديث الـ Progress Bar والـ Label
+            RecordCount = RecordCount + 1
+            ProgressPercent = (RecordCount / totalRecords) * 100
+
+            Me.pbImport1.value = RecordCount
+            Me.lblStatus.Caption = "جاري معالجة السجل " & RecordCount & " من " & totalRecords & _
+                                  " (" & Round(ProgressPercent, 0) & "%)" & _
+                                  " - الموظف: " & CurrentBiometricCode
+            DoEvents
+
+            ' تأكد أن BiometricCode رقمي
+            If CurrentBiometricCode = 0 Then
+                rsAttendance.MoveNext
+                GoTo ContinueLoop
+            End If
+
+            ' البحث عن الشيفت المناسب للموظف في التاريخ المحدد - التصحيح هنا
+            strSQL = "SELECT TOP 1 StartTime, EndTime " & _
+                     "FROM dbo_EmployeeShifts " & _
+                     "WHERE BiometricCode = " & CurrentBiometricCode & " " & _
+                     "AND EffectiveFrom <= #" & Format(currentDate, "mm/dd/yyyy") & "# " & _
+                     "AND (EffectiveTo >= #" & Format(currentDate, "mm/dd/yyyy") & "# OR EffectiveTo IS NULL) " & _
+                     "ORDER BY IIf(EffectiveFrom = EffectiveTo, 1, 0) DESC, EffectiveFrom DESC"
+
+            Set rsShift = db.OpenRecordset(strSQL)
+
+            If Not rsShift.EOF Then
+                ShiftStart = Nz(rsShift!StartTime, TimeValue("08:00:00"))
+                ShiftEnd = Nz(rsShift!EndTime, TimeValue("17:00:00"))
+                
+                ' تحديث الـ Label بمعلومات الشيفت
+                Me.lblStatus.Caption = "جاري معالجة السجل " & RecordCount & " من " & totalRecords & _
+                                      " - الشيفت: " & Format(ShiftStart, "hh:mm AM/PM") & " - " & Format(ShiftEnd, "hh:mm AM/PM")
+                DoEvents
+            Else
+                ' استخدام قيم افتراضية إذا لم يوجد شيفت
+                ShiftStart = TimeValue("08:00:00")
+                ShiftEnd = TimeValue("17:00:00")
+            End If
+
+            If Not rsShift Is Nothing Then
+                rsShift.Close
+                Set rsShift = Nothing
+            End If
+
+            ' قراءة أوقات الحضور والانصراف
+            TimeIn = Nz(rsAttendance!TimeIn, TimeValue("00:00:00"))
+            TimeOut = Nz(rsAttendance!TimeOut, TimeValue("00:00:00"))
+
+            ' حساب دقائق التأخير
+            If TimeIn > ShiftStart Then
+                LateMin = DateDiff("n", ShiftStart, TimeIn)
+            Else
+                LateMin = 0
+            End If
+
+            ' حساب دقائق الانصراف المبكر
+            If TimeOut < ShiftEnd And TimeOut > TimeIn Then
+                EarlyLeaveMin = DateDiff("n", TimeOut, ShiftEnd)
+            Else
+                EarlyLeaveMin = 0
+            End If
+
+            ' حساب عدد الساعات الكلي
+            If TimeOut > TimeIn Then
+                totalHrs = rsAttendance!totalHours
+            Else
+                totalHrs = 0
+            End If
+
+            ' تطبيق قواعد الخصم كما طلبت بالضبط
+            PenaltyHrs = 0
+            
+            ' 1. إذا لم يسجل انصراف إطلاقاً ? يخصم 4 ساعات
+            If TimeOut = TimeValue("00:00:00") Then
+                PenaltyHrs = 4
+            ' 2. إذا انصرف مبكراً أكثر من 5 دقائق ? يخصم ساعتين
+            ElseIf EarlyLeaveMin >= 5 Then
+                PenaltyHrs = 2
+            ' 3. إذا كان مجموع ساعات العمل أقل من 4 ساعات ? يخصم 8 ساعات
+            ElseIf totalHrs > 0 And totalHrs < 4 Then
+                PenaltyHrs = 8
+            ' 4. عقوبات التأخير
+            ElseIf LateMin > 30 Then
+                PenaltyHrs = 4
+            ElseIf LateMin > 20 Then
+                PenaltyHrs = 2
+            ElseIf LateMin > 10 Then
+                PenaltyHrs = 1
+            End If
+
+            ' تحديث سجل الحضور
+            rsAttendance.Edit
+            rsAttendance!LateMinutes = LateMin
+            rsAttendance!EarlyLeaveMinutes = EarlyLeaveMin
+            rsAttendance!PenaltyHours = PenaltyHrs
+            rsAttendance.Update
+
+ContinueLoop:
+            rsAttendance.MoveNext
+        Loop
+
+        ' إظهار رسالة الانتهاء
+        Me.lblStatus.Caption = "تم الانتهاء من معالجة " & totalRecords & " سجل بنجاح"
+        Me.pbImport1.value = Me.pbImport1.Max
+        MsgBox "تم تطبيق الخصومات على " & totalRecords & " سجل حضور بنجاح", vbInformation
+
+    Else
+        Me.lblStatus.Caption = "لا توجد سجلات للمعالجة"
+        MsgBox "لا توجد سجلات حضور تحتاج إلى تطبيق خصومات", vbInformation
+    End If
+
+CleanUp:
+    On Error Resume Next
+    If Not rsShift Is Nothing Then
+        rsShift.Close
+        Set rsShift = Nothing
+    End If
+    If Not rsAttendance Is Nothing Then
+        rsAttendance.Close
+        Set rsAttendance = Nothing
+    End If
+
+    ' إخفاء الـ Progress Bar بعد 3 ثواني
+    If Me.pbImport1.Visible Then
+        DoEvents
+        Application.Run "Sleep", 3000
+        Me.pbImport1.Visible = False
+        Me.lblStatus.Visible = False
+    End If
+
+    Set db = Nothing
+    Exit Sub
+
+ErrorHandler:
+    Me.lblStatus.Caption = "حدث خطأ أثناء المعالجة"
+    MsgBox "حدث خطأ: " & Err.Description & " للموظف: " & CurrentBiometricCode & " في التاريخ: " & Format(currentDate, "yyyy-mm-dd"), vbCritical
+    Resume CleanUp
+End Sub
+
+
+Private Sub cmdImport_Click()
+    On Error GoTo ErrorHandler
+    
+    ' إظهار شريط التقدم وإخفاء الزر مؤقتاً
+    Me.pbImport.Visible = True
+    Me.lblStatus.Visible = True
+    Me.pbImport.value = 0
+    Me.cmdImport.Enabled = False
+    DoEvents
+    
+    ' التأكد من تحديد الملف والشهر والسنة
+    If Nz(Me.txtFilePath, "") = "" Then
+        MsgBox "يجب تحديد ملف البصمة أولاً", vbExclamation, "تنبيه"
+        GoTo CleanUp
+    End If
+    
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+        GoTo CleanUp
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    ' تحديد الشهر والسنة المحددين
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    ' حساب تاريخ البداية والنهاية للشهر المحدد
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    ' التحقق إذا كان الشهر قد تم استيراده من قبل
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Set db = CurrentDb()
+    
+    Dim checkMonthSql As String
+    checkMonthSql = "SELECT COUNT(*) AS RecCount FROM dbo_BiometricLog " & _
+                    "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    Set rs = db.OpenRecordset(checkMonthSql, dbOpenSnapshot)
+    
+    If rs!recCount > 0 Then
+        rs.Close
+        Set rs = Nothing
+        
+        If MsgBox("لقد تم استيراد بيانات " & SelectedMonth & "/" & SelectedYear & " من قبل." & vbCrLf & _
+                  "هل تريد الاستيراد مرة أخرى؟", vbYesNo + vbQuestion, "بيانات موجودة مسبقاً") = vbNo Then
+            Set db = Nothing
+            GoTo CleanUp
+        End If
+    Else
+        If Not rs Is Nothing Then
+            rs.Close
+            Set rs = Nothing
+        End If
+    End If
+    
+    ' فتح ملف البصمة للقراءة
+    Dim filePath As String
+    filePath = Me.txtFilePath.value
+    
+    If Dir(filePath) = "" Then
+        MsgBox "الملف المحدد غير موجود", vbExclamation, "خطأ"
+        Set db = Nothing
+        GoTo CleanUp
+    End If
+    
+    ' حساب عدد الأسطر في الملف
+    Dim totalLines As Long
+    totalLines = CountFileLines(filePath)
+    If totalLines = 0 Then
+        MsgBox "الملف فارغ أو لا يمكن قراءته", vbExclamation, "خطأ"
+        Set db = Nothing
+        GoTo CleanUp
+    End If
+    
+    Me.pbImport.Max = totalLines
+    Me.lblStatus.Caption = "جاري تحضير البيانات... 0%"
+    DoEvents
+    
+    Dim fileNum As Integer
+    fileNum = FreeFile()
+    
+    Open filePath For Input As #fileNum
+    
+    Dim successCount As Long
+    Dim errorCount As Long
+    Dim duplicateCount As Long
+    Dim currentLine As Long
+    successCount = 0
+    errorCount = 0
+    duplicateCount = 0
+    currentLine = 0
+    
+    ' بدء المعاملة
+    Dim ws As DAO.Workspace
+    Set ws = DBEngine.Workspaces(0)
+    ws.BeginTrans
+    
+    ' إعداد استعلام للإضافة لتحسين الأداء
+    Dim qdf As DAO.QueryDef
+    Dim strSQL As String
+    strSQL = "INSERT INTO dbo_BiometricLog (BiometricCode, LogDate, LogTime) VALUES (p1, p2, p3)"
+    Set qdf = db.CreateQueryDef("", strSQL)
+    
+    ' قراءة الملف سطراً سطراً
+    Dim lineText As String
+    
+    Do While Not EOF(fileNum)
+        Line Input #fileNum, lineText
+        currentLine = currentLine + 1
+        
+        ' تحديث شريط التقدم كل 50 سطر أو عند نسبة مئوية محددة
+        If currentLine Mod 50 = 0 Or currentLine = totalLines Then
+            Me.pbImport.value = currentLine
+            Me.lblStatus.Caption = "جاري استيراد البيانات... " & _
+                Format(currentLine / totalLines, "0%") & " (" & currentLine & " من " & totalLines & ")"
+            DoEvents
+        End If
+        
+        ' تخطي الأسطر الفارغة
+        If Trim(lineText) = "" Then GoTo NextLine
+        
+        ' تقسيم السطر إلى أعمدة (مفصولة بعلامات Tab)
+        Dim parts() As String
+        parts = Split(lineText, vbTab)
+        
+        ' التأكد من وجود عدد كافٍ من الأعمدة
+        If UBound(parts) < 1 Then
+            errorCount = errorCount + 1
+            GoTo NextLine
+        End If
+        
+        Dim bioCode As String
+        Dim logDateTime As String
+        Dim LogDate As Date
+        Dim logTime As String
+        
+        ' استخراج البيانات من الأعمدة
+        bioCode = Trim(parts(0))
+        logDateTime = Trim(parts(1))
+        
+        ' تحقق من صحة الكود البيومتري
+        If Not IsNumeric(bioCode) Then
+            errorCount = errorCount + 1
+            GoTo NextLine
+        End If
+        
+'        ' تحويل تاريخ ووقت التسجيل قبل تعديل بصمه منتصف الليل
+'        On Error Resume Next
+'        logDate = CDate(logDateTime)
+'        If Err.Number <> 0 Then
+'            errorCount = errorCount + 1
+'            On Error GoTo ErrorHandler
+'            GoTo NextLine
+'        End If
+'        On Error GoTo ErrorHandler
+'
+'        ' استخراج الوقت فقط من التاريخ/الوقت
+'        logTime = Format(logDate, "HH:MM:SS")
+'        logDate = DateValue(logDate)
+        
+        
+        ' تحويل تاريخ ووقت التسجيل بعد تعديل البصمه بعد منتصف الليل
+' تحويل تاريخ ووقت التسجيل
+On Error Resume Next
+LogDate = CDate(logDateTime)
+If Err.Number <> 0 Then
+    errorCount = errorCount + 1
+    On Error GoTo ErrorHandler
+    GoTo NextLine
+End If
+On Error GoTo ErrorHandler
+
+' معالجة البصمات بعد منتصف الليل (بين 12:00 AM و 5:00 AM)
+If TimeValue(LogDate) >= #12:00:00 AM# And TimeValue(LogDate) < #5:00:00 AM# Then
+    ' إذا كانت البصمة بعد منتصف الليل، نعتبرها لليوم السابق الساعة 11:59:59 مساءً
+    LogDate = DateValue(LogDate) - 1 ' اليوم السابق
+    logTime = "23:59:59" ' آخر لحظة من اليوم السابق
+Else
+    ' إذا كانت البصمة في وقت طبيعي، نستخدم الوقت كما هو
+    logTime = Format(LogDate, "HH:MM:SS")
+    LogDate = DateValue(LogDate)
+End If
+
+        ' التحقق مما إذا كان التاريخ ضمن النطاق المحدد
+        If LogDate >= StartDate And LogDate <= EndDate Then
+            ' التحقق من عدم وجود البيانات مسبقاً في الجدول
+            Dim checkSql As String
+            checkSql = "SELECT COUNT(*) AS RecordCount FROM dbo_BiometricLog " & _
+                       "WHERE BiometricCode = " & bioCode & _
+                       " AND LogDate = #" & Format(LogDate, "yyyy-mm-dd") & "#" & _
+                       " AND LogTime = #" & logTime & "#"
+            
+            Set rs = db.OpenRecordset(checkSql, dbOpenSnapshot)
+            
+            If rs!RecordCount = 0 Then
+                ' إدخال السجل باستخدام QueryDef لتحسين الأداء
+                qdf.Parameters("p1").value = bioCode
+                qdf.Parameters("p2").value = LogDate
+                qdf.Parameters("p3").value = logTime
+                qdf.Execute
+                successCount = successCount + 1
+            Else
+                duplicateCount = duplicateCount + 1
+            End If
+            
+            rs.Close
+            Set rs = Nothing
+        End If
+        
+NextLine:
+    Loop
+    
+    ' تأكيد المعاملة
+    ws.CommitTrans
+    
+    Close #fileNum
+    Set qdf = Nothing
+    Set db = Nothing
+    Set ws = Nothing
+    
+    ' تحديث شريط التقدم للنهاية
+    Me.pbImport.value = Me.pbImport.Max
+    Me.lblStatus.Caption = "تم الانتهاء من الاستيراد بنجاح!"
+    DoEvents
+    
+    ' تأخير بسيط لرؤية شريط التقدم مكتملاً
+    Dim EndTime As Date
+    EndTime = DateAdd("s", 1, Now())
+    Do While Now() < EndTime
+        DoEvents
+    Loop
+    
+    MsgBox "تم استيراد البيانات بنجاح!" & vbCrLf & _
+           "عدد السجلات المستوردة: " & successCount & vbCrLf & _
+           "عدد السجلات المكررة (تم تخطيها): " & duplicateCount & vbCrLf & _
+           "عدد الأخطاء: " & errorCount, vbInformation, "نتيجة الاستيراد"
+    
+CleanUp:
+    ' تنظيف الموارد
+    On Error Resume Next
+    Close #fileNum
+    If Not rs Is Nothing Then
+        rs.Close
+        Set rs = Nothing
+    End If
+    If Not db Is Nothing Then Set db = Nothing
+    If Not ws Is Nothing Then Set ws = Nothing
+    If Not qdf Is Nothing Then Set qdf = Nothing
+    
+    ' إخفاء شريط التقدم وإعادة تفعيل الزر
+    Me.pbImport.Visible = False
+    Me.cmdImport.Enabled = True
+    If Not Me.lblStatus Is Nothing Then Me.lblStatus.Caption = ""
+    Exit Sub
+    
+ErrorHandler:
+    ' التراجع عن المعاملة في حالة حدوث خطأ
+    If Not ws Is Nothing Then ws.Rollback
+    
+    MsgBox "حدث خطأ أثناء الاستيراد: " & Err.Description & vbCrLf & _
+           "رقم الخطأ: " & Err.Number, vbCritical, "خطأ"
+    GoTo CleanUp
+End Sub
+
+' دالة مساعدة لحساب عدد الأسطر في الملف
+Private Function CountFileLines(filePath As String) As Long
+    On Error GoTo ErrorHandler
+    
+    Dim fileNum As Integer
+    Dim lineCount As Long
+    Dim dummy As String
+    
+    fileNum = FreeFile()
+    Open filePath For Input As #fileNum
+    
+    lineCount = 0
+    Do While Not EOF(fileNum)
+        Line Input #fileNum, dummy
+        lineCount = lineCount + 1
+    Loop
+    
+    Close #fileNum
+    CountFileLines = lineCount
+    Exit Function
+    
+ErrorHandler:
+    On Error Resume Next
+    Close #fileNum
+    CountFileLines = 0
+End Function
+'======================
+'حذف من جدول البصمه
+'======================
+Private Sub cmdDeleteMonth_Click()
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    If MsgBox("هل أنت متأكد من أنك تريد حذف جميع بيانات البصمه " & Me.cboMonth & "/" & Me.cboYear & "؟", _
+              vbYesNo + vbQuestion, "تأكيد الحذف") = vbNo Then
+        Exit Sub
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_BiometricLog " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+    Set db = Nothing
+    
+    MsgBox "تم حذف بيانات الشهر المحدد بنجاح", vbInformation, "تم الحذف"
+End Sub
+'======================
+'حذف من جدول الحضور
+'======================
+
+Private Sub cmdDeleteMonthAttendnce_Click()
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    If MsgBox("هل أنت متأكد من أنك تريد حذف جميع بيانات الحضور " & Me.cboMonth & "/" & Me.cboYear & "؟", _
+              vbYesNo + vbQuestion, "تأكيد الحذف") = vbNo Then
+        Exit Sub
+    End If
+    
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_Attendance " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+    Set db = Nothing
+    
+    MsgBox "تم حذف بيانات الشهر المحدد بنجاح", vbInformation, "تم الحذف"
+End Sub
+
+
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        Exit Sub
+'    End If
+'
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' حذف بيانات الشهر إذا كانت موجودة مسبقاً
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbFailOnError + dbSeeChanges
+'
+'    ' استعلام لتوليد بيانات الحضور الأساسية
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    ROUND((DateDiff('n', MIN(b.LogTime), MAX(b.LogTime)) / 60.0), 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbFailOnError + dbSeeChanges
+'
+'    ' التصحيح بناءً على الورديات مع مراعاة التاريخ الفعال
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIF(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIF(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = ROUND((DateDiff('n', " & _
+'                       "        IIF(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIF(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut)) / 60.0), 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbFailOnError + dbSeeChanges
+'
+'    ' الحصول على عدد السجلات المضافة
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance WHERE LogDate BETWEEN #" & _
+'                              Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    Me.pbImport.Value = 100
+'    DoEvents
+'
+'    MsgBox "تم توليد " & recordCount & " سجل حضور للشهر المحدد", vbInformation, "تمت العملية"
+'
+'CleanUp:
+'    Me.pbImport.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "حدث خطأ أثناء توليد بيانات الحضور: " & Err.Description, vbCritical, "خطأ"
+'    GoTo CleanUp
+'End Sub
+'======================
+'شغال كويس بس المشكلة فى حساب فرق الساعات يعنى بيدى مثلا 9.98
+'======================
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' التأكد من تحديد الشهر والسنة
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        Exit Sub
+'    End If
+'
+'    ' إظهار شريط التقدم وتعطيل الزر مؤقتاً
+'    Me.pbImport.Visible = True
+'    Me.pbImport.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' حذف بيانات الشهر إذا كانت موجودة مسبقاً
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'
+'    ' استعلام لتوليد بيانات الحضور الأساسية - مع التصحيح
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'
+'    ' التصحيح بناءً على الورديات مع إعادة حساب الساعات بشكل صحيح
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('s', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'
+'    ' الحصول على عدد السجلات المضافة
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية وإنهاء العملية
+'    Me.pbImport.Value = 100
+'    DoEvents
+'
+'    MsgBox "تم توليد " & recordCount & " سجل حضور للشهر المحدد", vbInformation, "تمت العملية"
+'
+'CleanUp:
+'    ' تنظيف وإخفاء الشريط وتفعيل الزر
+'    Me.pbImport.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "حدث خطأ أثناء توليد بيانات الحضور: " & Err.Description, vbCritical, "خطأ"
+'    Resume CleanUp
+'End Sub
+'===================
+'ده الكود الرسمى الى شغال عليه
+'===========================
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' التأكد من تحديد الشهر والسنة
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        Exit Sub
+'    End If
+'
+'    ' إظهار شريط التقدم وتعطيل الزر مؤقتاً
+'    Me.pbImport1.Visible = True
+'    Me.lblStatus.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim selectedMonth As Integer
+'    Dim selectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'    selectedMonth = Me.cboMonth
+'    selectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر
+'    startDate = DateSerial(selectedYear, selectedMonth, 1)
+'    endDate = DateSerial(selectedYear, selectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' تحديث الحالة
+'    Me.lblStatus.Caption = "جاري حذف البيانات القديمة..."
+'    DoEvents
+'
+'    ' حذف بيانات الشهر إذا كانت موجودة مسبقاً
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'    Me.pbImport1.Value = 25
+'    Me.lblStatus.Caption = "تم حذف البيانات القديمة. جاري استيراد البيانات الجديدة..."
+'    DoEvents
+'
+'    ' استعلام لتوليد بيانات الحضور الأساسية - مع التصحيح
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 50
+'    Me.lblStatus.Caption = "تم استيراد البيانات. جاري تطبيق قواعد الورديات..."
+'    DoEvents
+'
+'    ' التصحيح بناءً على الورديات مع إعادة حساب الساعات بشكل صحيح
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('s', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 75
+'    Me.lblStatus.Caption = "تم تطبيق قواعد الورديات. جاري التحقق من النتائج..."
+'    DoEvents
+'
+'    ' الحصول على عدد السجلات المضافة
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    ' التحقق من وجود أخطاء في حساب الساعات
+'    Dim rsCheck As DAO.Recordset
+'    Set rsCheck = db.OpenRecordset("SELECT COUNT(*) AS ErrorCount FROM dbo_Attendance " & _
+'                                   "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                                   "AND (TotalHours - Int(TotalHours)) >= 0.6")
+'
+'    Dim errorCount As Long
+'    errorCount = rsCheck!errorCount
+'
+'    rs.Close
+'    rsCheck.Close
+'    Set rs = Nothing
+'    Set rsCheck = Nothing
+'    Set db = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية وإنهاء العملية
+'    Me.pbImport1.Value = 100
+'    Me.lblStatus.Caption = "تم الانتهاء من عملية اضافه البيانات"
+'    DoEvents
+'
+'    ' عرض رسالة النتيجة
+''    If errorCount = 0 Then
+'        MsgBox "تم إضافة " & recordCount & " سجل حضور للشهر المحدد بنجاح", vbInformation, "تمت العملية"
+''    Else
+''        MsgBox "تم توليد " & recordCount & " سجل حضور، ولكن هناك " & errorCount & " سجل تحتوي على أخطاء في حساب الوقت", vbExclamation, "تنبيه"
+''    End If
+'
+'CleanUp:
+'    ' تنظيف وإخفاء الشريط وتفعيل الزر بعد تأخير بسيط
+'    Dim endTime As Date
+'    endTime = DateAdd("s", 2, Now()) ' تأخير لمدة ثانيتين
+'    Do While Now() < endTime
+'        DoEvents
+'    Loop
+'
+'    Me.pbImport1.Visible = False
+'    Me.lblStatus.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "حدث خطأ أثناء المعالجة"
+'    MsgBox "حدث خطأ أثناء توليد بيانات الحضور: " & Err.Description, vbCritical, "خطأ"
+'    Resume CleanUp
+'End Sub
+'Private Sub cmdGenerateAttendance_Click()
+'    On Error GoTo ErrorHandler
+'
+'    ' التأكد من تحديد الشهر والسنة
+'    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+'        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+'        Exit Sub
+'    End If
+'
+'    ' إظهار شريط التقدم وتعطيل الزر مؤقتاً
+'    Me.pbImport1.Visible = True
+'    Me.lblStatus.Visible = True
+'    Me.pbImport1.Value = 0
+'    Me.cmdGenerateAttendance.Enabled = False
+'    DoEvents
+'
+'    Dim SelectedMonth As Integer
+'    Dim SelectedYear As Integer
+'    Dim startDate As Date
+'    Dim endDate As Date
+'
+'
+'
+'    SelectedMonth = Me.cboMonth
+'    SelectedYear = Me.cboYear
+'
+'    ' حساب تاريخ البداية والنهاية للشهر
+'    startDate = DateSerial(SelectedYear, SelectedMonth, 1)
+'    endDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb()
+'
+'    ' تحديث الحالة
+'    Me.lblStatus.Caption = "جاري حذف البيانات القديمة..."
+'    DoEvents
+'
+'    ' حذف بيانات الشهر إذا كانت موجودة مسبقاً
+'    Dim deleteSql As String
+'    deleteSql = "DELETE FROM dbo_Attendance " & _
+'                "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#"
+'
+'    db.Execute deleteSql, dbSeeChanges
+'    Me.pbImport1.Value = 20
+'    Me.lblStatus.Caption = "تم حذف البيانات القديمة. جاري استيراد البيانات الجديدة..."
+'    DoEvents
+'
+'
+'
+'    ' استعلام لتوليد بيانات الحضور الأساسية
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    'حضور' AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 40
+'    Me.lblStatus.Caption = "تم استيراد البيانات. جاري تطبيق قواعد الشيفتات الخاصة بالموظفين..."
+'    DoEvents
+'
+'    ' التصحيح بناءً على الورديات
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('n', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 60.0, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'' "    a.TotalHours = Round((DateDiff('s', " & _
+''                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+''                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 3600, 2) " & _
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 60
+'    Me.lblStatus.Caption = "تم تطبيق قواعد الشيفتات. جاري إضافة الإجازات ونهاية الأسبوع..."
+'    DoEvents
+'
+'    ' الخطوة 1: إضافة أيام الجمعة كإجازة رسمية (للموظفين الذين لديهم BioEmployeeID فقط)
+'    Dim addFridayHolidaysSql As String
+'    addFridayHolidaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+'                           "SELECT e.BioEmployeeID, c.CalendarDate, 'إجازة رسمية', 8 " & _
+'                           "FROM dbo_Employees e, dbo_Calendar c " & _
+'                           "WHERE c.CalendarDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                           "AND c.DayName = 'Friday' " & _
+'                           "AND c.IsWeekend = 1 " & _
+'                           "AND e.BioEmployeeID IS NOT NULL " & _
+'                           "AND NOT EXISTS ( " & _
+'                           "    SELECT 1 FROM dbo_Attendance a " & _
+'                           "    WHERE a.BiometricCode = e.BioEmployeeID " & _
+'                           "    AND a.LogDate = c.CalendarDate " & _
+'                           ")"
+'
+'    db.Execute addFridayHolidaysSql, dbSeeChanges
+'    Me.pbImport1.Value = 80
+'    Me.lblStatus.Caption = "تم إضافة الإجازات الرسمية. جاري معالجة الأيام المتبقية..."
+'    DoEvents
+'
+'    ' الخطوة 2: معالجة الأيام التي لم يتم البصم فيها (للموظفين الذين لديهم BioEmployeeID فقط)
+'    Dim addMissingDaysSql As String
+'    addMissingDaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+'                        "SELECT e.BioEmployeeID, c.CalendarDate, 'غائب', 0 " & _
+'                        "FROM dbo_Employees e, dbo_Calendar c " & _
+'                        "WHERE c.CalendarDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "# " & _
+'                        "AND c.DayName <> 'Friday' " & _
+'                        "AND c.IsWeekend = 0 " & _
+'                        "AND e.BioEmployeeID IS NOT NULL " & _
+'                        "AND NOT EXISTS ( " & _
+'                        "SELECT 1 FROM dbo_Attendance a " & _
+'                        "WHERE a.BiometricCode = e.BioEmployeeID " & _
+'                        "AND a.LogDate = c.CalendarDate " & _
+'                        ")"
+'
+'    db.Execute addMissingDaysSql, dbSeeChanges
+'
+'    ' الحصول على عدد السجلات المضافة
+'    Dim rs As DAO.Recordset
+'    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+'                              "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(endDate, "yyyy-mm-dd") & "#")
+'
+'    Dim recordCount As Long
+'    recordCount = rs!recCount
+'
+'    ' الحصول على عدد الموظفين الذين ليس لديهم BioEmployeeID
+'    Dim nullBioCountRS As DAO.Recordset
+'    Set nullBioCountRS = db.OpenRecordset("SELECT COUNT(*) AS NullCount FROM dbo_Employees WHERE BioEmployeeID IS NULL", dbOpenSnapshot)
+'    Dim nullBioCount As Long
+'    nullBioCount = nullBioCountRS!nullCount
+'    nullBioCountRS.Close
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    ' تحديث شريط التقدم للنهاية وإنهاء العملية
+'    Me.pbImport1.Value = 100
+'    Me.lblStatus.Caption = "تم الانتهاء من عملية اضافة البيانات"
+'    DoEvents
+'
+'    If nullBioCount > 0 Then
+'        MsgBox "تم اضافة " & recordCount & " سجل حضور للشهر المحدد" & vbCrLf & _
+'               "ملاحظة: هناك " & nullBioCount & " موظف ليس لديهم كود بصمة ولم يتم اضافة سجلات لهم", vbInformation, "تمت العملية"
+'    Else
+'        MsgBox "تم اضافة " & recordCount & " سجل حضور للشهر المحدد" & vbCrLf & _
+'               "شاملًا أيام الحضور والإجازات الرسمية والأيام الغياب", vbInformation, "تمت العملية"
+'    End If
+'
+'Cleanup:
+'    ' تنظيف وإخفاء الشريط وتفعيل الزر بعد تأخير بسيط
+'    Dim EndTime As Date
+'    EndTime = DateAdd("s", 2, Now())
+'    Do While Now() < EndTime
+'        DoEvents
+'    Loop
+'
+'    Me.pbImport1.Visible = False
+'    Me.lblStatus.Visible = False
+'    Me.cmdGenerateAttendance.Enabled = True
+'    Exit Sub
+'
+'ErrorHandler:
+'    Me.lblStatus.Caption = "حدث خطأ أثناء المعالجة"
+'    MsgBox "حدث خطأ أثناء توليد بيانات الحضور: " & Err.Description, vbCritical, "خطأ"
+'    Resume Cleanup
+'End Sub
+
+Private Sub cmdGenerateAttendance_Click()
+    On Error GoTo ErrorHandler
+
+    ' التأكد من تحديد الشهر والسنة
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "يجب تحديد الشهر والسنة أولاً", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+
+    Dim SelectedMonth As Integer
+    Dim SelectedYear As Integer
+    Dim StartDate As Date
+    Dim EndDate As Date
+    Dim MonthName As String
+    
+    SelectedMonth = Me.cboMonth
+    SelectedYear = Me.cboYear
+    
+    
+
+    ' حساب تاريخ البداية والنهاية للشهر
+    StartDate = DateSerial(SelectedYear, SelectedMonth, 1)
+    EndDate = DateSerial(SelectedYear, SelectedMonth + 1, 0)
+
+    Dim db As DAO.Database
+    Set db = CurrentDb()
+    
+    ' التحقق من وجود بيانات بصمة للشهر المحدد
+    Dim checkBioSql As String
+    checkBioSql = "SELECT COUNT(*) AS BioCount FROM dbo_BiometricLog " & _
+                  "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+    
+    Dim rsCheck As DAO.Recordset
+    Set rsCheck = db.OpenRecordset(checkBioSql)
+    
+    Dim bioCount As Long
+    bioCount = rsCheck!bioCount
+    rsCheck.Close
+    Set rsCheck = Nothing
+    
+    If bioCount = 0 Then
+        MsgBox "لا توجد بيانات بصمة للشهر: " & cboMonth.value & " والسنة: " & SelectedYear, vbInformation, "انتبه"
+        Set db = Nothing
+        Exit Sub
+    End If
+
+    ' إظهار شريط التقدم وتعطيل الزر مؤقتاً
+    Me.pbImport1.Visible = True
+    Me.lblStatus.Visible = True
+    Me.pbImport1.value = 0
+    Me.cmdGenerateAttendance.Enabled = False
+    DoEvents
+
+    ' تحديث الحالة
+    Me.lblStatus.Caption = "جاري حذف البيانات القديمة..."
+    DoEvents
+
+    ' حذف بيانات الشهر إذا كانت موجودة مسبقاً
+    Dim deleteSql As String
+    deleteSql = "DELETE FROM dbo_Attendance " & _
+                "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#"
+
+    db.Execute deleteSql, dbSeeChanges
+    Me.pbImport1.value = 20
+    Me.lblStatus.Caption = "تم حذف البيانات القديمة. جاري استيراد البيانات الجديدة..."
+    DoEvents
+    
+'    ' استعلام لتوليد بيانات الحضور الأساسية
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    'حضور' AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate " & _
+'                    "HAVING MIN(b.LogTime) <> MAX(b.LogTime)"
+'
+'
+'    db.Execute attendanceSql, dbSeeChanges
+'    Me.pbImport1.Value = 40
+'    Me.lblStatus.Caption = "تم استيراد البيانات. جاري تطبيق قواعد الشيفتات الخاصة بالموظفين..."
+'    DoEvents
+    
+    ' استعلام لتوليد بيانات الحضور الأساسية (بما في ذلك الحضور بدون انصراف)
+'    Dim attendanceSql As String
+'    attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+'                    "SELECT " & _
+'                    "    b.BiometricCode, " & _
+'                    "    b.LogDate, " & _
+'                    "    MIN(b.LogTime) AS TimeIn, " & _
+'                    "    MAX(b.LogTime) AS TimeOut, " & _
+'                    "    Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) AS TotalHours, " & _
+'                    "    IIf(COUNT(b.LogTime) = 1, 'حضور فقط', 'حضور') AS Status " & _
+'                    "FROM dbo_BiometricLog b " & _
+'                    "WHERE b.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                    "GROUP BY b.BiometricCode, b.LogDate"
+
+' استعلام لتوليد بيانات الحضور الأساسية
+Dim attendanceSql As String
+attendanceSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, TimeIn, TimeOut, TotalHours, Status) " & _
+                "SELECT " & _
+                "    b.BiometricCode, " & _
+                "    b.LogDate, " & _
+                "    MIN(b.LogTime) AS TimeIn, " & _
+                "    MAX(b.LogTime) AS TimeOut, " & _
+                "    IIf(Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2) > 8, 8, " & _
+                "         Round((DateDiff('s', MIN(b.LogTime), MAX(b.LogTime))) / 3600, 2)) AS TotalHours, " & _
+                "    IIf(COUNT(b.LogTime) = 1, 'حضور فقط', 'حضور') AS Status " & _
+                "FROM dbo_BiometricLog b " & _
+                "WHERE b.LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                "GROUP BY b.BiometricCode, b.LogDate"
+                
+    db.Execute attendanceSql, dbSeeChanges
+    Me.pbImport1.value = 40
+    Me.lblStatus.Caption = "تم استيراد البيانات. جاري تطبيق قواعد الشيفتات الخاصة بالموظفين..."
+    DoEvents
+    
+    
+    
+'    ' التصحيح بناءً على الورديات
+'    Dim correctShiftsSql As String
+'    correctShiftsSql = "UPDATE dbo_Attendance a " & _
+'                       "INNER JOIN dbo_EmployeeShifts s ON a.BiometricCode = s.BiometricCode " & _
+'                       "SET a.TimeIn = IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "    a.TimeOut = IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut), " & _
+'                       "    a.TotalHours = Round((DateDiff('n', " & _
+'                       "        IIf(a.TimeIn < s.StartTime, s.StartTime, a.TimeIn), " & _
+'                       "        IIf(a.TimeOut > s.EndTime, s.EndTime, a.TimeOut))) / 60.0, 2) " & _
+'                       "WHERE a.LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                       "AND (s.EffectiveFrom IS NULL OR a.LogDate >= s.EffectiveFrom) " & _
+'                       "AND (s.EffectiveTo IS NULL OR a.LogDate <= s.EffectiveTo)"
+'
+'    db.Execute correctShiftsSql, dbSeeChanges
+'    Me.pbImport1.Value = 50
+'    Me.lblStatus.Caption = "تم تطبيق قواعد الشيفتات. جاري معالجة الحضور بدون انصراف..."
+'    DoEvents
+    
+    ' معالجة الحالات التي بها بصمة واحدة فقط (حضور بدون انصراف)
+'    Dim singlePunchSql As String
+'    singlePunchSql = "UPDATE dbo_Attendance " & _
+'                     "SET Status = 'حضور فقط', " & _
+'                     "    TotalHours = 4 " & _
+'                     "WHERE LogDate BETWEEN #" & Format(startDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+'                     "AND ((TimeIn IS NOT NULL AND TimeOut IS NULL) OR (TimeIn = TimeOut))"
+' معالجة الحالات التي بها بصمة واحدة فقط (حضور بدون انصراف)
+Dim singlePunchSql As String
+singlePunchSql = "UPDATE dbo_Attendance " & _
+                 "SET Status = 'حضور فقط', " & _
+                 "    TimeOut = Null, " & _
+                 "    TotalHours = 0 " & _
+                 "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                 "AND ((TimeIn IS NOT NULL AND TimeOut IS NULL) OR (TimeIn = TimeOut))"
+
+    db.Execute singlePunchSql, dbSeeChanges
+    Me.pbImport1.value = 60
+    Me.lblStatus.Caption = "تم معالجة الحضور بدون انصراف. جاري إضافة الإجازات ونهاية الأسبوع..."
+    DoEvents
+
+    
+    ' الخطوة 1: إضافة أيام الجمعة كإجازة رسمية (للموظفين الذين لديهم BioEmployeeID فقط)
+    Dim addFridayHolidaysSql As String
+    addFridayHolidaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+                           "SELECT e.BioEmployeeID, c.CalendarDate, 'إجازة رسمية', 8 " & _
+                           "FROM dbo_Employees e, dbo_Calendar c " & _
+                           "WHERE c.CalendarDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                           "AND c.DayName = 'Friday' " & _
+                           "AND c.IsWeekend = 1 " & _
+                           "AND e.BioEmployeeID IS NOT NULL " & _
+                           "AND NOT EXISTS ( " & _
+                           "    SELECT 1 FROM dbo_Attendance a " & _
+                           "    WHERE a.BiometricCode = e.BioEmployeeID " & _
+                           "    AND a.LogDate = c.CalendarDate " & _
+                           ")"
+
+    db.Execute addFridayHolidaysSql, dbSeeChanges
+    Me.pbImport1.value = 80
+    Me.lblStatus.Caption = "تم إضافة الإجازات الرسمية. جاري معالجة الأيام المتبقية..."
+    DoEvents
+
+    ' الخطوة 2: معالجة الأيام التي لم يتم البصم فيها (للموظفين الذين لديهم BioEmployeeID فقط)
+    Dim addMissingDaysSql As String
+    addMissingDaysSql = "INSERT INTO dbo_Attendance (BiometricCode, LogDate, Status, TotalHours) " & _
+                        "SELECT e.BioEmployeeID, c.CalendarDate, 'غائب', 0 " & _
+                        "FROM dbo_Employees e, dbo_Calendar c " & _
+                        "WHERE c.CalendarDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "# " & _
+                        "AND c.DayName <> 'Friday' " & _
+                        "AND c.IsWeekend = 0 " & _
+                        "AND e.BioEmployeeID IS NOT NULL " & _
+                        "AND NOT EXISTS ( " & _
+                        "SELECT 1 FROM dbo_Attendance a " & _
+                        "WHERE a.BiometricCode = e.BioEmployeeID " & _
+                        "AND a.LogDate = c.CalendarDate " & _
+                        ")"
+
+    db.Execute addMissingDaysSql, dbSeeChanges
+
+    ' الحصول على عدد السجلات المضافة
+    Dim rs As DAO.Recordset
+    Set rs = db.OpenRecordset("SELECT COUNT(*) AS RecCount FROM dbo_Attendance " & _
+                              "WHERE LogDate BETWEEN #" & Format(StartDate, "yyyy-mm-dd") & "# AND #" & Format(EndDate, "yyyy-mm-dd") & "#")
+
+    Dim RecordCount As Long
+    RecordCount = rs!recCount
+
+    ' الحصول على عدد الموظفين الذين ليس لديهم BioEmployeeID
+    Dim nullBioCountRS As DAO.Recordset
+    Set nullBioCountRS = db.OpenRecordset("SELECT COUNT(*) AS NullCount FROM dbo_Employees WHERE BioEmployeeID IS NULL", dbOpenSnapshot)
+    Dim nullBioCount As Long
+    nullBioCount = nullBioCountRS!nullCount
+    nullBioCountRS.Close
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    ' تحديث شريط التقدم للنهاية وإنهاء العملية
+    Me.pbImport1.value = 100
+    Me.lblStatus.Caption = "تم الانتهاء من عملية اضافة البيانات"
+    DoEvents
+
+    If nullBioCount > 0 Then
+        MsgBox "تم اضافة " & RecordCount & " سجل حضور للشهر المحدد" & vbCrLf & _
+               "ملاحظة: هناك " & nullBioCount & " موظف ليس لديهم كود بصمة ولم يتم اضافة سجلات لهم", vbInformation, "تمت العملية"
+    Else
+        MsgBox "تم اضافة " & RecordCount & " سجل حضور للشهر المحدد" & vbCrLf & _
+               "شاملًا أيام الحضور والإجازات الرسمية والأيام الغياب", vbInformation, "تمت العملية"
+    End If
+
+CleanUp:
+    ' تنظيف وإخفاء الشريط وتفعيل الزر بعد تأخير بسيط
+    Dim EndTime As Date
+    EndTime = DateAdd("s", 2, Now())
+    Do While Now() < EndTime
+        DoEvents
+    Loop
+    
+    Me.pbImport1.Visible = False
+    Me.lblStatus.Visible = False
+    Me.cmdGenerateAttendance.Enabled = True
+    Exit Sub
+
+ErrorHandler:
+    Me.lblStatus.Caption = "حدث خطأ أثناء المعالجة"
+    MsgBox "حدث خطأ أثناء توليد بيانات الحضور: " & Err.Description, vbCritical, "خطأ"
+    Resume CleanUp
+End Sub
+
+
+' دالة لمعالجة البصمات بعد منتصف الليل
+Public Function AdjustPunchDateTime(originalDateTime As Date) As Date
+    Dim adjustedDate As Date
+    Dim adjustedTime As Date
+    
+    ' إذا كانت البصمة بين منتصف الليل و 5 صباحاً، نعتبرها لل??? السابق
+    If TimeValue(originalDateTime) >= #12:00:00 AM# And TimeValue(originalDateTime) < #5:00:00 AM# Then
+        adjustedDate = DateValue(originalDateTime) - 1
+        adjustedTime = TimeValue(originalDateTime)
+        AdjustPunchDateTime = adjustedDate + adjustedTime
+    Else
+        AdjustPunchDateTime = originalDateTime
+    End If
+End Function
+
+Private Sub Command20_Click()
+    Dim importMonth As Integer
+    Dim importYear As Integer
+
+    If Me.txtFilePath = "" Then
+        MsgBox "اختر ملف البصمة أولاً", vbExclamation
+        Exit Sub
+    End If
+
+    If Not IsNull(Me.cboMonth) Then importMonth = Me.cboMonth
+    If Not IsNull(Me.cboYear) Then importYear = Me.cboYear
+
+    ' استدعاء الكود الجديد مع ProgressBar
+    Call ImportBiometricBATWithProgress(Me.txtFilePath, Me, importMonth, importYear)
+
+    ' تجهيز جدول الملخص اليومي
+    Call ProcessAttendance
+
+    ' إعادة تعيين ProgressBar
+    Me.pbImport.value = 0
+
+    MsgBox "تم الاستيراد وتجهيز ملخص الحضور اليومي.", vbInformation
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

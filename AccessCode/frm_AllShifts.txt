@@ -1,0 +1,320 @@
+﻿Option Compare Database
+
+Private Sub cmdExport_Click()
+
+    On Error GoTo ErrHandler
+    
+    Dim rs As DAO.Recordset
+    Dim xlApp As Object, xlWorkbook As Object, xlWorksheet As Object
+    Dim i As Long
+    Dim filePath As String
+    
+    ' تأكد من وجود سجلات
+    Set rs = Me.RecordsetClone
+    If rs.EOF And rs.BOF Then
+        MsgBox "لا توجد سجلات للتصدير.", vbInformation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    ' مسار افتراضي
+    filePath = Environ("USERPROFILE") & "\Desktop\شيفتات الموظفين_" & Format(Now(), "yyyy-mm-dd_hh-mm") & ".xlsx"
+    
+    ' إنشاء Excel
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlWorkbook = xlApp.Workbooks.Add
+    Set xlWorksheet = xlWorkbook.Sheets(1)
+    xlApp.Visible = True
+    
+    ' الرؤوس
+    Dim headers As Variant
+    headers = Array("كود الموظف", "اسم الموظف", "كود البصمة ", "نوع الشيفت", "وقت البداية ", "وقت النهاية", "من تاريخ", "الى تاريخ")
+    
+    For i = 0 To UBound(headers)
+        xlWorksheet.Cells(1, i + 1).value = headers(i)
+    Next i
+    
+    ' تنسيق الرؤوس
+    With xlWorksheet.Range("A1:I1")
+        .Font.Bold = True
+        .Interior.Color = RGB(0, 120, 215)
+        .Font.Color = vbWhite
+    End With
+    
+    ' البيانات
+    i = 2
+    rs.MoveFirst
+    Do Until rs.EOF
+       
+        xlWorksheet.Cells(i, 1).value = Nz(rs!EmployeeID, "")
+        xlWorksheet.Cells(i, 2).value = Nz(rs!FullName, "")
+        xlWorksheet.Cells(i, 3).value = Nz(rs!BiometricCode, "")
+        xlWorksheet.Cells(i, 4).value = Nz(rs!ShiftType, "")
+        xlWorksheet.Cells(i, 5).value = Nz(rs!StartTime, "")
+        xlWorksheet.Cells(i, 6).value = Nz(rs!EndTime, "")
+        xlWorksheet.Cells(i, 7).value = Nz(rs!EffectiveFrom, "")
+        xlWorksheet.Cells(i, 8).value = Nz(rs!EffectiveTo, "")
+        
+        i = i + 1
+        rs.MoveNext
+    Loop
+    
+    ' تنسيق وحفظ
+    xlWorksheet.Columns("A:I").AutoFit
+    xlWorkbook.SaveAs filePath, 51
+    
+    MsgBox "تم تصدير " & (i - 2) & " سجل إلى: " & vbCrLf & filePath, vbInformation, "COCOBOLO SYSTEM"
+    
+CleanUp:
+    On Error Resume Next
+    rs.Close
+    Set rs = Nothing
+    Set xlWorksheet = Nothing
+    Set xlWorkbook = Nothing
+    Set xlApp = Nothing
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "خطأ: " & Err.Description, vbCritical
+    Resume CleanUp
+End Sub
+
+' دالة API لاختيار الملف
+Private Function GetSaveAsFileName(Optional defaultName As String = "", Optional fileFilter As String = "") As String
+    Dim openFile As Object
+    Set openFile = Application.fileDialog(2)
+    
+    With openFile
+        .Title = "حفظ ملف Excel"
+        If defaultName <> "" Then .InitialFileName = defaultName
+        If fileFilter <> "" Then
+            .Filters.Clear
+            .Filters.Add "ملفات Excel", "*.xlsx"
+        End If
+        If .Show = -1 Then
+            GetSaveAsFileName = .SelectedItems(1)
+        Else
+            GetSaveAsFileName = ""
+        End If
+    End With
+End Function
+
+Private Sub btnAddShifts_Click()
+If Not currentUser.HasPermission("frm_EmpolyeeShifts") Then
+        
+        MsgBox "عذرا يبشمهندس :  " & currentUser.FullName & " غير مصرح لك بالدخول  ", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_EmpolyeeShifts"
+End Sub
+
+Private Sub cboEmployee_Change()
+ Call UpdateRecordSource
+End Sub
+
+Private Sub cboShiftType_Change()
+ Call UpdateRecordSource
+End Sub
+
+
+Private Sub Command66_Click()
+If Not currentUser.HasPermission("frm_EmpolyeeShifts") Then
+        
+        MsgBox "عذرا يبشمهندس :  " & vbCrLf & currentUser.FullName & vbCrLf & " غير مصرح لك بالدخول  ", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_EmpolyeeShifts", , , , , , Me.EmployeeShiftID & "|"
+End Sub
+
+Private Sub Form_Load()
+   
+    Me.txtFromDate = DateSerial(Year(Date), Month(Date), 1)     ' 1/10/2025
+    Me.txtToDate = DateSerial(Year(Date), Month(Date) + 1, 0)     ' 31/10/2025
+If currentUser.UserName <> "hassan" And currentUser.UserName <> "admin" And currentUser.UserName <> "mibrahim" And currentUser.UserName <> "nada" And currentUser.UserName <> "nabil" Then
+Me.cboEmployee = DLookup("employeeID", "dbo_Users", "UserID = " & currentUser.UserId)
+Me.cboEmployee.Enabled = False
+Else
+Me.cboEmployee = Null
+Me.cboEmployee.Enabled = True
+    End If
+    Call UpdateRecordSource
+End Sub
+
+
+'Private Sub UpdateRecordSource()
+'    Dim strSQL As String
+'    Dim strWhere As String
+'
+'    strSQL = "SELECT " & _
+'             "dbo_EmployeeShifts.EmployeeShiftID, " & _
+'             "dbo_EmployeeShifts.EmployeeID, " & _
+'             "dbo_Employees.FullName, " & _
+'             "dbo_EmployeeShifts.BiometricCode, " & _
+'             "dbo_EmployeeShifts.ShiftType, " & _
+'             "dbo_EmployeeShifts.StartTime, " & _
+'             "dbo_EmployeeShifts.EndTime, " & _
+'             "dbo_EmployeeShifts.EffectiveFrom, " & _
+'             "dbo_EmployeeShifts.EffectiveTo " & _
+'             "FROM dbo_EmployeeShifts " & _
+'             "INNER JOIN dbo_Employees ON dbo_EmployeeShifts.EmployeeID = dbo_Employees.EmployeeID "
+'
+'    strWhere = ""
+'
+'    ' فلتر التاريخ (الافتراضي من أول الشهر لآخر الشهر)
+'    If IsDate(Me.txtFromDate) And IsDate(Me.txtToDate) Then
+'        strWhere = "WHERE (dbo_EmployeeShifts.[EffectiveFrom] >= #" & Format(Me.txtFromDate, "mm/dd/yyyy") & "#) " & _
+'                   "AND ((dbo_EmployeeShifts.[EffectiveTo] <= #" & Format(Me.txtToDate, "mm/dd/yyyy") & "#) " & _
+'                   "OR (dbo_EmployeeShifts.[EffectiveTo] IS NULL)) "
+'    End If
+'
+'    ' فلتر الموظف
+'    If Not IsNull(Me.cboEmployee) And Me.cboEmployee <> 0 Then
+'        If strWhere = "" Then strWhere = "WHERE " Else strWhere = strWhere & "AND "
+'        strWhere = strWhere & "(dbo_EmployeeShifts.EmployeeID = " & Me.cboEmployee & ") "
+'    End If
+'
+'    ' فلتر نوع الشيفت
+'    If Not IsNull(Me.cboShiftType) And Me.cboShiftType <> "" Then
+'        If strWhere = "" Then strWhere = "WHERE " Else strWhere = strWhere & "AND "
+'        strWhere = strWhere & "(dbo_EmployeeShifts.ShiftType = '" & Me.cboShiftType & "') "
+'    End If
+'
+'    strSQL = strSQL & strWhere & _
+'             "ORDER BY dbo_EmployeeShifts.EmployeeID, dbo_EmployeeShifts.EffectiveFrom;"
+'
+'    Me.RecordSource = strSQL
+'    Me.Requery
+'End Sub
+Private Sub UpdateRecordSource()
+    On Error GoTo ErrorHandler
+    
+    Dim strSQL As String
+    Dim strWhere As String
+    
+    strSQL = "SELECT " & _
+             "dbo_EmployeeShifts.EmployeeShiftID, " & _
+             "dbo_EmployeeShifts.EmployeeID, " & _
+             "dbo_Employees.FullName, " & _
+             "dbo_EmployeeShifts.BiometricCode, " & _
+             "dbo_EmployeeShifts.ShiftType, " & _
+             "dbo_EmployeeShifts.StartTime, " & _
+             "dbo_EmployeeShifts.EndTime, " & _
+             "dbo_EmployeeShifts.EffectiveFrom, " & _
+             "dbo_EmployeeShifts.EffectiveTo " & _
+             "FROM dbo_EmployeeShifts " & _
+             "INNER JOIN dbo_Employees ON dbo_EmployeeShifts.EmployeeID = dbo_Employees.EmployeeID "
+    
+    strWhere = ""
+    
+    ' فلتر التاريخ
+    If IsDate(Me.txtFromDate) And IsDate(Me.txtToDate) Then
+        strWhere = "WHERE (dbo_EmployeeShifts.EffectiveFrom >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "#) " & _
+                   "AND ((dbo_EmployeeShifts.EffectiveTo <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & "#) " & _
+                   "OR (dbo_EmployeeShifts.EffectiveTo IS NULL)) "
+    End If
+    
+    ' فلتر الموظف
+    If Not IsNull(Me.cboEmployee) And Me.cboEmployee <> "" And Me.cboEmployee <> 0 Then
+        If strWhere = "" Then strWhere = "WHERE " Else strWhere = strWhere & "AND "
+        strWhere = strWhere & "(dbo_EmployeeShifts.EmployeeID = " & Me.cboEmployee & ") "
+    End If
+    
+    ' فلتر نوع الشيفت
+    If Not IsNull(Me.cboShiftType) And Me.cboShiftType <> "" Then
+        If strWhere = "" Then strWhere = "WHERE " Else strWhere = strWhere & "AND "
+        strWhere = strWhere & "(dbo_EmployeeShifts.ShiftType = '" & Replace(Me.cboShiftType, "'", "''") & "') "
+    End If
+    
+    strSQL = strSQL & strWhere & _
+             "ORDER BY dbo_EmployeeShifts.EmployeeID, dbo_EmployeeShifts.EffectiveFrom;"
+    
+    Me.RecordSource = strSQL
+    Me.Requery
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تحديث البيانات: " & Err.Description, vbExclamation, "COCOBOLO SYSTEM"
+End Sub
+
+
+Private Sub txtFromDate_AfterUpdate()
+ Call UpdateRecordSource
+End Sub
+
+Private Sub txtToDate_AfterUpdate()
+Call UpdateRecordSource
+End Sub
+
+'Private Sub btnOpenReport_Click()
+'    On Error GoTo ErrorHandler
+'
+'    Dim strWhere As String
+'    strWhere = ""
+'
+'    ' فلتر التاريخ
+'    If IsDate(Me.txtFromDate) And IsDate(Me.txtToDate) Then
+'        strWhere = "(EffectiveFrom >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "# " & _
+'                   "AND (EffectiveTo <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & "# " & _
+'                   "OR EffectiveTo IS NULL))"
+'    End If
+'
+'    ' فلتر الموظف
+'    If Not IsNull(Me.cboEmployee) And Me.cboEmployee <> "" And Me.cboEmployee <> 0 Then
+'        If strWhere <> "" Then strWhere = strWhere & " AND "
+'        strWhere = strWhere & "(dbo_EmployeeShifts.EmployeeID = " & Me.cboEmployee & ")"
+'    End If
+'
+'    ' فلتر نوع الشيفت
+'    If Not IsNull(Me.cboShiftType) And Me.cboShiftType <> "" Then
+'        If strWhere <> "" Then strWhere = strWhere & " AND "
+'        strWhere = strWhere & "(ShiftType = '" & Replace(Me.cboShiftType, "'", "''") & "')"
+'    End If
+'
+'    ' تصحيح استدعاء التقرير
+'    If strWhere = "" Then
+'        DoCmd.OpenReport "rptEmployeeShifts", acViewPreview
+'    Else
+'        DoCmd.OpenReport "rptEmployeeShifts", acViewPreview, , strWhere
+'    End If
+'
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "خطأ في فتح التقرير: " & Err.Description, vbExclamation, "COCOBOLO SYSTEM"
+'End Sub
+
+Private Sub btnOpenReport_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim strWhere As String
+    strWhere = ""
+    
+    ' بناء شرط الفلتر
+    If IsDate(Me.txtFromDate) And IsDate(Me.txtToDate) Then
+        strWhere = "(EffectiveFrom >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "# " & _
+                   "AND (EffectiveTo <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & "# " & _
+                   "OR EffectiveTo IS NULL))"
+    End If
+    
+    If Not IsNull(Me.cboEmployee) And Me.cboEmployee <> "" And Me.cboEmployee <> 0 Then
+        If strWhere <> "" Then strWhere = strWhere & " AND "
+        strWhere = strWhere & "(EmployeeID = " & Me.cboEmployee & ")"
+    End If
+    
+    If Not IsNull(Me.cboShiftType) And Me.cboShiftType <> "" Then
+        If strWhere <> "" Then strWhere = strWhere & " AND "
+        strWhere = strWhere & "(ShiftType = '" & Replace(Me.cboShiftType, "'", "''") & "')"
+    End If
+    
+    ' فتح التقرير مع الفلتر
+    DoCmd.OpenReport "rptEmployeeShifts", acViewPreview, , strWhere
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في فتح التقرير: " & Err.Description, vbExclamation, "COCOBOLO SYSTEM"
+End Sub

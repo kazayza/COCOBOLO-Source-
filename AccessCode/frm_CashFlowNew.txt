@@ -1,0 +1,1047 @@
+﻿'Option Compare Database
+'
+'Private Sub Form_Load()
+'    ' تهيئة القيم الافتراضية فقط بدون تحميل بيانات
+'    Me.cboYear = Year(Date)
+'    Me.cboMonth = Month(Date)
+'    Me.cboViewType = "شهري"
+'
+'    ' رسالة بدائية للتحليل
+'    If Not IsNull(Me.txtFinancialInsights) Then
+'        Me.txtFinancialInsights.value = "سيظهر التحليل هنا بعد ضغط زر التحديث"
+'    End If
+'End Sub
+'
+'Private Sub RefreshData()
+'    On Error GoTo ErrHandler
+'
+'    Dim SQL As String
+'    Dim condition As String
+'
+'    ' بناء شرط الفلتر
+'    If Me.cboViewType = "شهري" Then
+'        If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+'            condition = "WHERE [Year] = " & Me.cboYear & " AND [Month] = " & Me.cboMonth
+'        End If
+'    ElseIf Me.cboViewType = "سنوي" Then
+'        If Not IsNull(Me.cboYear) Then
+'            condition = "WHERE [Year] = " & Me.cboYear
+'        End If
+'    Else
+'        condition = ""
+'    End If
+'
+'    SQL = "SELECT * FROM qry_CashFlow " & condition & " ORDER BY [Year], [Month]"
+'
+'    ' تحديث البيانات فقط
+'    Me.subData.SourceObject = ""
+'    Me.subData.SourceObject = "Query.qry_CashFlow"
+'    Me.subData.Form.RecordSource = SQL
+'    Me.subData.Form.Requery
+'
+'    ' تحديث الملخص فقط
+'    Call UpdateSummary
+'    Call GenerateFinancialInsights
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ في تحديث البيانات: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub UpdateSummary()
+'    On Error Resume Next
+'
+'    If Me.subData.Form.Recordset.recordCount > 0 Then
+'        With Me.subData.Form.Recordset
+'            .MoveFirst
+'
+'            Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'
+'            Do Until .EOF
+'                totalIncome = totalIncome + !CashInSales + !CashInOther
+'                totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'                netFlow = netFlow + !NetCashFlow
+'                .MoveNext
+'            Loop
+'
+'            ' عرض الملخص الأساسي
+'            Me.lblTotalIncome.Caption = Format(totalIncome, "###,###,##0.00")
+'            Me.lblTotalExpenses.Caption = Format(totalExpenses, "###,###,##0.00")
+'            Me.lblNetFlow.Caption = Format(netFlow, "###,###,##0.00")
+'            Me.lblRecordCount.Caption = "عدد الأشهر: " & Me.subData.Form.Recordset.recordCount
+'
+'            If netFlow >= 0 Then
+'                Me.lblNetFlow.ForeColor = vbGreen
+'            Else
+'                Me.lblNetFlow.ForeColor = vbRed
+'            End If
+'        End With
+'    Else
+'        Me.lblTotalIncome.Caption = "0.00"
+'        Me.lblTotalExpenses.Caption = "0.00"
+'        Me.lblNetFlow.Caption = "0.00"
+'        Me.lblRecordCount.Caption = "لا توجد بيانات"
+'    End If
+'End Sub
+'
+'' أحداث التحديث التلقائي (بدون تحليل)
+'
+'
+'Private Sub cboViewType_AfterUpdate()
+'    If Me.cboViewType = "شهري" Then
+'        Me.lblMonth.Visible = True
+'        Me.cboMonth.Visible = True
+'    Else
+'        Me.lblMonth.Visible = False
+'        Me.cboMonth.Visible = False
+'    End If
+'
+'    Call RefreshData
+'    Call GenerateFinancialInsights
+'End Sub
+'
+'' أزرار التحكم
+'Private Sub cmdExportExcel_Click()
+'    On Error GoTo ErrHandler
+'
+'    Dim fileName As String
+'    fileName = "التدفق_النقدي_" & Format(Date, "yyyy-mm-dd") & ".xlsx"
+'
+'    DoCmd.OutputTo acOutputQuery, "qry_CashFlow", acFormatXLSX, fileName, True
+'    MsgBox "تم التصدير إلى Excel بنجاح", vbInformation
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub cmdPrintReport_Click()
+'    On Error GoTo ErrHandler
+'
+'    If Me.subData.Form.Recordset.recordCount = 0 Then
+'        MsgBox "لا توجد بيانات لطباعة التقرير", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Dim filterCondition As String
+'    filterCondition = BuildFilterCondition
+'
+'    ' فتح التقرير مع الفلتر في OpenArgs
+'    DoCmd.OpenReport "rptCashFlow", acViewPreview, , , , filterCondition
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ في فتح التقرير: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Function BuildFilterCondition() As String
+'    Dim filterCondition As String
+'    filterCondition = ""
+'
+'    If Me.cboViewType = "شهري" Then
+'        If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+'            filterCondition = "[Year] = " & Me.cboYear & " AND [Month] = " & Me.cboMonth
+'        End If
+'    ElseIf Me.cboViewType = "سنوي" Then
+'        If Not IsNull(Me.cboYear) Then
+'            filterCondition = "[Year] = " & Me.cboYear
+'        End If
+'    End If
+'
+'    BuildFilterCondition = filterCondition
+'End Function
+'
+'Private Sub cmdRefresh_Click()
+'    On Error GoTo ErrHandler
+'
+'    ' تحديث البيانات أولاً
+'    Call RefreshData
+'
+'    ' ثم عمل التحليل
+'    Call GenerateFinancialInsights
+'
+'    MsgBox "تم تحديث البيانات والتحليل", vbInformation
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ في التحديث: " & Err.Description, vbCritical
+'End Sub
+'
+'Private Sub GenerateFinancialInsights()
+'    On Error GoTo ErrHandler
+'
+'    ' طريقة أفضل للتحقق من وجود العنصر
+'    Dim ControlExists As Boolean
+'    ControlExists = False
+'
+'    On Error Resume Next
+'    Dim testValue As String
+'    testValue = Me.txtFinancialInsights.Name ' محاولة الوصول للعنصر
+'    If Err.Number = 0 Then
+'        ControlExists = True
+'    End If
+'    On Error GoTo ErrHandler
+'
+'    If Not ControlExists Then
+'        MsgBox "العنصر txtFinancialInsights موجود لكن لا يمكن الوصول له. سيتم عرض التحليل في رسالة.", vbExclamation
+'        Call ShowAnalysisInMessage
+'        Exit Sub
+'    End If
+'
+'    ' التأكد من وجود بيانات
+'    If Me.subData.Form.Recordset.recordCount = 0 Then
+'        Me.txtFinancialInsights.value = "لا توجد بيانات للتحليل"
+'        Exit Sub
+'    End If
+'
+'    ' رسالة بداية التحليل
+'    Me.txtFinancialInsights.value = "جاري تحليل البيانات... يرجى الانتظار"
+'    DoEvents
+'
+'    ' حساب الإجماليات
+'    Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'    Dim TotalSales As Currency, totalSalaries As Currency, TotalPurchases As Currency
+'
+'    With Me.subData.Form.Recordset
+'        .MoveFirst
+'        Do Until .EOF
+'            TotalSales = TotalSales + !CashInSales
+'            totalSalaries = totalSalaries + !Salaries
+'            TotalPurchases = TotalPurchases + !CashOutPurchases
+'            totalIncome = totalIncome + !CashInSales + !CashInOther
+'            totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'            netFlow = netFlow + !NetCashFlow
+'            .MoveNext
+'        Loop
+'    End With
+'
+'    ' إنشاء نص التحليل
+'    Dim analysisText As String
+'    analysisText = "التقرير التحليلي المالي" & vbCrLf
+'    analysisText = analysisText & "==========================" & vbCrLf & vbCrLf
+'
+'    analysisText = analysisText & "ملخص الأداء:" & vbCrLf
+'    analysisText = analysisText & "• إجمالي الإيرادات: " & Format(totalIncome, "###,###") & " ج.م" & vbCrLf
+'    analysisText = analysisText & "• إجمالي المصروفات: " & Format(totalExpenses, "###,###") & " ج.م" & vbCrLf
+'    analysisText = analysisText & "• صافي التدفق النقدي: " & Format(netFlow, "###,###") & " ج.م" & vbCrLf & vbCrLf
+'
+'    ' النسب المالية
+'    analysisText = analysisText & "النسب المالية:" & vbCrLf
+'
+'    If totalIncome > 0 Then
+'        Dim profitMargin As Double
+'        profitMargin = (netFlow / totalIncome) * 100
+'        analysisText = analysisText & "• هامش الربح: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+'
+'        Dim expenseRatio As Double
+'        expenseRatio = (totalExpenses / totalIncome) * 100
+'        analysisText = analysisText & "• نسبة المصروفات: " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+'
+'        If totalExpenses > 0 Then
+'            Dim salaryRatio As Double
+'            salaryRatio = (totalSalaries / totalExpenses) * 100
+'            analysisText = analysisText & "• نسبة الرواتب: " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+'        End If
+'    End If
+'
+'    ' التقييم
+'    analysisText = analysisText & vbCrLf & "التقييم: "
+'    If netFlow > 0 Then
+'        analysisText = analysisText & "أداء جيد ?"
+'    Else
+'        analysisText = analysisText & "يحتاج تحسين ?"
+'    End If
+'
+'    ' عرض التحليل في العنصر
+'    Me.txtFinancialInsights.value = analysisText
+'
+'    ' محاولة تحديث العناصر الأخرى
+'    Call UpdateOtherControls(totalIncome, totalExpenses, netFlow, TotalPurchases)
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    ' إذا فشل الوصول للعنصر، اعرض في رسالة
+'    Call ShowAnalysisInMessage
+'End Sub
+'
+'Private Sub UpdateOtherControls(totalIncome As Currency, totalExpenses As Currency, netFlow As Currency, TotalPurchases As Currency)
+'    On Error Resume Next ' تجاهل الأخطاء في العناصر الأخرى
+'
+'    ' تحديث lblGrossMargin
+'    If totalIncome > 0 Then
+'        Dim profitMargin As Double
+'        profitMargin = (netFlow / totalIncome) * 100
+'
+'        Me.lblGrossMargin.Caption = Format(profitMargin, "0.00") & "%"
+'        Me.lblNetMargin.Caption = Format((totalIncome - TotalPurchases) / totalIncome * 100, "0.00") & "%"
+'        Me.lblOperatingRatio.Caption = Format((totalExpenses / totalIncome) * 100, "0.00") & "%"
+'
+'        ' تحديث الكفاءة
+'        Dim expenseRatio As Double
+'        expenseRatio = (totalExpenses / totalIncome) * 100
+'        If expenseRatio < 70 Then
+'            Me.lblEfficiency.Caption = "ممتاز"
+'        ElseIf expenseRatio < 85 Then
+'            Me.lblEfficiency.Caption = "جيد"
+'        Else
+'            Me.lblEfficiency.Caption = "يحتاج تحسين"
+'        End If
+'    End If
+'End Sub
+'
+'Private Sub ShowAnalysisInMessage()
+'    ' عرض التحليل في رسالة
+'    If Me.subData.Form.Recordset.recordCount > 0 Then
+'        Dim totalIncome As Currency, totalExpenses As Currency, netFlow As Currency
+'        Dim TotalSales As Currency, totalSalaries As Currency
+'
+'        With Me.subData.Form.Recordset
+'            .MoveFirst
+'            Do Until .EOF
+'                TotalSales = TotalSales + !CashInSales
+'                totalSalaries = totalSalaries + !Salaries
+'                totalIncome = totalIncome + !CashInSales + !CashInOther
+'                totalExpenses = totalExpenses + !CashOutPurchases + !CashOutOther + !Expenses + !Salaries
+'                netFlow = netFlow + !NetCashFlow
+'                .MoveNext
+'            Loop
+'        End With
+'
+'        Dim analysisText As String
+'        analysisText = "التحليل المالي" & vbCrLf & vbCrLf
+'        analysisText = analysisText & "الإيرادات: " & Format(totalIncome, "###,###") & " ج.م" & vbCrLf
+'        analysisText = analysisText & "المصروفات: " & Format(totalExpenses, "###,###") & " ج.م" & vbCrLf
+'        analysisText = analysisText & "الصافي: " & Format(netFlow, "###,###") & " ج.م" & vbCrLf & vbCrLf
+'
+'        If totalIncome > 0 Then
+'            analysisText = analysisText & "هامش الربح: " & Format((netFlow / totalIncome) * 100, "0.00") & "%"
+'        End If
+'
+'        MsgBox analysisText, vbInformation, "التحليل المالي"
+'    Else
+'        MsgBox "لا توجد بيانات للتحليل", vbInformation, "التحليل المالي"
+'    End If
+'End Sub
+'========================
+ ' من هنا التعديل الجديد
+ '=======================
+ Option Compare Database
+Option Explicit
+
+' ========== Type للإجماليات ==========
+Private Type CashFlowTotals
+    TotalIncome As Currency
+    TotalExpenses As Currency
+    NetFlow As Currency
+    TotalSales As Currency
+    TotalSalaries As Currency
+    TotalPurchases As Currency
+    TotalOtherIncome As Currency
+    TotalOtherExpenses As Currency
+    RecordCount As Long
+End Type
+
+' ========== متغير لحفظ الإجماليات ==========
+Private m_Totals As CashFlowTotals
+
+' ========== تحميل النموذج ==========
+'Private Sub Form_Load()
+'    On Error Resume Next
+'
+'    ' تهيئة القيم الافتراضية
+'    Me.cboYear = Year(Date)
+'    Me.cboMonth = Month(Date)
+'    Me.cboViewType = "شهري"
+'
+'    ' رسالة بدائية
+'    If Not IsNull(Me.txtFinancialInsights) Then
+'        Me.txtFinancialInsights.value = "اضغط على زر التحديث لعرض التحليل المالي"
+'    End If
+'
+'    ' إظهار/إخفاء حقل الشهر حسب نوع العرض
+'    Call ToggleMonthVisibility
+'End Sub
+Private Sub Form_Load()
+    On Error Resume Next
+    
+    ' تهيئة القيم الافتراضية
+    Me.cboYear = Year(Date)
+    Me.cboMonth = Month(Date)
+    Me.cboViewType = "شهري"
+    
+    ' إظهار/إخفاء حقل الشهر
+    Call ToggleMonthVisibility
+    
+    ' تحميل بيانات الشهر الحالي مباشرة
+    Call RefreshData
+End Sub
+' ========== دالة حساب الإجماليات الموحدة ==========
+Private Function CalculateTotals() As CashFlowTotals
+    Dim result As CashFlowTotals
+    
+    On Error GoTo ErrHandler
+    
+    ' التحقق من وجود بيانات
+    If Me.subData.Form.Recordset Is Nothing Then
+        CalculateTotals = result
+        Exit Function
+    End If
+    
+    If Me.subData.Form.Recordset.RecordCount = 0 Then
+        CalculateTotals = result
+        Exit Function
+    End If
+    
+    ' حساب الإجماليات
+    With Me.subData.Form.Recordset
+        .MoveFirst
+        Do Until .EOF
+            ' الإيرادات
+            result.TotalSales = result.TotalSales + Nz(.Fields("إيرادات المبيعات"), 0)
+            result.TotalOtherIncome = result.TotalOtherIncome + Nz(.Fields("إيرادات أخرى"), 0)
+            
+            ' المصروفات
+            result.TotalPurchases = result.TotalPurchases + Nz(.Fields("مصروفات المشتريات"), 0)
+            result.TotalOtherExpenses = result.TotalOtherExpenses + Nz(.Fields("مصروفات أخرى"), 0) + Nz(.Fields("المصروفات العامة"), 0)
+            result.TotalSalaries = result.TotalSalaries + Nz(.Fields("الرواتب"), 0)
+            
+            ' الإجماليات
+            result.TotalIncome = result.TotalIncome + Nz(.Fields("إجمالي الإيرادات"), 0)
+            result.TotalExpenses = result.TotalExpenses + Nz(.Fields("إجمالي المصروفات"), 0)
+            result.NetFlow = result.NetFlow + Nz(.Fields("صافي التدفق النقدي"), 0)
+            
+            .MoveNext
+        Loop
+        result.RecordCount = .RecordCount
+    End With
+    
+    CalculateTotals = result
+    Exit Function
+    
+ErrHandler:
+    CalculateTotals = result
+End Function
+' ========== بناء شرط الفلتر ==========
+Private Function BuildFilterCondition() As String
+    Dim condition As String
+    condition = ""
+    
+    Select Case Nz(Me.cboViewType, "")
+        Case "شهري"
+            If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+                condition = "[السنة] = " & Me.cboYear & " AND [الشهر] = " & Me.cboMonth
+            ElseIf Not IsNull(Me.cboYear) Then
+                condition = "[السنة] = " & Me.cboYear
+            End If
+            
+        Case "سنوي"
+            If Not IsNull(Me.cboYear) Then
+                condition = "[السنة] = " & Me.cboYear
+            End If
+            
+        Case "الكل"
+            condition = ""
+    End Select
+    
+    BuildFilterCondition = condition
+End Function
+
+' ========== تحديث البيانات ==========
+Private Sub RefreshData()
+    On Error GoTo ErrHandler
+    
+    Dim sql As String
+    Dim condition As String
+    
+    ' عرض مؤشر الانتظار
+    DoCmd.Hourglass True
+    
+    ' بناء الاستعلام
+    condition = BuildFilterCondition()
+    
+    If condition <> "" Then
+        sql = "SELECT * FROM qry_CashFlow WHERE " & condition & " ORDER BY [السنة], [الشهر]"
+    Else
+        sql = "SELECT * FROM qry_CashFlow ORDER BY [السنة], [الشهر]"
+    End If
+    
+    ' تحديث مصدر البيانات
+    Me.subData.Form.RecordSource = sql
+    Me.subData.Form.Requery
+    DoEvents
+    
+    ' حساب الإجماليات
+    m_Totals = CalculateTotals()
+    
+    ' تحديث العناصر
+    Call UpdateSummary
+    Call UpdateFinancialRatios
+    Call GenerateFinancialInsights
+    
+    DoCmd.Hourglass False
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "خطأ في تحديث البيانات: " & Err.Description, vbCritical, "خطأ"
+End Sub
+' ========== تحديث الملخص ==========
+Private Sub UpdateSummary()
+    On Error Resume Next
+    
+    If m_Totals.RecordCount > 0 Then
+        ' عرض الإجماليات
+        Me.lblTotalIncome.Caption = Format(m_Totals.TotalIncome, "###,###,##0.00")
+        Me.lblTotalExpenses.Caption = Format(m_Totals.TotalExpenses, "###,###,##0.00")
+        Me.lblNetFlow.Caption = Format(m_Totals.NetFlow, "###,###,##0.00")
+        Me.lblRecordCount.Caption = "عدد الأشهر: " & m_Totals.RecordCount
+        
+        ' تلوين صافي التدفق
+        If m_Totals.NetFlow >= 0 Then
+            Me.lblNetFlow.ForeColor = RGB(0, 128, 0)  ' أخضر
+        Else
+            Me.lblNetFlow.ForeColor = RGB(255, 0, 0)  ' أحمر
+        End If
+    Else
+        ' لا توجد بيانات
+        Me.lblTotalIncome.Caption = "0.00"
+        Me.lblTotalExpenses.Caption = "0.00"
+        Me.lblNetFlow.Caption = "0.00"
+        Me.lblRecordCount.Caption = "لا توجد بيانات"
+        Me.lblNetFlow.ForeColor = vbBlack
+    End If
+End Sub
+
+' ========== تحديث النسب المالية ==========
+Private Sub UpdateFinancialRatios()
+    On Error Resume Next
+    
+    Dim profitMargin As Double
+    Dim expenseRatio As Double
+    Dim salaryRatio As Double
+    Dim netMargin As Double
+    
+    If m_Totals.TotalIncome > 0 Then
+        ' حساب النسب
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+        netMargin = ((m_Totals.TotalIncome - m_Totals.TotalPurchases) / m_Totals.TotalIncome) * 100
+        
+        ' عرض النسب
+        Me.lblGrossMargin.Caption = Format(profitMargin, "0.00") & "%"
+        Me.lblNetMargin.Caption = Format(netMargin, "0.00") & "%"
+        Me.lblOperatingRatio.Caption = Format(expenseRatio, "0.00") & "%"
+        
+        ' تقييم الكفاءة
+        Select Case expenseRatio
+            Case Is < 60
+                Me.lblEfficiency.Caption = "ممتاز"
+                Me.lblEfficiency.ForeColor = RGB(0, 128, 0)
+            Case Is < 75
+                Me.lblEfficiency.Caption = "جيد جداً"
+                Me.lblEfficiency.ForeColor = RGB(0, 100, 0)
+            Case Is < 85
+                Me.lblEfficiency.Caption = "جيد"
+                Me.lblEfficiency.ForeColor = RGB(255, 165, 0)
+            Case Is < 95
+                Me.lblEfficiency.Caption = "مقبول"
+                Me.lblEfficiency.ForeColor = RGB(255, 140, 0)
+            Case Else
+                Me.lblEfficiency.Caption = "يحتاج تحسين"
+                Me.lblEfficiency.ForeColor = RGB(255, 0, 0)
+        End Select
+        
+        ' نسبة الرواتب من المصروفات
+        If m_Totals.TotalExpenses > 0 Then
+            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+        End If
+    Else
+        ' إعادة تعيين القيم
+        Me.lblGrossMargin.Caption = "0.00%"
+        Me.lblNetMargin.Caption = "0.00%"
+        Me.lblOperatingRatio.Caption = "0.00%"
+        Me.lblEfficiency.Caption = "-"
+        Me.lblEfficiency.ForeColor = vbBlack
+    End If
+End Sub
+
+' ========== توليد التحليل المالي ==========
+'Private Sub GenerateFinancialInsights()
+'    On Error GoTo ErrHandler
+'
+'    ' التحقق من وجود بيانات
+'    If m_Totals.RecordCount = 0 Then
+'        Me.txtFinancialInsights.value = "لا توجد بيانات للتحليل" & vbCrLf & vbCrLf & _
+'                                        "يرجى اختيار فترة زمنية تحتوي على بيانات"
+'        Exit Sub
+'    End If
+'
+'    Dim analysisText As String
+'    Dim profitMargin As Double
+'    Dim expenseRatio As Double
+'    Dim salaryRatio As Double
+'    Dim purchaseRatio As Double
+'
+''    ' ========== العنوان ==========
+''    analysisText = "=======" & vbCrLf
+''    analysisText = analysisText & "       التقرير التحليلي المالي" & vbCrLf
+''    analysisText = analysisText & "=======" & vbCrLf & vbCrLf
+''
+''    ' ========== ملخص الأداء ==========
+''    analysisText = analysisText & "? ملخص الأداء المالي:" & vbCrLf
+''    analysisText = analysisText & "========" & vbCrLf
+''    analysisText = analysisText & "  • إجمالي الإيرادات: " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " ج.م" & vbCrLf
+''    analysisText = analysisText & "     ?? المبيعات: " & Format(m_Totals.TotalSales, "###,###,##0.00") & " ج.م" & vbCrLf
+''    analysisText = analysisText & "     ?? إيرادات أخرى: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+''
+''    analysisText = analysisText & "  • إجمالي المصروفات: " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " ج.م" & vbCrLf
+''    analysisText = analysisText & "     ?? المشتريات: " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " ج.م" & vbCrLf
+''    analysisText = analysisText & "     ?? الرواتب: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " ج.م" & vbCrLf
+''    analysisText = analysisText & "     ?? مصروفات أخرى: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+''
+''    analysisText = analysisText & "  • صافي التدفق النقدي: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+''
+''    ' ========== النسب المالية ==========
+''    analysisText = analysisText & "? النسب المالية:" & vbCrLf
+''    analysisText = analysisText & "===========" & vbCrLf
+''
+''    If m_Totals.TotalIncome > 0 Then
+''        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+''        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+''        purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+''
+''        analysisText = analysisText & "  • هامش الربح: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+''        analysisText = analysisText & "  • نسبة المصروفات للإيرادات: " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+''        analysisText = analysisText & "  • نسبة المشتريات للإيرادات: " & Format(purchaseRatio, "0.00") & "%" & vbCrLf
+''
+''        If m_Totals.TotalExpenses > 0 Then
+''            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+''            analysisText = analysisText & "  • نسبة الرواتب من المصروفات: " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+''        End If
+''    Else
+''        analysisText = analysisText & "  لا يمكن حساب النسب - لا توجد إيرادات" & vbCrLf
+''    End If
+''
+''    analysisText = analysisText & vbCrLf
+''
+''    ' ========== التقييم والتوصيات ==========
+''    analysisText = analysisText & "? التقييم والتوصيات:" & vbCrLf
+''    analysisText = analysisText & "=============" & vbCrLf
+''
+''    ' تقييم الأداء العام
+''    If m_Totals.NetFlow > 0 Then
+''        analysisText = analysisText & "  ? الأداء المالي: إيجابي" & vbCrLf
+''
+''        If profitMargin >= 20 Then
+''            analysisText = analysisText & "  ? هامش الربح: ممتاز (أعلى من 20%)" & vbCrLf
+''        ElseIf profitMargin >= 10 Then
+''            analysisText = analysisText & "  ? هامش الربح: جيد (بين 10% و 20%)" & vbCrLf
+''        ElseIf profitMargin >= 5 Then
+''            analysisText = analysisText & "  ? هامش الربح: مقبول (بين 5% و 10%)" & vbCrLf
+''        Else
+''            analysisText = analysisText & "  ? هامش الربح: ضعيف (أقل من 5%)" & vbCrLf
+''        End If
+''    Else
+''        analysisText = analysisText & "  ? الأداء المالي: سلبي - يحتاج مراجعة عاجلة" & vbCrLf
+''    End If
+''
+''    ' توصيات بناءً على النسب
+''    If m_Totals.TotalIncome > 0 Then
+''        If expenseRatio > 90 Then
+''            analysisText = analysisText & "  ? توصية: نسبة المصروفات مرتفعة جداً - يجب خفض التكاليف" & vbCrLf
+''        End If
+''
+''        If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+''            analysisText = analysisText & "  ? توصية: نسبة الرواتب مرتفعة - راجع الهيكل الوظيفي" & vbCrLf
+''        End If
+''
+''        If purchaseRatio > 70 Then
+''            analysisText = analysisText & "  ? توصية: تكلفة المشتريات مرتفعة - ابحث عن موردين أفضل" & vbCrLf
+''        End If
+''    End If
+''
+''    analysisText = analysisText & vbCrLf
+''
+''    ' ========== معلومات الفترة ==========
+''    analysisText = analysisText & "? معلومات الفترة:" & vbCrLf
+''    analysisText = analysisText & "============" & vbCrLf
+''    analysisText = analysisText & "  • نوع العرض: " & Nz(Me.cboViewType, "-") & vbCrLf
+''    analysisText = analysisText & "  • السنة: " & Nz(Me.cboYear, "-") & vbCrLf
+''
+''    If Me.cboViewType = "شهري" Then
+''        analysisText = analysisText & "  • الشهر: " & Nz(Me.cboMonth, "-") & vbCrLf
+''    End If
+''
+''    analysisText = analysisText & "  • عدد الفترات: " & m_Totals.RecordCount & vbCrLf
+''    analysisText = analysisText & "  • تاريخ التقرير: " & Format(Now(), "yyyy/mm/dd hh:nn") & vbCrLf
+'    ' ========== العنوان ==========
+'analysisText = "===============================" & vbCrLf
+'analysisText = analysisText & "       التقرير التحليلي المالي" & vbCrLf
+'analysisText = analysisText & "===============================" & vbCrLf & vbCrLf
+'
+'' ========== ملخص الأداء ==========
+'analysisText = analysisText & "[ ملخص الأداء المالي ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'analysisText = analysisText & "  * إجمالي الإيرادات: " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " ج.م" & vbCrLf
+'analysisText = analysisText & "     - المبيعات: " & Format(m_Totals.TotalSales, "###,###,##0.00") & " ج.م" & vbCrLf
+'analysisText = analysisText & "     - إيرادات أخرى: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+'
+'analysisText = analysisText & "  * إجمالي المصروفات: " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " ج.م" & vbCrLf
+'analysisText = analysisText & "     - المشتريات: " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " ج.م" & vbCrLf
+'analysisText = analysisText & "     - الرواتب: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " ج.م" & vbCrLf
+'analysisText = analysisText & "     - مصروفات أخرى: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+'
+'analysisText = analysisText & "  * صافي التدفق النقدي: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+'
+'' ========== النسب المالية ==========
+'analysisText = analysisText & "[ النسب المالية ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'
+'If m_Totals.TotalIncome > 0 Then
+'    profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+'    expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+'    purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+'
+'    analysisText = analysisText & "  * هامش الربح: " & Format(profitMargin, "0.00") & "%" & vbCrLf
+'    analysisText = analysisText & "  * نسبة المصروفات للإيرادات: " & Format(expenseRatio, "0.00") & "%" & vbCrLf
+'    analysisText = analysisText & "  * نسبة المشتريات للإيرادات: " & Format(purchaseRatio, "0.00") & "%" & vbCrLf
+'
+'    If m_Totals.TotalExpenses > 0 Then
+'        salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+'        analysisText = analysisText & "  * نسبة الرواتب من المصروفات: " & Format(salaryRatio, "0.00") & "%" & vbCrLf
+'    End If
+'Else
+'    analysisText = analysisText & "  لا يمكن حساب النسب - لا توجد إيرادات" & vbCrLf
+'End If
+'
+'analysisText = analysisText & vbCrLf
+'
+'' ========== التقييم والتوصيات ==========
+'analysisText = analysisText & "[ التقييم والتوصيات ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'
+'' تقييم الأداء العام
+'If m_Totals.NetFlow > 0 Then
+'    analysisText = analysisText & "  [+] الأداء المالي: إيجابي" & vbCrLf
+'
+'    If profitMargin >= 20 Then
+'        analysisText = analysisText & "  [+] هامش الربح: ممتاز (أعلى من 20%)" & vbCrLf
+'    ElseIf profitMargin >= 10 Then
+'        analysisText = analysisText & "  [+] هامش الربح: جيد (بين 10% و 20%)" & vbCrLf
+'    ElseIf profitMargin >= 5 Then
+'        analysisText = analysisText & "  [!] هامش الربح: مقبول (بين 5% و 10%)" & vbCrLf
+'    Else
+'        analysisText = analysisText & "  [!] هامش الربح: ضعيف (أقل من 5%)" & vbCrLf
+'    End If
+'Else
+'    analysisText = analysisText & "  [-] الأداء المالي: سلبي - يحتاج مراجعة عاجلة" & vbCrLf
+'End If
+'
+'' توصيات
+'If m_Totals.TotalIncome > 0 Then
+'    If expenseRatio > 90 Then
+'        analysisText = analysisText & "  [!] توصية: نسبة المصروفات مرتفعة جداً - يجب خفض التكاليف" & vbCrLf
+'    End If
+'
+'    If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+'        analysisText = analysisText & "  [!] توصية: نسبة الرواتب مرتفعة - راجع الهيكل الوظيفي" & vbCrLf
+'    End If
+'
+'    If purchaseRatio > 70 Then
+'        analysisText = analysisText & "  [!] توصية: تكلفة المشتريات مرتفعة - ابحث عن موردين أفضل" & vbCrLf
+'    End If
+'End If
+'
+'analysisText = analysisText & vbCrLf
+'
+'' ========== معلومات الفترة ==========
+'analysisText = analysisText & "[ معلومات الفترة ]" & vbCrLf
+'analysisText = analysisText & "-------------------------------" & vbCrLf
+'analysisText = analysisText & "  * نوع العرض: " & Nz(Me.cboViewType, "-") & vbCrLf
+'analysisText = analysisText & "  * السنة: " & Nz(Me.cboYear, "-") & vbCrLf
+'
+'If Me.cboViewType = "شهري" Then
+'    analysisText = analysisText & "  * الشهر: " & Nz(Me.cboMonth, "-") & vbCrLf
+'End If
+'
+'analysisText = analysisText & "  * عدد الفترات: " & m_Totals.RecordCount & vbCrLf
+'analysisText = analysisText & "  * تاريخ التقرير: " & Format(Now(), "yyyy/mm/dd hh:nn") & vbCrLf
+'    ' عرض التحليل
+'    Me.txtFinancialInsights.value = analysisText
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    Me.txtFinancialInsights.value = "حدث خطأ أثناء إنشاء التحليل: " & Err.Description
+'End Sub
+
+Private Sub GenerateFinancialInsights()
+    On Error GoTo ErrHandler
+
+    ' التحقق من وجود بيانات
+    If m_Totals.RecordCount = 0 Then
+        Me.txtFinancialInsights.value = "<div dir=""rtl""><font color=""gray"">لا توجد بيانات للتحليل<br><br>يرجى اختيار فترة زمنية تحتوي على بيانات</font></div>"
+        Exit Sub
+    End If
+
+    Dim analysisText As String
+    Dim profitMargin As Double
+    Dim expenseRatio As Double
+    Dim salaryRatio As Double
+    Dim purchaseRatio As Double
+
+    ' ========== بداية النص مع RTL ==========
+    analysisText = "<div dir=""rtl"">"
+
+    ' ========== العنوان ==========
+    analysisText = analysisText & "<div><font color=""#2E86AB"" size=""4""><b>[ التحليل المالى لقائمة التدفق النقدى ]</b></font></div>"
+    analysisText = analysisText & "<div>===============================</div><br>"
+
+    ' ========== ملخص الأداء ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ ملخص الأداء المالي ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    ' الإيرادات - أخضر
+    analysisText = analysisText & "<div><font color=""#28A745""><b>إجمالي الإيرادات: " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " ج.م</b></font></div>"
+    analysisText = analysisText & "<div><font color=""#28A745"">    - المبيعات: " & Format(m_Totals.TotalSales, "###,###,##0.00") & " ج.م</font></div>"
+    analysisText = analysisText & "<div><font color=""#28A745"">    - إيرادات أخرى: " & Format(m_Totals.TotalOtherIncome, "###,###,##0.00") & " ج.م</font></div><br>"
+
+    ' المصروفات - أحمر
+    analysisText = analysisText & "<div><font color=""#DC3545""><b>إجمالي المصروفات: " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " ج.م</b></font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - المشتريات: " & Format(m_Totals.TotalPurchases, "###,###,##0.00") & " ج.م</font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - الرواتب: " & Format(m_Totals.TotalSalaries, "###,###,##0.00") & " ج.م</font></div>"
+    analysisText = analysisText & "<div><font color=""#DC3545"">    - مصروفات أخرى: " & Format(m_Totals.TotalOtherExpenses, "###,###,##0.00") & " ج.م</font></div><br>"
+
+    ' صافي التدفق
+    If m_Totals.NetFlow >= 0 Then
+        analysisText = analysisText & "<div><font color=""#28A745"" size=""3""><b>صافي التدفق النقدي: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " ج.م</b></font></div><br>"
+    Else
+        analysisText = analysisText & "<div><font color=""#DC3545"" size=""3""><b>صافي التدفق النقدي: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " ج.م</b></font></div><br>"
+    End If
+
+    ' ========== النسب المالية ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ النسب المالية ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    If m_Totals.TotalIncome > 0 Then
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        expenseRatio = (m_Totals.TotalExpenses / m_Totals.TotalIncome) * 100
+        purchaseRatio = (m_Totals.TotalPurchases / m_Totals.TotalIncome) * 100
+
+        ' هامش الربح بلون حسب القيمة
+        If profitMargin >= 20 Then
+            analysisText = analysisText & "<div>هامش الربح: <font color=""#28A745""><b>" & Format(profitMargin, "0.00") & "% (ممتاز)</b></font></div>"
+        ElseIf profitMargin >= 10 Then
+            analysisText = analysisText & "<div>هامش الربح: <font color=""#17A2B8""><b>" & Format(profitMargin, "0.00") & "% (جيد)</b></font></div>"
+        ElseIf profitMargin >= 0 Then
+            analysisText = analysisText & "<div>هامش الربح: <font color=""#FFC107""><b>" & Format(profitMargin, "0.00") & "% (مقبول)</b></font></div>"
+        Else
+            analysisText = analysisText & "<div>هامش الربح: <font color=""#DC3545""><b>" & Format(profitMargin, "0.00") & "% (سلبي)</b></font></div>"
+        End If
+
+        analysisText = analysisText & "<div>نسبة المصروفات للإيرادات: " & Format(expenseRatio, "0.00") & "%</div>"
+        analysisText = analysisText & "<div>نسبة المشتريات للإيرادات: " & Format(purchaseRatio, "0.00") & "%</div>"
+
+        If m_Totals.TotalExpenses > 0 Then
+            salaryRatio = (m_Totals.TotalSalaries / m_Totals.TotalExpenses) * 100
+            analysisText = analysisText & "<div>نسبة الرواتب من المصروفات: " & Format(salaryRatio, "0.00") & "%</div>"
+        End If
+    Else
+        analysisText = analysisText & "<div><font color=""gray"">لا يمكن حساب النسب - لا توجد إيرادات</font></div>"
+    End If
+
+    analysisText = analysisText & "<br>"
+
+    ' ========== التقييم والتوصيات ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ التقييم والتوصيات ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+
+    ' تقييم الأداء العام
+    If m_Totals.NetFlow > 0 Then
+        analysisText = analysisText & "<div><font color=""#28A745""><b>الأداء المالي: إيجابي (+)</b></font></div>"
+
+        If profitMargin >= 20 Then
+            analysisText = analysisText & "<div><font color=""#28A745"">هامش الربح: ممتاز - أعلى من 20% (+)</font></div>"
+        ElseIf profitMargin >= 10 Then
+            analysisText = analysisText & "<div><font color=""#17A2B8"">هامش الربح: جيد - بين 10% و 20% (+)</font></div>"
+        ElseIf profitMargin >= 5 Then
+            analysisText = analysisText & "<div><font color=""#FFC107"">هامش الربح: مقبول - بين 5% و 10% (!)</font></div>"
+        Else
+            analysisText = analysisText & "<div><font color=""#FD7E14"">هامش الربح: ضعيف - أقل من 5% (!)</font></div>"
+        End If
+    Else
+        analysisText = analysisText & "<div><font color=""#DC3545""><b>الأداء المالي: سلبي - يحتاج مراجعة عاجلة (-)</b></font></div>"
+    End If
+
+    ' التوصيات
+    If m_Totals.TotalIncome > 0 Then
+        If expenseRatio > 90 Then
+            analysisText = analysisText & "<div><font color=""#DC3545"">توصية: نسبة المصروفات مرتفعة جداً - يجب خفض التكاليف (!)</font></div>"
+        End If
+
+        If salaryRatio > 50 And m_Totals.TotalExpenses > 0 Then
+            analysisText = analysisText & "<div><font color=""#FD7E14"">توصية: نسبة الرواتب مرتفعة - راجع الهيكل الوظيفي (!)</font></div>"
+        End If
+
+        If purchaseRatio > 70 Then
+            analysisText = analysisText & "<div><font color=""#FD7E14"">توصية: تكلفة المشتريات مرتفعة - ابحث عن موردين أفضل (!)</font></div>"
+        End If
+    End If
+
+    analysisText = analysisText & "<br>"
+
+    ' ========== معلومات الفترة ==========
+    analysisText = analysisText & "<div><font color=""#1B4965""><b>[ معلومات الفترة ]</b></font></div>"
+    analysisText = analysisText & "<div>-------------------------------</div>"
+    analysisText = analysisText & "<div><font color=""#6C757D"">نوع العرض: " & Nz(Me.cboViewType, "-") & "</font></div>"
+    analysisText = analysisText & "<div><font color=""#6C757D"">السنة: " & Nz(Me.cboYear, "-") & "</font></div>"
+
+    If Me.cboViewType = "شهري" Then
+        analysisText = analysisText & "<div><font color=""#6C757D"">الشهر: " & Nz(Me.cboMonth, "-") & "</font></div>"
+    End If
+
+    analysisText = analysisText & "<div><font color=""#6C757D"">عدد الفترات: " & m_Totals.RecordCount & "</font></div>"
+    analysisText = analysisText & "<div><font color=""#6C757D"">تاريخ التقرير: " & Format(Now(), "yyyy/mm/dd hh:nn") & "</font></div>"
+
+    ' ========== نهاية النص ==========
+    analysisText = analysisText & "</div>"
+
+    ' عرض التحليل
+    Me.txtFinancialInsights.value = analysisText
+
+    Exit Sub
+
+ErrHandler:
+    Me.txtFinancialInsights.value = "<div dir=""rtl""><font color=""red"">حدث خطأ أثناء إنشاء التحليل: " & Err.Description & "</font></div>"
+End Sub
+
+
+' ========== إظهار/إخفاء حقل الشهر ==========
+Private Sub ToggleMonthVisibility()
+    On Error Resume Next
+    
+    Dim showMonth As Boolean
+    showMonth = (Nz(Me.cboViewType, "") = "شهري")
+    
+    Me.lblMonth.Visible = showMonth
+    Me.cboMonth.Visible = showMonth
+End Sub
+
+' ========== أحداث التحديث ==========
+Private Sub cboViewType_AfterUpdate()
+    Call ToggleMonthVisibility
+    Call RefreshData
+End Sub
+
+Private Sub cboYear_AfterUpdate()
+    Call RefreshData
+End Sub
+
+Private Sub cboMonth_AfterUpdate()
+    Call RefreshData
+End Sub
+
+Private Sub cmdRefresh_Click()
+    Call RefreshData
+    MsgBox "تم تحديث البيانات والتحليل بنجاح", vbInformation, "تم التحديث"
+End Sub
+
+' ========== التصدير إلى Excel ==========
+Private Sub cmdExportExcel_Click()
+    On Error GoTo ErrHandler
+    
+    ' التحقق من وجود بيانات
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "لا توجد بيانات للتصدير", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    Dim fileName As String
+    Dim filePath As String
+    
+    ' إنشاء اسم الملف
+    fileName = "التدفق_النقدي_" & Format(Date, "yyyy-mm-dd") & "_" & Format(Time, "hh-nn") & ".xlsx"
+    
+    ' التصدير
+    DoCmd.Hourglass True
+    DoCmd.OutputTo acOutputQuery, "qry_CashFlow", acFormatXLSX, , True
+    DoCmd.Hourglass False
+    
+    MsgBox "تم التصدير إلى Excel بنجاح", vbInformation, "تم التصدير"
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical, "خطأ"
+End Sub
+
+' ========== طباعة التقرير ==========
+Private Sub cmdPrintReport_Click()
+    On Error GoTo ErrHandler
+    
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "لا توجد بيانات لطباعة التقرير", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    Dim filterCondition As String
+    filterCondition = BuildFilterCondition()
+    
+    DoCmd.Hourglass True
+    
+    If filterCondition <> "" Then
+        DoCmd.OpenReport "rptCashFlow", acViewPreview, , filterCondition, , filterCondition
+    Else
+        DoCmd.OpenReport "rptCashFlow", acViewPreview
+    End If
+    
+    DoCmd.Hourglass False
+    Exit Sub
+    
+ErrHandler:
+    DoCmd.Hourglass False
+    MsgBox "خطأ في فتح التقرير: " & Err.Description, vbCritical, "خطأ"
+End Sub
+
+
+' ========== عرض التحليل في رسالة (احتياطي) ==========
+Private Sub ShowAnalysisInMessage()
+    On Error Resume Next
+    
+    If m_Totals.RecordCount = 0 Then
+        MsgBox "لا توجد بيانات للتحليل", vbInformation, "التحليل المالي"
+        Exit Sub
+    End If
+    
+    Dim analysisText As String
+    Dim profitMargin As Double
+    
+    analysisText = "??? التحليل المالي ???" & vbCrLf & vbCrLf
+    analysisText = analysisText & "الإيرادات: " & Format(m_Totals.TotalIncome, "###,###,##0.00") & " ج.م" & vbCrLf
+    analysisText = analysisText & "المصروفات: " & Format(m_Totals.TotalExpenses, "###,###,##0.00") & " ج.م" & vbCrLf
+    analysisText = analysisText & "الصافي: " & Format(m_Totals.NetFlow, "###,###,##0.00") & " ج.م" & vbCrLf & vbCrLf
+    
+    If m_Totals.TotalIncome > 0 Then
+        profitMargin = (m_Totals.NetFlow / m_Totals.TotalIncome) * 100
+        analysisText = analysisText & "هامش الربح: " & Format(profitMargin, "0.00") & "%" & vbCrLf & vbCrLf
+    End If
+    
+    If m_Totals.NetFlow > 0 Then
+        analysisText = analysisText & "التقييم: أداء جيد ?"
+    Else
+        analysisText = analysisText & "التقييم: يحتاج تحسين ?"
+    End If
+    
+    MsgBox analysisText, vbInformation, "التحليل المالي"
+End Sub
+ 
+
+Private Sub Form_Open(Cancel As Integer)
+    If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

@@ -1,0 +1,41 @@
+﻿Option Compare Database
+
+' عند تحميل الفورم
+Private Sub Form_Load()
+    RefreshDashboard
+End Sub
+
+' زر التحديث
+Private Sub cmdRefresh_Click()
+    RefreshDashboard
+End Sub
+
+' دالة التحديث المحلية
+Private Sub RefreshDashboard()
+    ' استدعاء الدوال من الموديول
+    Dim stats As Variant
+    stats = GetQuickStats()
+    
+    ' تعبئة البيانات في الـ Labels
+    lblTotalClients.Caption = stats(1)
+    lblActiveClients.Caption = stats(2)
+    lblMonthlySales.Caption = stats(3)
+   lblTotalOverdue.Caption = stats(4)
+   lblOverdueInvoices.Caption = stats(5)
+    lblTopSource.Caption = stats(6)
+    ' ... وهكذا
+End Sub
+' في الـ Dashboard Form
+Private Sub ShowOverdueAlerts()
+    Dim overdueCount As Integer
+    overdueCount = DCount("*", "dbo_Transactions", "PaidAmount < GrandTotal ") 'AND DueDate <= Date()
+    
+    If overdueCount > 0 Then
+        Me.lblAlert.Caption = "?? لديك " & overdueCount & " فاتورة متأخرة"
+        Me.lblAlert.Visible = True
+        Me.lblAlert.BackColor = vbYellow
+    Else
+        Me.lblAlert.Visible = False
+    End If
+End Sub
+

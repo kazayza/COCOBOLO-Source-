@@ -1,0 +1,110 @@
+﻿Option Compare Database
+
+Private Sub btnInvoice_Click()
+    If IsNull(Me.TransactionID) Then
+        MsgBox "من فضلك اختر فاتورة صحيحة.", vbExclamation
+        Exit Sub
+    End If
+    
+'    DoCmd.OpenForm "frm_SalesInvoiveView", , , "TransactionID=" & Me.TransactionID
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & TransactionID
+
+End Sub
+
+Private Sub cmdAddPayment_Click()
+DoCmd.OpenForm "frm_Payments"
+End Sub
+
+Private Sub Command54_Click()
+ Dim lngID As Long
+ lngID = Me.PaymentID
+ 
+  
+  DoCmd.OpenReport "rpt_Payment", acViewPreview, , "PaymentID=" & lngID
+End Sub
+
+
+Private Sub cboFilterStatus_Change()
+    Select Case Me.cboFilterStatus
+        Case "الكل"
+            Me.Filter = ""
+            Me.FilterOn = False
+        Case "مدفوعة"
+            Me.Filter = " PaidAmount= [الإجمالي_الفاتورة] OR [الإجمالي_الفاتورة] IS NULL"
+            Me.FilterOn = True
+        Case "غير مدفوعة"
+            Me.Filter = "([الإجمالي_الفاتورة] IS NOT NULL) AND (PaidAmount < [الإجمالي_الفاتورة])"
+            Me.FilterOn = True
+    End Select
+    Me.Requery
+End Sub
+Private Sub ApplyProductFilter()
+    Dim strFilter As String
+    Dim strSQL As String
+    Dim patternFilter As String
+
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+                 "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount " & _
+                 "FROM dbo_Payments AS P " & _
+                 "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID " & _
+                 "WHERE (((T.TransactionType) = 'Sale')) " & _
+                 "ORDER BY P.PaymentDate DESC;"
+    Else
+        ' إنشاء الباترن للهمزات
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' البحث في حقل Notes فقط
+        strSQL = "SELECT P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+                 "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount " & _
+                 "FROM dbo_Payments AS P " & _
+                 "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID " & _
+                 "WHERE (((T.TransactionType) = 'Sale')) AND (P.Notes LIKE '*" & patternFilter & "*') " & _
+                 "ORDER BY P.PaymentDate DESC;"
+    End If
+
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات - نفس الدالة بالظبط
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة"
+                tempend = tempend & "[ةه]"
+            Case "ى", "ئ"
+                tempend = tempend & "[ىئي]"
+            Case "ؤ"
+                tempend = tempend & "[ؤو]"
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+Private Sub txtSearch_AfterUpdate()
+
+If Nz(Me.txtSearch.value, "") = "" Then
+'        Exit Sub
+Me.txtSearch = ""
+ApplyProductFilter
+    Else
+ApplyProductFilter
+End If
+End Sub
+

@@ -1,0 +1,46 @@
+﻿Form: frm_PartiesInvoices
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label2		Label		PartyID
+Label4		Label		المبلغ المدفوع
+Label3		Label		مبلغ الفاتورة
+Label0		Label		ID
+Label1		Label		تاريخ الفاتورة
+Label30		Label		العميل
+Command39		Button		Command39
+Line40		Line		
+Label41		Label		كافة فواتير المبيعات
+Label42		Label		نوع الفاتورة
+Image49		Image		
+Box62		Rectangle		
+cmdPaid		Button		مدفوعة بالكامل
+cmdprogress		Button		مدفوعه جزئيا
+CountSales		Label		.
+cmdAll		Button		(الكل)
+Label79		Label		المبلغ المتبقى
+countPaid		Label		.
+countProgress		Label		.
+txtSearch		TextBox		
+cmdSearch		Button		Command92
+cmdnotpaid		Button		غير مدفوعه
+countnotpaid		Label		.
+cboFilterMonth		ComboBox		
+Label97		Label		الشهر
+TotalSales		Label		 
+TotalRemaining		Label		 
+Line100		Line		
+cboFilterYear		ComboBox		
+Label102		Label		السنه
+TransactionID		TextBox		TransactionID
+TransactionDate		TextBox		TransactionDate
+PartyID		TextBox		PartyID
+GrandTotal		TextBox		GrandTotal
+PaidAmount		TextBox		PaidAmount
+PartyName		TextBox		PartyName
+btnInvoice		Button		     تعديل
+TransactionType		TextBox		TransactionType
+Command78		Button		&Invoice
+RemainingAmount		TextBox		RemainingAmount
+cmdPay		Button		    دفع

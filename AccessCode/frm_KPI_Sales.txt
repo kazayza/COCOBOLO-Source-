@@ -1,0 +1,123 @@
+﻿Option Compare Database
+
+Private Sub Form_Open(Cancel As Integer)
+' If Not currentUser.HasPermission(Me.Name, "View") Then
+'        Cancel = True
+'        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+'        DoCmd.Close acForm, Me.Name
+'    End If
+    
+    Call UpdateKPIDashboard(Me)
+    DoCmd.Maximize
+End Sub
+
+Public Sub UpdateKPIDashboard(frm As Form)
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim SalesYearTotal As Double
+    Dim SalesCurrMonth As Double
+    Dim SalesPrevMonth As Double
+    Dim Diff As Double
+    Dim PctChange As Double
+    
+    Set db = CurrentDb
+    
+    '====================
+    ' إجمالي مبيعات العام الحالي
+    '====================
+    sql = "SELECT SUM(Nz(TotalAmount,0)) AS TotalYearSales " & _
+          "FROM dbo_Transactions " & _
+          "WHERE TransactionType='Sale' AND YEAR(TransactionDate)=" & Year(Date) & ";"
+          
+    Set rs = db.OpenRecordset(sql)
+    SalesYearTotal = Nz(rs!TotalYearSales, 0)
+    rs.Close
+    frm.txtTotalYear = SalesYearTotal
+    
+    '====================
+    ' إجمالي مبيعات الشهر الحالي
+    '====================
+    sql = "SELECT SUM(Nz(TotalAmount,0)) AS TotalMonthSales " & _
+          "FROM dbo_Transactions " & _
+          "WHERE TransactionType='Sale' AND MONTH(TransactionDate)=" & Month(Date) & " AND YEAR(TransactionDate)=" & _
+          Year(Date) & ";"
+          
+    Set rs = db.OpenRecordset(sql)
+    SalesCurrMonth = Nz(rs!TotalMonthSales, 0)
+    rs.Close
+    frm.txtTotalMonth = SalesCurrMonth
+    
+    '====================
+    ' إجمالي مبيعات الشهر السابق
+    '====================
+    Dim PrevMonth As Integer
+    Dim prevMonthYear As Integer
+    PrevMonth = Month(Date) - 1
+    prevMonthYear = Year(Date)
+    If PrevMonth = 0 Then
+        PrevMonth = 12
+        prevMonthYear = prevMonthYear - 1
+    End If
+    
+    sql = "SELECT SUM(Nz(TotalAmount,0)) AS TotalPrevMonthSales " & _
+          "FROM dbo_Transactions " & _
+          "WHERE TransactionType='Sale' AND MONTH(TransactionDate)=" & PrevMonth & _
+          " AND YEAR(TransactionDate)=" & prevMonthYear & ";"
+          
+    Set rs = db.OpenRecordset(sql)
+    SalesPrevMonth = Nz(rs!TotalPrevMonthSales, 0)
+    rs.Close
+    frm.txtTotalPrevMonth = SalesPrevMonth
+    
+    '====================
+' أعلى موظف مبيعات للشهر الحالي
+'====================
+sql = "SELECT TOP 1 E.FullName, SUM(Nz(T.TotalAmount,0)) AS TotalSales " & _
+      "FROM dbo_Transactions AS T " & _
+      "INNER JOIN dbo_Employees AS E ON T.EmpId = E.EmployeeID " & _
+      "WHERE T.TransactionType='Sale' " & _
+      "AND MONTH(T.TransactionDate)=" & Month(Date) & " " & "AND YEAR(T.TransactionDate)=" & _
+      Year(Date) & " " & "GROUP BY E.FullName " & "ORDER BY SUM(Nz(T.GrandTotal,0)) DESC;" _
+ _
+      
+
+Set rs = db.OpenRecordset(sql)
+If Not rs.EOF Then
+    frm.txtTopEmployeeSales = "أعلى موظف مبيعات للشهر الحالي:" & vbCrLf & _
+                         rs!FullName & " : " & Format(rs!TotalSales, "#,##0")
+Else
+    frm.txtTopEmployeeSales = "لا توجد مبيعات"
+End If
+rs.Close
+
+    
+    '====================
+    ' حساب الفرق والنسبة
+    '====================
+    Diff = SalesCurrMonth - SalesPrevMonth
+    frm.txtPctChange = Diff
+  
+    If SalesPrevMonth <> 0 Then
+        PctChange = Diff / SalesPrevMonth
+    Else
+        PctChange = 0
+    End If
+    frm.txtPctChange = Format(PctChange, "0.00%")
+    If PctChange >= 0 Then
+    Me.imgup.Visible = True
+    Me.imgdown.Visible = False
+    ElseIf PctChange < 0 Then
+    
+   Me.imgup.Visible = False
+    Me.imgdown.Visible = True
+    End If
+    '====================
+    ' تحديث Subform للموظفين الأعلى مبيعات
+    '====================
+    frm.subTopEmployees.Requery
+    
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+

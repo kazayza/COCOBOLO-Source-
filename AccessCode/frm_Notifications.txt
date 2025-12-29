@@ -1,0 +1,114 @@
+﻿Option Compare Database
+
+'Private Sub Command61_Click()
+'
+'    Dim nid As Long
+'    Dim targetForm As String
+'    Dim relID As Long
+'
+'    nid = Nz(Me!NotificationID, 0)
+'    If nid = 0 Then Exit Sub
+'
+'    ' علم الاشعار كمقروء
+'    MarkNotificationRead nid   ' استخدم دالتك الموجودة (مع dbSeeChanges)
+'
+'    ' افتح الفورم المرتبط إن وُجد
+'    targetForm = Nz(Me!formName, "")
+'    relID = Nz(Me!RelatedID, 0)
+'
+'    If targetForm <> "" Then
+'        OpenFormFromNotification targetForm, relID
+'    Else
+'        ' لو مفيش فورم مرتبط، افتح سجل الاشعار بالتفصيل
+'        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nid
+'    End If
+'    Me.Requery
+'    ' حدث البادج في الفورم الرئيسي (Parent)
+'    On Error Resume Next
+'    Me.Parent.UpdateUnreadBadge
+'    DoCmd.Close acForm, "frm_Notifications"
+'    On Error GoTo 0
+'End Sub
+Private Sub Command61_Click()
+    Dim nID As Long
+    Dim targetForm As String
+    Dim relID As Long
+    Dim reminderChoice As VbMsgBoxResult
+    Dim reminderDays As Integer
+    Dim reminderIntervalHours As Integer
+    Dim ReminderEndAt As Date
+    Dim ReminderNextAt As Date
+    Dim sql As String
+
+    nID = Nz(Me!NotificationID, 0)
+    If nID = 0 Then Exit Sub
+
+    ' ? سؤال المستخدم إذا كان يريد التذكير
+    reminderChoice = MsgBox("هل تريد تفعيل التذكير لهذا الإشعار؟", vbYesNo + vbQuestion, "تفعيل التذكير")
+    If reminderChoice = vbYes Then
+        ' إدخال عدد الأيام للتذكير (المدة الكلية)
+        reminderDays = val(InputBox("أدخل عدد الأيام التي ترغب في تفعيل التذكير خلالها:", "مدة التذكير", "2"))
+        If reminderDays <= 0 Then reminderDays = 1   ' قيمة افتراضية
+
+        ' إدخال عدد الساعات بين كل تذكير
+        reminderIntervalHours = val(InputBox("كل كم ساعة تريد تكرار التذكير؟", "فاصل التذكير", "2"))
+        If reminderIntervalHours <= 0 Then reminderIntervalHours = 2   ' قيمة افتراضية
+
+        ' حساب التواريخ
+        ReminderNextAt = DateAdd("h", reminderIntervalHours, Now)
+        ReminderEndAt = DateAdd("d", reminderDays, Now)
+
+        ' ? تحديث بيانات التذكير في الجدول
+        sql = "UPDATE dbo_Notifications SET " & _
+              "ReminderEnabled = 1, " & _
+              "ReminderIntervalMinutes = " & (reminderIntervalHours * 60) & ", " & _
+              "ReminderNextAt = #" & Format(ReminderNextAt, "yyyy\/mm\/dd hh:nn:ss") & "#, " & _
+              "ReminderEndAt = #" & Format(ReminderEndAt, "yyyy\/mm\/dd hh:nn:ss") & "# " & _
+              "WHERE NotificationID = " & nID
+
+        CurrentDb.Execute sql, dbSeeChanges
+    End If
+
+    ' ? علم الإشعار كمقروء
+    MarkNotificationRead nID
+
+    ' ? افتح الفورم المرتبط
+    targetForm = Nz(Me!FormName, "")
+    relID = Nz(Me!RelatedID, 0)
+
+      If targetForm <> "" Then
+      If targetForm = "frm_SalesInvoiveNew" Then
+      
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & relID
+ Else
+                OpenFormFromNotification targetForm, relID
+        End If
+    Else
+        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nID
+    End If
+
+    Me.Requery
+
+    ' ? تحديث البادج في الفورم الرئيسي
+    On Error Resume Next
+    Me.Parent.UpdateUnreadBadge
+    DoCmd.Close acForm, "frm_Notifications"
+    On Error GoTo 0
+End Sub
+
+Private Sub Form_Load()
+    Dim sql As String
+    Dim currentUserName As String
+
+    ' جلب اسم المستخدم الحالي
+    currentUserName = currentUser.UserName  ' أو Environ$("USERNAME") لو CurrentUser مش موجود
+
+    ' تكوين الاستعلام للداتا الخاصة بالمستخدم الحالي
+    sql = "SELECT * FROM dbo_Notifications " & _
+          "WHERE IsRead = 0 " & _
+          "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'"
+Me.Text81 = "  الاشعارات الخاصة بـ :  " & currentUser.FullName
+    ' تعيين الاستعلام كمصدر للفورم
+    Me.RecordSource = sql
+    Me.Requery  ' إعادة تحميل البيانات في الفورم
+End Sub

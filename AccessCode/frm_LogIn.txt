@@ -1,0 +1,140 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub cmdCancel_Click()
+    DoCmd.Quit
+End Sub
+Private Sub cmdLogin_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim lngUserID As Long
+    Dim strPassword As String
+    Dim strUsername As String
+    Dim rs As DAO.Recordset
+    Dim strSQL As String
+    
+    ' التحقق من الإدخال
+    If Nz(Me.txtUsername, "") = "" Then
+        MsgBox "من فضلك أدخل اسم المستخدم", vbExclamation, "COCOBOLO SYSTEM"
+        Me.txtUsername.SetFocus
+        Exit Sub
+    End If
+
+    If Nz(Me.txtPassword, "") = "" Then
+        MsgBox "من فضلك أدخل كلمة المرور", vbExclamation, "COCOBOLO SYSTEM"
+        Me.txtPassword.SetFocus
+        Exit Sub
+    End If
+
+    strUsername = Replace(Me.txtUsername, "'", "''")
+
+    ' جلب بيانات المستخدم دفعة واحدة
+    strSQL = "SELECT UserID, Password, IsActive ,LastLogin FROM dbo_Users WHERE Username = '" & strUsername & "'"
+    Set rs = CurrentDb.OpenRecordset(strSQL, dbOpenSnapshot)
+
+    If rs.EOF Then
+        MsgBox "اسم المستخدم غير صحيح", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    If rs!IsActive <> True Then
+        MsgBox "الحساب غير مفعل", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    If rs!Password <> Me.txtPassword Then
+        MsgBox "كلمة المرور غير صحيحة", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Exit Sub
+    End If
+
+    lngUserID = rs!UserId
+    rs.Close
+    Set rs = Nothing
+
+    ' تحديث آخر دخول
+    CurrentDb.Execute "UPDATE dbo_Users SET LastLogin=Now() WHERE UserID=" & lngUserID, dbSeeChanges
+
+    ' تحميل بيانات المستخدم
+    Set currentUser = New CUser
+    currentUser.LoadUserData lngUserID
+
+    ' فتح النموذج الرئيسي
+    DoCmd.OpenForm "Frm_Main_Page"
+    DoCmd.Close acForm, Me.Name
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء تسجيل الدخول: " & Err.Description, vbCritical
+End Sub
+
+Private Sub Form_Load()
+
+DoCmd.Maximize
+    On Error GoTo ErrHandler
+
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim tempPath As String
+    Dim fileNum As Integer
+
+    'افتح الجدول وجيب أول سجل (لو عندك أكتر من سجل ممكن تحدد WHERE)
+    Set rs = CurrentDb.OpenRecordset("SELECT TOP 1 Logo FROM dbo_CompanyInfo", dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        If Not IsNull(rs!Logo) Then
+            'اقرأ الصورة كبايتات
+            fileData = rs!Logo
+
+            'حدد مكان مؤقت للملف
+            tempPath = Environ("TEMP") & "\CompanyLogo.jpg"
+
+            'اكتب الملف المؤقت
+            fileNum = FreeFile
+            Open tempPath For Binary As #fileNum
+                Put #fileNum, , fileData
+            Close #fileNum
+
+            'اعرض الصورة في عنصر imgLogo
+            Me.imgLogo.Picture = tempPath
+        End If
+    End If
+
+    rs.Close
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ " & Err.Number & ": " & Err.Description, vbCritical
+End Sub
+
+Private Sub CheckUserExists()
+    Dim strUsername As String
+    Dim lngCount As Long
+    Dim strSQL As String
+
+    strUsername = Nz(Me.txtUsername, "")
+    If strUsername = "" Then
+        Me.imgchk.Visible = False
+        Exit Sub
+    End If
+
+    ' استعلام لحساب عدد المستخدمين بنفس الاسم
+    strSQL = "SELECT COUNT(*) FROM dbo_Users WHERE Username = '" & Replace(strUsername, "'", "''") & "'"
+
+ lngCount = DCount("*", "dbo_Users", "Username = '" & Replace(strUsername, "'", "''") & "'")
+
+    If lngCount > 0 Then
+        Me.imgchk.Visible = True
+    Else
+        Me.imgchk.Visible = False
+    End If
+End Sub
+
+Private Sub txtUsername_AfterUpdate()
+CheckUserExists
+End Sub

@@ -1,0 +1,49 @@
+﻿Form: frm_ExpensesList
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box36		Rectangle		
+Label7		Label		تسجيل فى
+Label6		Label		تسجيل بواسطه
+Label5		Label		ملاحظات
+Label4		Label		الخزينة
+Label3		Label		المبلغ
+Label2		Label		تاريخ
+Label1		Label		المصروف
+Label0		Label		ID
+txtSearch		TextBox		
+Label11		Label		بحث
+btnSearch		Button		بحث
+btnClearSearch		Button		الغاء
+btnAddExpense		Button		مصروف جديد
+Label28		Label		مجموعه
+Line37		Line		
+btnAddExpensesGroup		Button		مجموعات المصروفات
+btnRefresh		Button		تحديث
+Line40		Line		
+Command41		Button		Command41
+Label42		Label		كافة المصروفات
+txtDateFrom		TextBox		
+Label44		Label		من تاريخ
+txtDateTo		TextBox		
+Label46		Label		الى تاريخ
+btnOpenReport		Button		تقرير
+cbomaingroup		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID) Is Null)); 
+Label49		Label		بحث 
+cboexpense		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID)=[Forms]![frm_ExpensesList]![cbomaingroup])); 
+EmptyCell54		Other (127)		
+btnExportExcel		Button		تصدير الى اكسيل
+Command81		Button		تقرير المصروف المقدم
+Text82		TextBox		="إجمالى المصروفات : " & Sum([Amount])
+ExpenseID		TextBox		ExpenseID
+ExpenseGroupName		TextBox		ExpenseGroupName
+ExpenseDate		TextBox		ExpenseDate
+Amount		TextBox		Amount
+CashBoxName		TextBox		CashBoxName
+Notes		TextBox		Notes
+CreatedBy		TextBox		CreatedBy
+CreatedAt		TextBox		CreatedAt
+ParentGroupName		TextBox		ParentGroupName
+Line35		Line		
+btnOpen		Button		تفاصيل

@@ -1,0 +1,28 @@
+﻿Form: frm_CommissionsReview
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box66		Rectangle		
+Box65		Rectangle		
+Label10		Label		اسم الموظف
+Label16		Label		العمولة
+Label14		Label		نسبة العمولة
+Label12		Label		قيمة الفاتورة
+Label8		Label		كود الموظف
+Label6		Label		الفاتورة
+Label18		Label		العميل
+cboInvoice		ComboBox		SELECT t.TransactionID AS [رقم الفاتورة], t.NetTotalAmount AS [مبلغ الفاتورة], p.PartyName AS العميل FROM dbo_Transactions AS t INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID WHERE (((t.TransactionID) Not In (SELECT TransactionID FROM dbo_CommissionAssignments)) AND ((t.TransactionType)='Sale') AND ((t.PaidAmount)=[t].[NetTotalAmount])) ORDER BY t.TransactionID; 
+Label56		Label		الفاتورة
+cboEmployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.[Status])='نشط')) ORDER BY dbo_Employees.EmployeeID, dbo_Employees.FullName; 
+Label58		Label		الموظف
+btnAddEmployee		Button		إضافة موظف
+btnApprove		Button		موافقة
+txtTransactionID		TextBox		TransactionID
+txtEmployeeID		TextBox		EmployeeID
+txtEmployeeName		TextBox		EmployeeName
+txtCommissionRate		TextBox		CommissionRate
+txtCommissionAmount		TextBox		CommissionAmount
+txtApprovedBy		TextBox		CustomerName
+txtTotalAmount		TextBox		TransactionAmount
+Command60		Button		Command60

@@ -1,0 +1,49 @@
+﻿Form: frm_Payroll
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box52		Rectangle		
+Line53		Line		
+Image56		Image		
+Label57		Label		&PayRoll
+btnClose		Button		Command60
+Box51		Rectangle		
+Box42		Rectangle		
+cboEmployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName, dbo_Employees.JobTitle FROM dbo_Employees WHERE (((dbo_Employees.EmployeeID) Not In (Select [EmployeeID] from [dbo_Payroll] where [PayRollMonth]= Forms![frm_Payroll]![txtPayRollMonth] )) AND ((dbo_Employees.Status)='نشط')) ORDER BY dbo_Employees.FullName; 
+Label1		Label		الموظف
+txtPayRollMonth		TextBox		
+txtBasicSalary		TextBox		
+txtNotes		TextBox		
+Label7		Label		Notes
+cboCashBox		ComboBox		SELECT [CashBoxID], [CashBoxName] FROM dbo_CashBoxes ORDER BY [CashBoxName]; 
+Label9		Label		CashBox
+chkPayNow		CheckBox		
+Label11		Label		PayNow
+cboDetailKind		ComboBox		بدل;خصم;ساعات إضافية
+Label15		Label		نوع البدل
+txtDetailDesc		TextBox		
+Label17		Label		وصف البند
+txtDetailAmount		TextBox		
+Label19		Label		مبلغ البند
+btnAddDetail		Button		AddDetail
+txtAllowancesTotal		TextBox		
+Label23		Label		اجمالى البدلات
+txtDeductionsTotal		TextBox		
+Label25		Label		اجمالى الخصومات
+txtNetSalary		TextBox		
+الصافى		Label		الصافى
+txtCreatedBy		TextBox		
+Label31		Label		CreatedBy
+sub_PayRoollDetalis		Subform		
+Label3		Label		الشهر
+EmptyCell45		Other (127)		
+EmptyCell46		Other (127)		
+Label5		Label		الراتب الأساسى
+EmptyCell49		Other (127)		
+EmptyCell50		Other (127)		
+Box54		Rectangle		
+Box55		Rectangle		
+btnSavePayroll		Button		SavePayroll
+Line58		Line		
+btnClear		Button		Clear

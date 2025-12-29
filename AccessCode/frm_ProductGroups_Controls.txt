@@ -1,0 +1,20 @@
+﻿Form: frm_ProductGroups
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box11		Rectangle		
+Line12		Line		
+Label13		Label		مجموعه المنتجات
+Box9		Rectangle		
+GroupName		TextBox		
+Label1		Label		اسم المجموعة
+CreatedBy		TextBox		
+Label3		Label		تم الاضافة بواسطة
+CreatedAt		TextBox		
+Label5		Label		Text4
+cboProductGroup		ComboBox		SELECT dbo_ProductGroups.ProductGroupID, dbo_ProductGroups.GroupName FROM dbo_ProductGroups; 
+Label8		Label		المجموعات الحالية
+Box15		Rectangle		
+btnSave		Button		&Save
+Command14		Button		&Close

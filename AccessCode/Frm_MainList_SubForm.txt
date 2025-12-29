@@ -1,0 +1,179 @@
+﻿Option Compare Database
+Option Explicit
+Dim SelectedID As Long
+
+Private Sub btnlogout_Click()
+DoCmd.Close acForm, "Frm_Main_Page"
+        DoCmd.OpenForm "frm_Login"
+End Sub
+
+Private Sub Command64_Click()
+'للبحث عن تحديثات
+CheckForUpdates
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+'    On Error Resume Next
+'    ' Clear TempVars
+    TempVars![currentUserID] = currentUser.UserId
+    TempVars![MainBtnName] = ""
+    TempVars![MainSubBtnName] = ""
+   CurrentDb.Execute "DELETE FROM tblTempAllowedForms;"
+    CurrentDb.Execute "INSERT INTO tblTempAllowedForms (FormName) " & _
+                     "SELECT P.FormName FROM dbo_Permissions P " & _
+                     "INNER JOIN dbo_UserPermissions UP ON P.PermissionID = UP.PermissionID " & _
+                     "WHERE UP.UserID = " & TempVars![currentUserID] & " AND UP.CanView = True;"
+    Me.Requery
+End Sub
+
+
+    
+
+Function GoToFcs()
+    On Error GoTo HandleError
+    
+    ' Set the Focus to Fcs TextBox To take the Focus Color Based on The conditional Formatting
+    Me.Fcs.SetFocus
+    Me.Fcs = Me.ID
+    
+    ' Storing ID number in the Global Variable
+    SelectedID = Me.ID
+    
+    ' Storing Selected Button's Caption in a TempVar To use it in the Form Record Source in order to Filter the results.
+    If Me.MainOrSub = "Main" And TempVars![MainBtnName] <> Me.BtnCaption Then
+        TempVars![MainBtnName] = Nz(Me.BtnCaption.value, "")
+    ElseIf Me.MainOrSub = "Sub" And TempVars![MainSubBtnName] <> Me.BtnCaption Then
+        TempVars![MainSubBtnName] = Nz(Me.BtnCaption.value, "")
+        
+    ElseIf Me.MainOrSub = "Sub-Sub" Then
+        'Do Nothing
+    ElseIf Me.MainOrSub = "Sub" And TempVars![MainSubBtnName] = Me.BtnCaption Then
+        ' Clear TempVars
+        TempVars![MainSubBtnName] = ""
+    ElseIf Me.MainOrSub = "Main" And TempVars![MainBtnName] = Me.BtnCaption Then
+        ' Clear TempVars
+        TempVars![MainBtnName] = ""
+        TempVars![MainSubBtnName] = ""
+    End If
+
+    ' ReFresh Results
+    Me.Requery
+    Me.Repaint
+    DoEvents
+    
+HandleExit:
+    Exit Function
+    
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : GoToFcs()"
+    End If
+    Resume HandleExit
+End Function
+
+Private Sub AdminBtn_Click()
+'On Error GoTo HandleError
+    If Not currentUser.HasPermission("Frm_MainList_Edit") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+        
+    ' Open The Main List Edit Form
+    Me.Fcs.SetFocus
+    DoCmd.OpenForm "Frm_MainList_Edit"
+
+'HandleExit:
+'    Exit Sub
+'
+'HandleError:
+'    If Err.Number = 0 Then
+'        Resume Next
+'    Else
+'        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : ProsedurName()"
+'    End If
+'    Resume HandleExit
+End Sub
+
+Private Sub CommandBtn_Click()
+' Execute commands associated with buttons
+On Error GoTo HandleError
+    
+    Call GoToFcs
+   
+      
+    DoCmd.SearchForRecord , , acFirst, "[ID]=" & SelectedID
+    DoEvents
+    Me.Repaint
+ [Forms]![Frm_Main_Page]![TitleTxt] = Me.BtnCaption
+    Select Case Me.Action
+    
+        Case Is = "Open Form"
+        
+                If Len(Me.FormsReportsList & "") > 0 Then DoCmd.OpenForm Me.FormsReportsList.value: If Me.Maximize Then DoCmd.Maximize
+               [Forms]![Frm_Main_Page]![TitleTxt] = Me.BtnCaption
+                'Call RestoreMainPage
+                
+        Case Is = "Open Sub Form"
+                If Len(Me.FormsReportsList & "") > 0 Then [Forms]![Frm_Main_Page]![SubFrm].SourceObject = "Form." & Me.FormsReportsList.value _
+                                                        : [Forms]![Frm_Main_Page]![TitleTxt] = Me.BtnCaption
+        Case Is = "Open Report"
+                If Len(Me.FormsReportsList & "") > 0 Then DoCmd.OpenReport Me.FormsReportsList.value, acViewPreview: If Me.Maximize Then DoCmd.Maximize
+                Call RestoreMainPage
+                
+        Case Is = "Open Sub Report"
+                If Len(Me.FormsReportsList & "") > 0 Then [Forms]![Frm_Main_Page]![SubFrm].SourceObject = "Report." & Me.FormsReportsList.value _
+                                                        : [Forms]![Frm_Main_Page]![TitleTxt] = Me.BtnCaption
+        
+        Case Is = "Open Macro"
+                If Len(Me.FormsReportsList & "") > 0 Then DoCmd.RunMacro Me.FormsReportsList.value
+                Call RestoreMainPage
+        
+        Case Is = "MsgBox"
+                MsgBox Me.MsgBoxText, , Me.BtnCaption
+                Call RestoreMainPage
+                
+        Case Else: Call RestoreMainPage: Exit Sub
+    End Select
+
+HandleExit:
+    Exit Sub
+
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+      '  MsgBox err.Number & vbNewLine & vbNewLine & err.Description, , "Code : CommandBtn_Click()"
+    End If
+    Resume HandleExit
+End Sub
+
+Function RestoreMainPage()
+' To Restore Main Page and Title
+On Error GoTo HandleError
+    DoEvents
+    Me.Repaint
+
+    ' Set The Deafult Main Sub Form's Source Form
+    If [Forms]![Frm_Main_Page]![SubFrm].SourceObject <> "Frm_MainSubForm" Then
+        [Forms]![Frm_Main_Page]![SubFrm].SourceObject = "Form.Frm_MainSubForm"
+    End If
+    
+    ' Set The Deafult Main Title
+    [Forms]![Frm_Main_Page]![TitleTxt] = "Main Menu"
+
+HandleExit:
+    Exit Function
+
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : RestoreMainPage()"
+    End If
+    Resume HandleExit
+End Function

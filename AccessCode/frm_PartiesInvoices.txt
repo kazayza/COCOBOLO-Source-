@@ -1,0 +1,280 @@
+﻿Option Compare Database
+
+Private Sub btnInvoice_Click()
+If Not currentUser.HasPermission("frm_SalesInvoiveNew") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+        
+    If IsNull(Me.TransactionID) Then
+        MsgBox "من فضلك اختر فاتورة صحيحة.", vbExclamation
+        Exit Sub
+    End If
+    
+'    DoCmd.OpenForm "frm_SalesInvoiveView", , , "TransactionID=" & Me.TransactionID
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & TransactionID
+
+End Sub
+
+Private Sub cmdAll_Click()
+Me.Filter = ""
+    Me.FilterOn = False
+End Sub
+
+Private Sub cmdnotpaid_Click()
+Me.Filter = "PaidAmount = 0 "
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdPaid_Click()
+Me.Filter = "PaidAmount >= GrandTotal"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdPurchse_Click()
+Me.Filter = "TransactionType = 'Purchase'"
+    Me.FilterOn = True
+'    Me.RecordSource = "SELECT " & _
+'        "T.TransactionID, " & _
+'        "T.TransactionDate, " & _
+'        "P.PartyName, " & _
+'        "T.TransactionType, " & _
+'        "T.GrandTotal,  " & _
+'        "T.PaidAmount, " & _
+'        "T.Notes " & _
+'        "FROM dbo_Transactions T " & _
+'        "INNER JOIN dbo_Parties P ON T.EmpId = P.PartyID " & _
+'        "WHERE T.TransactionType = 'Purchase'"
+    Me.Requery
+
+End Sub
+
+
+
+Private Sub cmdPay_Click()
+If Not currentUser.HasPermission("frm_Payments") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+   If Me.RemainingAmount = 0 Then
+   MsgBox "الفاتورة مسدده بالكامل", vbInformation, "COCOBOLO SYSTEM"
+   Exit Sub
+   End If
+   
+    If IsNull(Me.TransactionID) Then
+        MsgBox "لايمكن سداد او دفع جزء من الفاتورة الا بعد حفظها" & vbCrLf & currentUser.FullName, vbCritical, "COCOBOLO SYSTEM"
+        Exit Sub
+    Else
+        ' افتح الفورم
+        DoCmd.OpenForm "frm_Payments"
+        
+        ' انتظر علشان الفورم يفتح
+        DoEvents
+        
+        ' استدع الدالة العامة
+        Forms!frm_Payments.LoadFromInvoice Me.TransactionID, "Sale"
+    End If
+End Sub
+
+Private Sub cmdprogress_Click()
+Me.Filter = "PaidAmount > 0 AND PaidAmount < GrandTotal"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdSearch_Click()
+
+    If Nz(Me.txtSearch.value, "") <> "" Then
+        Me.Filter = "PartyName LIKE '*" & Me.txtSearch.value & "*'"
+        Me.FilterOn = True
+    Else
+        Me.Filter = ""
+        Me.FilterOn = False
+    End If
+
+End Sub
+
+Private Sub Command78_Click()
+'    If Not currentUser.HasPermission("rpt_InvoiceNew") Then
+'
+'        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+''        DoCmd.Close acForm, Me.Name
+'
+'        Exit Sub
+'        End If
+    
+    DoCmd.OpenReport "rpt_InvoiceNew", acViewPreview, , "TransactionID=" & Me.TransactionID
+
+End Sub
+
+Private Sub Form_Current()
+If currentUser.UserName = "admin" Or currentUser.UserName = "nabil" Or currentUser.UserName = "hassan" Then
+Me.TotalSales.Visible = True
+Me.TotalRemaining.Visible = True
+Else
+Me.TotalSales.Visible = False
+Me.TotalRemaining.Visible = False
+End If
+End Sub
+
+Private Sub Form_Load()
+
+'Me.CountSales.Caption = DCount("TransactionID", "dbo_Transactions", "TransactionType='Sale'")
+'Me.countPaid.Caption = DCount("TransactionID", "dbo_Transactions", "PaidAmount >= GrandTotal AND TransactionType = 'Sale'")
+'Me.countProgress.Caption = DCount("TransactionID", "dbo_Transactions", "PaidAmount > 0 AND PaidAmount < GrandTotal AND TransactionType = 'Sale'")
+'Me.countnotpaid.Caption = DCount("TransactionID", "dbo_Transactions", "PaidAmount = 0 AND TransactionType = 'Sale'")
+   ' ملء الكومبو بوكس بالأشهر
+    ' ملء الكومبو بوكس
+    Call FillMonthComboBox
+    Call FillYearComboBox
+    
+    ' تعيين فلترة افتراضية للسنة الحالية
+    Me.cboFilterMonth.value = 0 ' كل الأشهر
+    Me.cboFilterYear.value = Year(Date)
+    
+    ' تطبيق الفلترة الافتراضية (عرض السنة الحالية)
+    Call ApplyMonthFilter
+    
+    ' تحديث الإحصائيات
+    Call UpdateStatistics
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub txtSearch_AfterUpdate()
+cmdSearch_Click
+End Sub
+' دالة لملء الكومبو بوكس
+Public Sub FillMonthComboBox()
+    Dim months(0 To 12) As String
+    Dim i As Integer
+    
+    ' قائمة الأشهر
+    months(0) = "كل الأشهر"
+    months(1) = "يناير"
+    months(2) = "فبراير"
+    months(3) = "مارس"
+    months(4) = "أبريل"
+    months(5) = "مايو"
+    months(6) = "يونيو"
+    months(7) = "يوليو"
+    months(8) = "أغسطس"
+    months(9) = "سبتمبر"
+    months(10) = "أكتوبر"
+    months(11) = "نوفمبر"
+    months(12) = "ديسمبر"
+    
+    ' تفريغ الكومبو بوكس أولاً
+    Me.cboFilterMonth.rowSource = ""
+    
+    ' إضافة العناصر (القيمة الرقمية, الاسم المعروض)
+    For i = 0 To 12
+        Me.cboFilterMonth.AddItem i & ";" & months(i)
+    Next i
+    
+    ' تحديد "كل الأشهر" كاختيار افتراضي
+    Me.cboFilterMonth.value = 0
+End Sub
+Private Sub cboFilterMonth_AfterUpdate()
+    ' تطبيق الفلترة حسب الشهر المختار
+    Call ApplyMonthFilter
+
+End Sub
+
+' دالة تطبيق الفلترة
+' دالة تطبيق الفلترة
+Public Sub ApplyMonthFilter()
+    Dim filterStr As String
+    Dim monthNum As Integer
+    Dim yearNum As Integer
+    
+    ' الحصول على القيم المختارة
+    monthNum = Nz(Me.cboFilterMonth.value, 0)
+    yearNum = Nz(Me.cboFilterYear.value, Year(Date))
+    
+    ' بناء شرط الفلترة
+    If monthNum = 0 Then
+        ' كل الأشهر: فلترة حسب السنة فقط
+        filterStr = "Year(TransactionDate) = " & yearNum
+    Else
+        ' شهر محدد: فلترة حسب الشهر والسنة
+        filterStr = "Month(TransactionDate) = " & monthNum & " AND Year(TransactionDate) = " & yearNum
+    End If
+    
+    ' تطبيق الفلترة على النموذج
+    Me.Filter = filterStr
+    Me.FilterOn = True
+    
+    ' تحديث الإحصائيات بناءً على الفلترة الجديدة
+    Call UpdateStatistics
+    
+    ' تحديث تسمية النموذج أو شريط الحالة
+    If monthNum = 0 Then
+        Me.Caption = "فواتير المبيعات - لسنة " & yearNum
+    Else
+        Me.Caption = "فواتير المبيعات - " & Me.cboFilterMonth.Column(1) & " " & yearNum
+    End If
+End Sub
+
+
+' دالة تحديث الإحصائيات بناءً على الفلترة الحالية
+Public Sub UpdateStatistics()
+    Dim filterCondition As String
+    Dim baseCondition As String
+    
+    ' الشرط الأساسي: فقط معاملات البيع
+    baseCondition = "TransactionType = 'Sale'"
+    
+    ' إذا كان هناك فلترة مطبقة، ندمجها مع الشرط الأساسي
+    If Me.FilterOn And Len(Me.Filter) > 0 Then
+        filterCondition = "(" & Me.Filter & ") AND " & baseCondition
+    Else
+        filterCondition = baseCondition
+    End If
+    
+    ' تحديث إجمالي المبيعات
+    Me.CountSales.Caption = DCount("TransactionID", "dbo_Transactions", filterCondition)
+    
+    ' تحديث المدفوعة بالكامل (PaidAmount >= GrandTotal)
+    Me.countPaid.Caption = DCount("TransactionID", "dbo_Transactions", _
+        filterCondition & " AND PaidAmount >= GrandTotal")
+    
+    ' تحديث المدفوعة جزئياً (PaidAmount > 0 AND PaidAmount < GrandTotal)
+    Me.countProgress.Caption = DCount("TransactionID", "dbo_Transactions", _
+        filterCondition & " AND PaidAmount > 0 AND PaidAmount < GrandTotal")
+    
+    ' تحديث غير المدفوعة (PaidAmount = 0)
+    Me.countnotpaid.Caption = DCount("TransactionID", "dbo_Transactions", _
+        filterCondition & " AND PaidAmount = 0")
+    
+    ' يمكنك أيضاً حساب إجمالي المبالغ
+     Me.TotalSales.Caption = "إجمالى المبيعات : " & Nz(DSum("GrandTotal", "dbo_Transactions", filterCondition), 0)
+     Me.TotalRemaining.Caption = "المبلغ المتبقى : " & Nz(DSum("GrandTotal - PaidAmount", "dbo_Transactions", filterCondition), 0)
+End Sub
+
+' دالة ملء سنوات
+Public Sub FillYearComboBox()
+    Dim i As Integer
+    
+    Me.cboFilterYear.rowSource = ""
+    
+    ' إضافة سنوات من 2020 إلى 2030 (يمكنك تعديل النطاق)
+    For i = 2025 To 2030
+        Me.cboFilterYear.AddItem i
+    Next i
+    
+    ' تحديد السنة الحالية افتراضياً
+    Me.cboFilterYear.value = Year(Date)
+End Sub

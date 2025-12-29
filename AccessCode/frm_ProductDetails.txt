@@ -1,0 +1,103 @@
+﻿Option Compare Database
+
+Private Sub Command14_Click()
+DoCmd.OpenForm "Form6", , , "ProductID=" & Me.ProductID
+
+End Sub
+
+Private Sub Command39_Click()
+DoCmd.OpenForm "frmViewImg", , , "ProductID=" & Me.ProductID
+End Sub
+
+Private Sub Form_Load()
+    If Not IsNull(Me.OpenArgs) Then
+        Dim prodID As Long
+        prodID = CLng(Me.OpenArgs)
+        LoadProductDetails prodID
+        Me.sub_ProductComponentsDetalis.Form.RecordSource = _
+            "SELECT * FROM dbo_ProductComponents WHERE ProductID = " & CLng(Me.OpenArgs)
+'Me.sub_ProductComponentsDetalis.Form.Filter = "ProductID = " & CLng(Me.OpenArgs)
+'Me.sub_ProductComponentsDetalis.Form.FilterOn = True
+
+    End If
+
+    Call SetReadOnlyMode(True)
+
+  
+End Sub
+
+
+
+
+Private Sub LoadProductDetails(prodID As Long)
+    ' ربط النموذج بالبيانات حسب ID
+    Me.RecordSource = "SELECT * FROM dbo_Products WHERE ProductID = " & prodID
+    
+End Sub
+Private Sub LoadProductComponentsDetails(prodID As Long)
+    ' ربط النموذج بالبيانات حسب ID
+    Me.RecordSource = "SELECT * FROM dbo_ProductComponents WHERE ProductID = " & prodID
+    
+    End Sub
+
+'Private Sub SetReadOnlyMode(isReadOnly As Boolean)
+'    ' انقل التركيز مؤقتًا إلى عنصر مش هيتخفي
+'    Me.ProductName.SetFocus
+'
+'    ' اجعل الحقول غير قابلة للتعديل أو قابلة بناءً على القيمة
+'    Me.AllowEdits = Not isReadOnly
+'    Me.AllowDeletions = Not isReadOnly
+'    Me.AllowAdditions = Not isReadOnly
+'
+'    ' تحكم في إظهار الأزرار حسب الوضع
+'    Me.btnEdit.Visible = isReadOnly
+'    Me.btnSave.Visible = Not isReadOnly
+'End Sub
+'
+'Private Sub btnEdit_Click()
+'    Call SetReadOnlyMode(False)
+'End Sub
+'
+'Private Sub btnSave_Click()
+'    If Me.Dirty Then Me.Dirty = False
+'    MsgBox "تم حفظ التعديلات بنجاح", vbInformation
+'    Call SetReadOnlyMode(True)
+'End Sub
+
+Private Sub SetReadOnlyMode(isReadOnly As Boolean)
+    ' أول حاجة نركز على عنصر موجود في الرئيسي
+    Me.ProductName.SetFocus
+    
+    ' تحكم في الرئيسي
+    Me.AllowEdits = Not isReadOnly
+    Me.AllowDeletions = Not isReadOnly
+    Me.AllowAdditions = Not isReadOnly
+    
+    ' تحكم في الفرعي (sub_ProductComponentsDetalis)
+    With Me.sub_ProductComponentsDetalis.Form
+        .AllowEdits = Not isReadOnly
+        .AllowDeletions = Not isReadOnly
+        .AllowAdditions = Not isReadOnly
+    End With
+    
+    ' تحكم في إظهار الأزرار (رئيسي + فرعي)
+    Me.btnEdit.Visible = isReadOnly
+    Me.btnSave.Visible = Not isReadOnly
+End Sub
+
+Private Sub btnEdit_Click()
+    Call SetReadOnlyMode(False)
+End Sub
+
+Private Sub btnSave_Click()
+    ' حفظ الرئيسي
+    If Me.Dirty Then Me.Dirty = False
+    
+    ' حفظ الفرعي
+    If Me.sub_ProductComponentsDetalis.Form.Dirty Then
+        Me.sub_ProductComponentsDetalis.Form.Dirty = False
+    End If
+    
+    MsgBox "تم حفظ التعديلات بنجاح", vbInformation
+    Call SetReadOnlyMode(True)
+End Sub

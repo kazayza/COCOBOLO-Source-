@@ -1,0 +1,43 @@
+﻿Form: frm_Payments
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box52		Rectangle		
+Line53		Line		
+Image56		Image		
+Label57		Label		مدفوعات
+btnClose		Button		Close
+Line19		Line		
+Box11		Rectangle		
+PaymentID		TextBox		
+Label0		Label		PaymentID
+PaymentDate		TextBox		
+Label2		Label		التاريخ
+Amount		TextBox		
+Label3		Label		المبلغ
+Notes		TextBox		
+Label5		Label		ملاحظات 
+cboPaymentMethod		ComboBox		"نقدى";"InstaPAY";"تحويل بنكى";"VISA"
+Label4		Label		طريقة الدفع
+TransactionID		ComboBox		qryPT_Sales
+Label1		Label		رقم الفاتورة 
+cboCashBox		ComboBox		SELECT dbo_CashBoxes.CashBoxID, dbo_CashBoxes.CashBoxName FROM dbo_CashBoxes; 
+Label10		Label		الخزينة
+Box54		Rectangle		
+Box55		Rectangle		
+txtPartyName		TextBox		
+txtBaqy		TextBox		
+Label15		Label		المتبقى
+cboPaymentType		ComboBox		"فاتورة مبيعات";"رسوم"
+Label17		Label		رسوم/فاتورة
+Line18		Line		
+lblPaymentType		Label		جزء من الدفعة الأولى (70%)
+txtPaymentPlan		TextBox		
+btnSavePayment			Button		حفظ
+btnOpenReport		Button		الايصال
+btnAddNew		Button		جديد
+CreatedBy		TextBox		
+Label6		Label		CreatedBy
+CreatedAt		TextBox		
+Label7		Label		CreatedAt

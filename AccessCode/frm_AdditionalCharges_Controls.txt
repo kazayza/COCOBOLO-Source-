@@ -1,0 +1,9 @@
+﻿Form: frm_AdditionalCharges
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label3		Label		بيان الرسوم
+Label4		Label		المبلغ
+ChargeDescription		TextBox		ChargeDescription
+ChargeAmount		TextBox		ChargeAmount

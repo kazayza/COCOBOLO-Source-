@@ -1,0 +1,13 @@
+﻿Form: frm_Manufacturing
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box3		Rectangle		
+txtProductID		TextBox		
+Label0		Label		ProductID
+txtProductName		TextBox		
+Label1		Label		ProductName
+txtManufacturing		TextBox		
+Label2		Label		Manufacturing
+cmdsave		Button		     &Save

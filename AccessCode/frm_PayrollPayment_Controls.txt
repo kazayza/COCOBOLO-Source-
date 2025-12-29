@@ -1,0 +1,35 @@
+﻿Form: frm_PayrollPayment
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box24		Rectangle		
+Line26		Line		
+Label27		Label		صرف راتب موظف
+btnClose		Button		Command51
+Box25		Rectangle		
+cboPayroll		ComboBox		SELECT dbo_Payroll.PayrollID, dbo_Payroll.EmployeeID, dbo_Employees.FullName AS EmployeeName FROM dbo_Payroll INNER JOIN dbo_Employees ON dbo_Payroll.EmployeeID = dbo_Employees.EmployeeID WHERE dbo_Payroll.PaymentStatus <> 'مدفوع' ORDER BY dbo_Payroll.PayrollMonth DESC; 
+Label1		Label		الموظف
+txtPayrollMonth		TextBox		
+Label3		Label		شهر الراتب
+txtBasicSalary		TextBox		
+Label5		Label		الراتب الاساسى
+txtAllowancesTotal		TextBox		
+Label7		Label		إجمالى البدلات
+txtDeductionsTotal		TextBox		
+Label9		Label		الخصومات
+txtNetSalary		TextBox		
+Label11		Label		الصافى
+txtPaymentStatus		TextBox		
+حاله الدفع		Label		الحاله
+cboCashBox		ComboBox		SELECT dbo_CashBoxes.CashBoxID, dbo_CashBoxes.CashBoxName FROM dbo_CashBoxes; 
+الخزينة		Label		خزينة الصرف
+txtNotes		TextBox		
+Label23		Label		notes
+Box54		Rectangle		
+Box55		Rectangle		
+Box49		Rectangle		
+txtCreatedBy		TextBox		
+Label21		Label		&AddedBy
+btnPayPayroll		Button		PayPayroll
+Line50		Line		

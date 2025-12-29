@@ -1,0 +1,24 @@
+﻿Form: frm_KPI_Sales
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtTotalMonth		TextBox		
+Label3		Label		مبيعات الشهر الحالى
+txtTotalPrevMonth		TextBox		
+Label5		Label		مبيعات الشهر السابق
+txtPctChange		TextBox		
+Label7		Label		نسبه التغير %
+subTopEmployees		Subform		
+txtTopEmployeeSales		TextBox		
+Chart12		Other (133)		qry_ChartSalesKPI
+txtTotalYear		TextBox		
+Label1		Label		إجمالى المبيعات العام الحالى
+Chart14		Other (133)		qry_Sales
+Im1		Image		
+Image19		Image		
+imgup		Image		
+imgdown		Image		
+Image22		Image		
+Image23		Image		
+Label24		Label		مؤشرات أداء المبيعات

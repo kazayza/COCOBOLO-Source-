@@ -1,0 +1,162 @@
+﻿
+
+
+Option Compare Database
+Option Explicit
+
+
+
+Private Sub cboPayroll_AfterUpdate()
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim PayrollID As Long
+
+    PayrollID = Me.cboPayroll.value
+    If IsNull(PayrollID) Then Exit Sub
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT * FROM dbo_Payroll WHERE PayrollID = " & PayrollID, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        Me.txtBasicSalary = Nz(rs!BasicSalary, 0)
+        Me.txtAllowancesTotal = Nz(rs!Allowances, 0)
+        Me.txtDeductionsTotal = Nz(rs!Deductions, 0)
+'        Me.txtEmployeeName = Nz(rs!FullName, 0)
+        Me.txtPayRollMonth = Nz(rs!PayrollMonth, 0)
+        Me.txtPaymentStatus = Nz(rs!PaymentStatus, 0)
+        ' احسب الصافي:
+        Me.txtNetSalary = Nz(rs!BasicSalary, 0) + Nz(rs!Allowances, 0) - Nz(rs!Deductions, 0)
+        ' ممكن تحمل بيانات تانية حسب الحقول اللي عندك
+    Else
+        Me.txtBasicSalary = 0
+        Me.txtAllowancesTotal = 0
+        Me.txtDeductionsTotal = 0
+        Me.txtNetSalary = 0
+       ' Me.txtEmployeeName = 0
+        Me.txtPayRollMonth = 0
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+
+
+Private Sub btnPayPayroll_Click()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim rsPayroll As DAO.Recordset
+    Dim rsCash As DAO.Recordset
+
+    Dim newPayrollID As Long
+    Dim EmpId As Long
+    Dim NetSalary As Currency
+    Dim CashBoxID As Long
+    Dim payNow As Boolean
+    Dim CreatedBy As String
+    Dim Notes As String
+    Dim cashTransID As Long
+    Dim InTrans As Boolean
+
+    Set db = CurrentDb
+
+    ' قيم المتغيرات - عدل حسب النموذج الخاص بك
+    newPayrollID = Nz(Me.cboPayroll.value, 0)  ' PayrollID الذي تريد صرفه
+    EmpId = 0  ' غير مستخدم هنا مباشرة، يمكن إزالته لو مش ضروري
+    payNow = True ' إذا تريد صرف الراتب الآن، حددها من CheckBox أو غيرها
+    CashBoxID = Nz(Me.cboCashBox.value, 0)
+    CreatedBy = currentUser.UserName 'Nz(Me.txtCreatedBy.Value, "System")
+    Notes = Nz(Me.txtNotes.value, "")
+    NetSalary = Nz(Me.txtNetSalary.value, 0)
+
+    If newPayrollID = 0 Then
+        MsgBox "اختر المرتب أولاً.", vbExclamation
+        Exit Sub
+    End If
+
+    If payNow And CashBoxID = 0 Then
+        MsgBox "اختر الخزنة للدفع الفوري.", vbExclamation
+        Exit Sub
+    End If
+
+    DBEngine.BeginTrans
+    InTrans = True
+
+    If payNow Then
+        Set rsCash = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+        rsCash.AddNew
+        rsCash!CashBoxID = CashBoxID
+        rsCash!ReferenceType = "Payroll"
+        rsCash!ReferenceID = newPayrollID
+        rsCash!TransactionType = "صرف"
+        rsCash!Amount = NetSalary
+        rsCash!TransactionDate = Now()
+        Dim empName As String
+Dim rsEmp As DAO.Recordset
+
+' جلب اسم الموظف بناءً على PayrollID
+Set rsEmp = db.OpenRecordset("SELECT dbo_Employees.FullName FROM dbo_Payroll INNER JOIN dbo_Employees ON dbo_Payroll.EmployeeID = dbo_Employees.EmployeeID WHERE dbo_Payroll.PayrollID = " & newPayrollID, dbOpenSnapshot)
+If Not rsEmp.EOF Then
+    empName = rsEmp!FullName
+Else
+    empName = "غير معروف"
+End If
+rsEmp.Close
+Set rsEmp = Nothing
+
+' الآن اضف الاسم في ملاحظة الحركة
+rsCash!Notes = "صرف مرتب للموظف: " & empName & " عن شهر: " & txtPayRollMonth & " - " & Notes
+
+      '  rsCash!notes = "صرف مرتب - " & notes
+        rsCash!CreatedBy = CreatedBy
+        rsCash!CreatedAt = Now()
+        rsCash.Update
+        cashTransID = rsCash!CashboxTransactionID
+        rsCash.Close
+
+        Set rsPayroll = db.OpenRecordset("SELECT * FROM dbo_Payroll WHERE PayrollID = " & newPayrollID, dbOpenDynaset, dbSeeChanges)
+        If Not rsPayroll.EOF Then
+            rsPayroll.Edit
+            rsPayroll!PaymentStatus = "مدفوع"
+            rsPayroll!PaymentDate = Now()
+            rsPayroll!CashboxTransactionID = cashTransID
+            rsPayroll.Update
+        End If
+        rsPayroll.Close
+    End If
+
+    DBEngine.CommitTrans
+    InTrans = False
+
+    MsgBox "تم صرف المرتب بنجاح.", vbInformation
+    Me.cboCashBox = ""
+Me.cboPayroll = ""
+'Me.cboPayroll.Requery
+Me.txtAllowancesTotal = ""
+Me.txtBasicSalary = ""
+Me.txtDeductionsTotal = ""
+Me.txtPayRollMonth = ""
+Me.txtBasicSalary = ""
+Me.txtPaymentStatus = ""
+Me.txtNetSalary = ""
+Me.cboPayroll.Requery
+    Exit Sub
+
+
+ErrHandler:
+    If InTrans Then
+        DBEngine.Rollback
+        InTrans = False
+    End If
+    MsgBox "خطأ أثناء صرف الراتب: " & Err.Number & " - " & Err.Description, vbCritical
+    Debug.Print "Error Number: " & Err.Number & ", Description: " & Err.Description
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

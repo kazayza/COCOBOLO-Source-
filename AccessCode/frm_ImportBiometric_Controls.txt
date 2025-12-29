@@ -1,0 +1,26 @@
+﻿Form: frm_ImportBiometric
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+btnBrowseFile		Button		اختيار ملف البصمة
+txtFilePath		TextBox		
+Label2		Label		مسار الملف
+cmdApplyDeductions		Button		تطبيق الخصم
+cboMonth		ComboBox		SELECT tbl_months.MonthNo, tbl_months.MonthName FROM tbl_months; 
+Label5		Label		الشهر
+cboYear		ComboBox		2023;2024;2025;2026;2027
+
+Label7		Label		السنه
+pbImport		Other (119)		
+cmdImport		Button		Import
+lblStatus		Label		تم الانتهاء من معالجة 160 سجل بنجاح
+cmdDeleteMonth		Button		delete
+cmdGenerateAttendance		Button		Attendance
+cmdDeleteMonthAttendnce		Button		DeleteAttendance
+pbImport1		Other (119)		
+Box17		Rectangle		
+Box18		Rectangle		
+Image19		Image		
+Command20		Button		استيراد محلى
+Command41		Button		Command41

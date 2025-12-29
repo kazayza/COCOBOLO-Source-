@@ -1,0 +1,455 @@
+﻿Option Compare Database
+Option Explicit
+' متغيرات التتبع
+Private SelectedPartyID As Long
+Private SelectedTransactionID As Long
+
+Private Sub btnInvoice_Click()
+    If IsNull(Me.TransactionID) Then
+        MsgBox "من فضلك اختر فاتورة صحيحة.", vbExclamation
+        Exit Sub
+    End If
+    
+'    DoCmd.OpenForm "frm_SalesInvoiveView", , , "TransactionID=" & Me.TransactionID
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & TransactionID
+
+End Sub
+
+
+
+Private Sub cmdAddPayment_Click()
+If Not currentUser.HasPermission("frm_Payments") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+        
+         If IsNull(Me.cboInvoices) Then
+        MsgBox "لايمكن سداد او دفع جزء من الفاتورة الا بعد اختيار الفاتورة" & vbCrLf & currentUser.FullName, vbCritical, "COCOBOLO SYSTEM"
+        Exit Sub
+        End If
+        
+        
+'             If IsNull(Me.TransactionID) Then
+'           ' افتح الفورم
+'        DoCmd.OpenForm "frm_Payments"
+'
+'        ' انتظر علشان الفورم يفتح
+'        DoEvents
+'
+'        ' استدع الدالة العامة
+'        Forms!frm_Payments.LoadFromInvoice Me.cboInvoices, "Sale"       'me.TransactionID
+'        End If
+        
+        If Me.Text84 = 0 Then   'Not Me.TransactionID) And
+        MsgBox "الفاتورة مسدده بالكامل ولا يوجد مديونية على العميل" & vbCrLf & currentUser.FullName, vbCritical, "COCOBOLO SYSTEM"
+        Exit Sub
+        End If
+        
+   
+      
+    ' افتح الفورم
+        DoCmd.OpenForm "frm_Payments"
+        
+        ' انتظر علشان الفورم يفتح
+        DoEvents
+        
+        ' استدع الدالة العامة
+        Forms!frm_Payments.LoadFromInvoice Me.TransactionID, "Sale"       'me.TransactionID
+
+End Sub
+
+Private Sub Command54_Click()
+ Dim lngID As Long
+ lngID = Me.PaymentID
+ 
+  
+  DoCmd.OpenReport "rpt_Payment", acViewPreview, , "PaymentID=" & lngID
+End Sub
+
+
+'Private Sub cboFilterStatus_Change()
+'    Select Case Me.cboFilterStatus
+'        Case "الكل"
+'            Me.Filter = ""
+'            Me.FilterOn = False
+'        Case "مدفوعة"
+'            Me.Filter = " PaidAmount= [الإجمالي_الفاتورة] OR [الإجمالي_الفاتورة] IS NULL"
+'            Me.FilterOn = True
+'        Case "غير مدفوعة"
+'            Me.Filter = "([الإجمالي_الفاتورة] IS NOT NULL) AND (PaidAmount < [الإجمالي_الفاتورة])"
+'            Me.FilterOn = True
+'    End Select
+'    Me.Requery
+'End Sub
+'Private Sub ApplyProductFilter()
+'    Dim strFilter As String
+'    Dim strSQL As String
+'    Dim patternFilter As String
+'
+'    strFilter = Trim(Me.txtSearch)
+'
+'    If strFilter = "" Then
+'        strSQL = "SELECT P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+'                 "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount " & _
+'                 "FROM dbo_Payments AS P " & _
+'                 "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID " & _
+'                 "WHERE (((T.TransactionType) = 'Sale')) " & _
+'                 "ORDER BY P.PaymentDate DESC;"
+'    Else
+'        ' إنشاء الباترن للهمزات
+'        patternFilter = CreateArabicPattern(strFilter)
+'
+'        ' البحث في حقل Notes فقط
+'        strSQL = "SELECT P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+'                 "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount " & _
+'                 "FROM dbo_Payments AS P " & _
+'                 "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID " & _
+'                 "WHERE (((T.TransactionType) = 'Sale')) AND (P.Notes LIKE '*" & patternFilter & "*') " & _
+'                 "ORDER BY P.PaymentDate DESC;"
+'    End If
+'
+'    Me.RecordSource = strSQL
+'    Me.Requery
+'End Sub
+'
+'' دالة إنشاء باترن للهمزات - نفس الدالة بالظبط
+'Private Function CreateArabicPattern(text As String) As String
+'    Dim tempend As String
+'    Dim i As Integer
+'    Dim currentChar As String
+'
+'    tempend = ""
+'
+'    For i = 1 To Len(text)
+'        currentChar = Mid(text, i, 1)
+'
+'        Select Case currentChar
+'            Case "أ", "إ", "آ", "ا"
+'                tempend = tempend & "[أإآا]"
+'            Case "ة"
+'                tempend = tempend & "[ةه]"
+'            Case "ى", "ئ"
+'                tempend = tempend & "[ىئي]"
+'            Case "ؤ"
+'                tempend = tempend & "[ؤو]"
+'            Case Else
+'                tempend = tempend & currentChar
+'        End Select
+'    Next i
+'
+'    CreateArabicPattern = tempend
+'End Function
+'
+'Private Sub txtSearch_AfterUpdate()
+'
+'If Nz(Me.txtSearch.value, "") = "" Then
+''        Exit Sub
+'Me.txtSearch = ""
+'ApplyProductFilter
+'    Else
+'ApplyProductFilter
+'End If
+'End Sub
+
+
+
+
+
+Private Sub Form_Current()
+If IsNull(Me.cboInvoices) Then
+Me.cmdAddpayment.Visible = False
+Else
+Me.cmdAddpayment.Visible = True
+End If
+End Sub
+
+Private Sub Form_Load()
+
+    InitializeForm
+    DoCmd.Maximize
+End Sub
+
+Private Sub InitializeForm()
+    ' تفريغ الحقول وإعادة الضبط
+    Me.txtCustomerSearch = ""
+    Me.cboInvoices.rowSource = ""
+    Me.cboInvoices.Visible = False
+    Me.lblInvoices.Visible = False
+    Me.cboFilterStatus.Visible = False
+    Me.lblFilter.Visible = False
+    Me.txtSelectedCustomer.Visible = False
+    Me.TransactionID.Visible = False
+    Me.تاريخ_الفاتورة.Visible = False
+    Me.الإجمالي_الفاتورة.Visible = False
+    Me.PaidAmount.Visible = False
+    Me.Text84.Visible = False
+    ' تحميل البيانات الافتراضية
+    LoadAllPayments
+End Sub
+
+' دالة تحميل جميع المدفوعات
+Private Sub LoadAllPayments()
+    Me.RecordSource = GetBaseSQL()
+    Me.Requery
+End Sub
+
+' دالة الحصول على الاستعلام الأساسي
+Private Function GetBaseSQL() As String
+    GetBaseSQL = "SELECT " & _
+                "P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, " & _
+                "P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+                "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, " & _
+                "T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount, " & _
+                 " T.NetTotalAmount AS صافى_الفاتوة, " & _
+                "T.TotalChargesAmount AS رسوم, " & _
+                "C.PartyName AS اسم_العميل, C.PartyID " & _
+                "FROM (dbo_Payments AS P " & _
+                "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID) " & _
+                "LEFT JOIN dbo_Parties AS C ON T.PartyID = C.PartyID " & _
+                "WHERE T.TransactionType = 'Sale' " & _
+                "ORDER BY P.PaymentDate DESC;"
+End Function
+
+
+
+' حدث البحث عن العملاء
+Private Sub txtCustomerSearch_Change()
+    If Len(Nz(Me.txtCustomerSearch.value, "")) > 1 Then
+        SearchCustomers Me.txtCustomerSearch.value
+    Else
+        ' إذا كان البحث فارغاً، إخفاء كومبو الفواتير
+        Me.cboInvoices.Visible = False
+        Me.lblInvoices.Visible = False
+    End If
+End Sub
+
+Private Sub txtCustomerSearch_AfterUpdate()
+    If Nz(Me.txtCustomerSearch.value, "") <> "" Then
+        SearchCustomers Me.txtCustomerSearch.value
+        Me.cboCustomers.SetFocus
+        Me.cboCustomers.Dropdown
+    End If
+End Sub
+
+' دالة البحث عن العملاء
+Private Sub SearchCustomers(ByVal searchText As String)
+    Dim strSQL As String
+    Dim patternFilter As String
+    
+    patternFilter = CreateArabicPattern(Trim(searchText))
+    
+    ' استعلام البحث عن العملاء مع عرض بعض التفاصيل
+    strSQL = "SELECT TOP 20 " & _
+             "P.PartyID, " & _
+             "P.PartyName AS اسم_العميل, " & _
+             "P.Phone AS هاتف, " & _
+             "P.Address AS عنوان " & _
+             "FROM dbo_Parties AS P " & _
+             "WHERE P.PartyName LIKE '*" & patternFilter & "*' " & _
+              "ORDER BY P.PartyName;"
+    
+    ' عرض نتائج البحث في كومبو العملاء
+    Me.cboCustomers.rowSource = strSQL
+    Me.cboCustomers.Requery
+'    Me.cboCustomers.Dropdown
+End Sub
+
+' عند اختيار عميل من كومبو البحث
+Private Sub cboCustomers_AfterUpdate()
+    If Not IsNull(Me.cboCustomers) Then
+        ' الحصول على بيانات العميل المحدد
+        SelectedPartyID = Me.cboCustomers.Column(0)
+        Me.txtSelectedCustomer = Me.cboCustomers.Column(1) ' اسم العميل
+        
+        ' تحميل فواتير العميل المحدد
+        LoadCustomerInvoices (SelectedPartyID)
+        
+        ' إخفاء كومبو العملاء وإظهار كومبو الفواتير
+'        Me.cboCustomers.Visible = False
+        Me.cboInvoices.Visible = True
+        Me.cboInvoices.SetFocus
+        Me.cboInvoices.Dropdown
+        Me.cboCustomers.Visible = False
+        Me.txtSelectedCustomer.Visible = True
+        Me.lblInvoices.Visible = True
+    End If
+End Sub
+
+' عند النقر خارج كومبو العملاء
+Private Sub txtCustomerSearch_GotFocus()
+    Me.cboCustomers.Visible = True
+'Me.cboCustomers.Dropdown
+End Sub
+
+' دالة تحميل فواتير العميل في كومبو الفواتير
+Private Sub LoadCustomerInvoices(PartyID As Long)
+    Dim strSQL As String
+    
+strSQL = "SELECT " & _
+         "T.TransactionID, " & _
+         "T.TransactionID AS رقم_الفاتورة, " & _
+         "T.TransactionDate AS تاريخ_الفاتورة, " & _
+         "T.GrandTotal AS الإجمالي, " & _
+         "T.PaidAmount AS المدفوع, " & _
+         " T.NetTotalAmount AS صافى_الفاتوة, " & _
+         "T.TotalChargesAmount AS رسوم, " & _
+         "(T.GrandTotal - T.PaidAmount) AS المتبقي, " & _
+         "IIF(T.PaidAmount = T.GrandTotal, 'مدفوعة', 'غير مدفوعة') AS الحالة " & _
+         "FROM dbo_Transactions AS T " & _
+         "WHERE T.PartyID = " & PartyID & " " & _
+         "AND T.TransactionType = 'Sale' " & _
+         "ORDER BY T.TransactionDate DESC;"
+    
+    Me.cboInvoices.rowSource = strSQL
+    Me.cboInvoices.Requery
+'    Me.cboInvoices.Dropdown
+End Sub
+
+' عند اختيار فاتورة من كومبو الفواتير
+Private Sub cboInvoices_AfterUpdate()
+    If Not IsNull(Me.cboInvoices) Then
+        SelectedTransactionID = Me.cboInvoices.Column(0)
+        
+        ' تحميل المدفوعات الخاصة بالفاتورة المحددة فقط
+        LoadPaymentsByTransaction (SelectedTransactionID)
+        
+        ' إظهار خيارات التصفية
+        Me.cboFilterStatus.Visible = True
+        Me.lblFilter.Visible = True
+        Me.cboCustomers.Visible = False
+        Me.TransactionID.Visible = True
+            Me.تاريخ_الفاتورة.Visible = True
+    Me.الإجمالي_الفاتورة.Visible = True
+    Me.PaidAmount.Visible = True
+    Me.Text84.Visible = True
+    End If
+'    If Not IsNull(TransactionID) Then
+'cmdAddpayment.Visible = False
+'Else
+'cmdAddpayment.Visible = True
+'End If
+End Sub
+
+' دالة تحميل المدفوعات حسب الفاتورة
+Private Sub LoadPaymentsByTransaction(TransactionID As Long)
+    Dim strSQL As String
+    
+    strSQL = "SELECT " & _
+             "P.PaymentID, P.PaymentDate AS تاريخ_الدفع, P.Amount AS مبلغ_الدفع, " & _
+             "P.PaymentMethod AS طريقة_الدفع, P.Notes AS ملاحظات, " & _
+             "T.TransactionID, T.TransactionDate AS تاريخ_الفاتورة, " & _
+             "T.GrandTotal AS الإجمالي_الفاتورة, T.PaidAmount, " & _
+              " T.NetTotalAmount AS صافى_الفاتوة, " & _
+         "T.TotalChargesAmount AS رسوم, " & _
+             "C.PartyName AS اسم_العميل, C.PartyID " & _
+             "FROM (dbo_Payments AS P " & _
+             "LEFT JOIN dbo_Transactions AS T ON P.TransactionID = T.TransactionID) " & _
+             "LEFT JOIN dbo_Parties AS C ON T.PartyID = C.PartyID " & _
+             "WHERE P.TransactionID = " & TransactionID & " " & _
+             "AND T.TransactionType = 'Sale' " & _
+             "ORDER BY P.PaymentDate DESC;"
+    
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' زر عرض الكل
+Private Sub cmdShowAll_Click()
+    InitializeForm
+    LoadAllPayments
+    Me.cboCustomers.Visible = False
+    Me.cboInvoices.Visible = False
+    Me.lblInvoices.Visible = False
+End Sub
+
+' زر إضافة دفعة جديدة
+'Private Sub cmdAddPayment_Click()
+'    If SelectedTransactionID > 0 Then
+'        DoCmd.OpenForm "frm_Payments", , , , , , "TransactionID=" & SelectedTransactionID
+'    Else
+'        DoCmd.OpenForm "frm_Payments"
+'    End If
+'End Sub
+
+'' زر عرض الفاتورة
+'Private Sub btnInvoice_Click()
+'    If SelectedTransactionID > 0 Then
+'        DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & SelectedTransactionID
+'    Else
+'        MsgBox "من فضلك اختر فاتورة أولاً.", vbExclamation
+'    End If
+'End Sub
+
+'' زر طباعة تقرير الدفعة
+'Private Sub Command54_Click()
+'    Dim lngID As Long
+'    If Not IsNull(Me.PaymentID) Then
+'        lngID = Me.PaymentID
+'        DoCmd.OpenReport "rpt_Payment", acViewPreview, , "PaymentID=" & lngID
+'    Else
+'        MsgBox "من فضلك اختر دفعة للطباعة.", vbExclamation
+'    End If
+'End Sub
+
+' تصفية حسب حالة الدفع
+Private Sub cboFilterStatus_Change()
+    If SelectedTransactionID > 0 Then
+        ' إذا كان هناك فاتورة محددة، تطبق التصفية على مدفوعاتها فقط
+        Select Case Me.cboFilterStatus
+            Case "الكل"
+                Me.Filter = ""
+                Me.FilterOn = False
+            Case "مدفوعة"
+                Me.Filter = "PaidAmount >= [الإجمالي_الفاتورة]"
+                Me.FilterOn = True
+            Case "غير مدفوعة"
+                Me.Filter = "PaidAmount < [الإجمالي_الفاتورة]"
+                Me.FilterOn = True
+        End Select
+    Else
+        ' إذا لم تكن هناك فاتورة محددة، التصفية على جميع المدفوعات
+        Select Case Me.cboFilterStatus
+            Case "الكل"
+                Me.Filter = ""
+                Me.FilterOn = False
+            Case "مدفوعة"
+                Me.Filter = "PaidAmount >= [الإجمالي_الفاتورة]"
+                Me.FilterOn = True
+            Case "غير مدفوعة"
+                Me.Filter = "PaidAmount < [الإجمالي_الفاتورة]"
+                Me.FilterOn = True
+        End Select
+    End If
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات (نفس الدالة السابقة)
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة"
+                tempend = tempend & "[ةه]"
+            Case "ى", "ئ"
+                tempend = tempend & "[ىئي]"
+            Case "ؤ"
+                tempend = tempend & "[ؤو]"
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function

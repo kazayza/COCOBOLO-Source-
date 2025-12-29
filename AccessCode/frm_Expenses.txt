@@ -1,0 +1,524 @@
+﻿Option Compare Database
+
+Private Sub btnaddGroup_Click()
+If Not currentUser.HasPermission("frm_ExpensesGroup") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+
+
+DoCmd.OpenForm "frm_ExpensesGroup"
+End Sub
+
+Private Sub btnCancel_Click()
+DoCmd.Close acForm, "frm_Expenses"
+End Sub
+' الكود ده لحفظ وتسجيل المصروف مباشر
+'Private Sub btnSaveExpense_Click()
+'    Dim db As DAO.Database
+'    Dim rsExpenses As DAO.Recordset
+'    Dim rsCashTrans As DAO.Recordset
+'    Dim newExpenseID As Long
+'    Dim cashBoxID As Long
+'    Dim expenseAmount As Double
+'
+'    ' تحقق من البيانات المطلوبة
+'    If IsNull(Me.cboExpenseGroup) Then
+'        MsgBox "يرجى اختيار مجموعة المصروف", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+'        MsgBox "يرجى إدخال اسم المصروف", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If IsNull(Me.cboCashBox) Then
+'        MsgBox "يرجى اختيار الخزنة", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Nz(Me.Amount, 0) <= 0 Then
+'        MsgBox "يرجى إدخال مبلغ صحيح أكبر من صفر", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'
+'    cashBoxID = Me.cboCashBox
+'    expenseAmount = Nz(Me.Amount, 0)
+'
+'    ' حفظ بيانات المصروف في dbo_Expenses
+'    Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+'    rsExpenses.AddNew
+'    rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+'    rsExpenses!ExpenseName = Me.ExpenseName
+'    rsExpenses!Amount = expenseAmount
+'    rsExpenses!ExpenseDate = Nz(Me.ExpenseDate, Date)
+'    rsExpenses!cashBoxID = cashBoxID
+'    rsExpenses!Notes = Nz(Me.Notes, "")
+'    rsExpenses!CreatedBy = "admin"
+'    rsExpenses!CreatedAt = Now()
+'    rsExpenses.Update
+'    rsExpenses.Bookmark = rsExpenses.LastModified
+'    newExpenseID = rsExpenses!ExpenseID
+'    rsExpenses.Close
+'
+'    ' حفظ حركة المصروف في dbo_CashboxTransactions (صرف نقدي)
+'    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+'    rsCashTrans.AddNew
+'    rsCashTrans!cashBoxID = cashBoxID
+'    rsCashTrans!TransactionType = "صرف"    ' لأن المصروف هو صرف نقدي
+'    rsCashTrans!Amount = expenseAmount
+'    rsCashTrans!TransactionDate = Nz(Me.ExpenseDate, Date)
+'    rsCashTrans!ReferenceID = newExpenseID
+'    rsCashTrans!ReferenceType = "Expense"
+'    rsCashTrans!Notes = Nz(Me.Notes, "")
+'    rsCashTrans!CreatedBy = "admin"
+'    rsCashTrans!CreatedAt = Now()
+'    rsCashTrans.Update
+'    rsCashTrans.Close
+'
+'    MsgBox "تم حفظ المصروف بنجاح", vbInformation
+'
+'    ' تنظيف الحقول بعد الحفظ (اختياري)
+'    Me.cboExpenseGroup = Null
+'    Me.ExpenseName = ""
+'    Me.Amount = 0
+'    Me.cboCashBox = Null
+'    Me.ExpenseDate = Date
+'    Me.Notes = ""
+'
+'End Sub
+
+Private Sub btnSaveExpense_Click()
+
+    Dim db As DAO.Database
+    Dim rsExpenses As DAO.Recordset
+    Dim rsCashTrans As DAO.Recordset
+    Dim ExpenseID As Long
+    Dim CashBoxID As Long
+    Dim expenseAmount As Double
+    Dim isNew As Boolean
+    Dim i As Integer
+    Dim monthlyAmount As Double
+    Dim ExpenseDate As Date
+    
+    ' تحقق من البيانات المطلوبة
+    If IsNull(Me.cboExpenseGroup) Then
+        MsgBox "يرجى اختيار مجموعة المصروف", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+        MsgBox "يرجى إدخال اسم المصروف", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If IsNull(Me.cboCashBox) Then
+        MsgBox "يرجى اختيار الخزنة", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If Nz(Me.Amount, 0) <= 0 Then
+        MsgBox "يرجى إدخال مبلغ صحيح أكبر من صفر", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    ' التحقق من بيانات المصروف المقدم
+    If Me.chkIsAdvance.value Then
+        If Nz(Me.txtAdvanceMonths.value, 0) <= 0 Then
+            MsgBox "يرجى إدخال عدد أشهر صحيح للمصروف المقدم", vbExclamation, "COCOBOLO SYSTEM"
+            Exit Sub
+        End If
+    End If
+    
+    Set db = CurrentDb
+    CashBoxID = Me.cboCashBox
+    expenseAmount = Nz(Me.Amount, 0)
+    ExpenseDate = Nz(Me.ExpenseDate, Date)
+    
+    ' إذا كان تعديل (ليس جديد) - نفس الكود القديم
+    isNew = IsNull(Me.ExpenseID) Or Me.ExpenseID = 0
+    
+    If Not isNew Then
+        ' كود التعديل يفضل كما هو
+        Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+        rsExpenses.FindFirst "ExpenseID = " & Me.ExpenseID
+        If rsExpenses.NoMatch Then
+            MsgBox "لم يتم العثور على المصروف للتعديل", vbExclamation, "COCOBOLO SYSTEM"
+            rsExpenses.Close
+            Exit Sub
+        End If
+        rsExpenses.Edit
+        
+        rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+        rsExpenses!ExpenseName = Me.ExpenseName
+        rsExpenses!Amount = expenseAmount
+        rsExpenses!ExpenseDate = ExpenseDate
+        rsExpenses!CashBoxID = CashBoxID
+        rsExpenses!Notes = Nz(Me.Notes, "")
+        rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+        rsExpenses!CreatedBy = currentUser.UserName
+        rsExpenses!CreatedAt = Now()
+        
+        ' إضافة الحقول الجديدة
+        If Me.chkIsAdvance.value Then
+            rsExpenses!IsAdvance = True
+            rsExpenses!AdvanceMonths = Nz(Me.txtAdvanceMonths.value, 0)
+        Else
+            rsExpenses!IsAdvance = False
+            rsExpenses!AdvanceMonths = Null
+        End If
+        
+        rsExpenses.Update
+        rsExpenses.Close
+        
+        ' حركة الخزينة (تعديل)
+        Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+        rsCashTrans.FindFirst "ReferenceType = 'Expense' AND ReferenceID = " & Me.ExpenseID
+        If rsCashTrans.NoMatch Then
+            rsCashTrans.AddNew
+        Else
+            rsCashTrans.Edit
+        End If
+        
+        rsCashTrans!CashBoxID = CashBoxID
+        rsCashTrans!TransactionType = "صرف"
+        rsCashTrans!Amount = expenseAmount
+        rsCashTrans!TransactionDate = ExpenseDate
+        rsCashTrans!ReferenceID = Me.ExpenseID
+        rsCashTrans!ReferenceType = "Expense"
+        rsCashTrans!Notes = Nz(Me.Notes, "") & " المستفيد : " & Nz(Me.Torecipient, "")
+        rsCashTrans!CreatedBy = currentUser.UserName
+        rsCashTrans!CreatedAt = Now()
+        rsCashTrans.Update
+        rsCashTrans.Close
+        
+        MsgBox "تم تعديل المصروف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    Else
+        ' إذا كان مصروف جديد
+        If Me.chkIsAdvance.value Then
+            ' مصروف مقدم - نسجل حركة خزينة واحدة + عدة مصروفات
+            monthlyAmount = expenseAmount / Nz(Me.txtAdvanceMonths.value, 1)
+            
+            ' 1. تسجيل حركة الخزينة واحدة بالمبلغ الكامل
+            Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+            rsCashTrans.AddNew
+            rsCashTrans!CashBoxID = CashBoxID
+            rsCashTrans!TransactionType = "صرف"
+            rsCashTrans!Amount = expenseAmount
+            rsCashTrans!TransactionDate = ExpenseDate
+            rsCashTrans!ReferenceID = 0 ' سيتم تحديثه لاحقاً
+            rsCashTrans!ReferenceType = "AdvanceExpense"
+            rsCashTrans!Notes = "مصروف مقدم - " & Nz(Me.Notes, "") & " المستفيد : " & Nz(Me.Torecipient, "")
+            rsCashTrans!CreatedBy = currentUser.UserName
+            rsCashTrans!CreatedAt = Now()
+            rsCashTrans.Update
+            rsCashTrans.Close
+            
+            ' 2. تسجيل عدة مصروفات في جدول المصروفات (شهرية)
+            Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+            
+            For i = 1 To Nz(Me.txtAdvanceMonths.value, 1)
+                rsExpenses.AddNew
+                rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+                rsExpenses!ExpenseName = Me.ExpenseName & " (" & i & "/" & Me.txtAdvanceMonths.value & ")"
+                rsExpenses!Amount = monthlyAmount
+                rsExpenses!ExpenseDate = DateAdd("m", i - 1, ExpenseDate) ' نفس اليوم من كل شهر
+                rsExpenses!CashBoxID = CashBoxID
+                rsExpenses!Notes = Nz(Me.Notes, "") & " - قسط " & i & " من " & Me.txtAdvanceMonths.value
+                rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+                rsExpenses!CreatedBy = currentUser.UserName
+                rsExpenses!CreatedAt = Now()
+                rsExpenses!IsAdvance = True
+                rsExpenses!AdvanceMonths = Nz(Me.txtAdvanceMonths.value, 0)
+                rsExpenses.Update
+                
+                ' إذا كانت الحركة الأولى، نربطها بحركة الخزينة
+                If i = 1 Then
+                    rsExpenses.Bookmark = rsExpenses.LastModified
+                    ExpenseID = rsExpenses!ExpenseID
+                    
+                    ' تحديث حركة الخزينة بالـ ReferenceID الصحيح
+                    db.Execute "UPDATE dbo_CashboxTransactions SET ReferenceID = " & ExpenseID & _
+                              " WHERE ReferenceType = 'AdvanceExpense' AND ReferenceID = 0"
+                End If
+            Next i
+            
+            rsExpenses.Close
+            
+            MsgBox "تم حفظ المصروف المقدم على " & Me.txtAdvanceMonths.value & " أشهر بنجاح", vbInformation, "COCOBOLO SYSTEM"
+        Else
+            ' مصروف عادي - نفس الكود القديم
+            Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+            rsExpenses.AddNew
+            
+            rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+            rsExpenses!ExpenseName = Me.ExpenseName
+            rsExpenses!Amount = expenseAmount
+            rsExpenses!ExpenseDate = ExpenseDate
+            rsExpenses!CashBoxID = CashBoxID
+            rsExpenses!Notes = Nz(Me.Notes, "")
+            rsExpenses!Torecipient = Nz(Me.Torecipient, "")
+            rsExpenses!CreatedBy = currentUser.UserName
+            rsExpenses!CreatedAt = Now()
+            rsExpenses!IsAdvance = False
+            rsExpenses!AdvanceMonths = Null
+            rsExpenses.Update
+            rsExpenses.Bookmark = rsExpenses.LastModified
+            ExpenseID = rsExpenses!ExpenseID
+            rsExpenses.Close
+            
+            ' حركة الخزينة للمصروف العادي
+            Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+            rsCashTrans.AddNew
+            rsCashTrans!CashBoxID = CashBoxID
+            rsCashTrans!TransactionType = "صرف"
+            rsCashTrans!Amount = expenseAmount
+            rsCashTrans!TransactionDate = ExpenseDate
+            rsCashTrans!ReferenceID = ExpenseID
+            rsCashTrans!ReferenceType = "Expense"
+            rsCashTrans!Notes = Nz(Me.Notes, "") & " المستفيد : " & Nz(Me.Torecipient, "")
+            rsCashTrans!CreatedBy = currentUser.UserName
+            rsCashTrans!CreatedAt = Now()
+            rsCashTrans.Update
+            rsCashTrans.Close
+            
+            MsgBox "تم حفظ المصروف العادي بنجاح", vbInformation, "COCOBOLO SYSTEM"
+        End If
+        
+        ' تنظيف الحقول إذا كان جديد
+        Me.cboExpenseGroup = Null
+        Me.ExpenseName = ""
+        Me.Amount = 0
+        Me.cboCashBox = Null
+        Me.ExpenseDate = Date
+        Me.Notes = ""
+        Me.chkIsAdvance = False
+        Me.txtAdvanceMonths = Null
+        Me.txtAdvanceMonths.Visible = False
+        Me.Torecipient = ""
+    End If
+    
+
+End Sub
+
+'________________________________
+
+'Private Sub btnSaveExpense_Click()
+'    Dim db As DAO.Database
+'    Dim rsExpenses As DAO.Recordset
+'    Dim rsCashTrans As DAO.Recordset
+'    Dim ExpenseID As Long
+'    Dim CashBoxID As Long
+'    Dim expenseAmount As Double
+'    Dim isNew As Boolean
+'
+'    ' تحقق من البيانات المطلوبة
+'    If IsNull(Me.cboExpenseGroup) Then
+'        MsgBox "يرجى اختيار مجموعة المصروف", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Trim(Nz(Me.ExpenseName, "")) = "" Then
+'        MsgBox "يرجى إدخال اسم المصروف", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If IsNull(Me.cboCashBox) Then
+'        MsgBox "يرجى اختيار الخزنة", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Nz(Me.Amount, 0) <= 0 Then
+'        MsgBox "يرجى إدخال مبلغ صحيح أكبر من صفر", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'    CashBoxID = Me.cboCashBox
+'    expenseAmount = Nz(Me.Amount, 0)
+'
+'    ' إذا كان موجود ExpenseID في الفورم يبقى تعديل، لو مش موجود يبقى إضافة
+'    isNew = IsNull(Me.ExpenseID) Or Me.ExpenseID = 0
+'
+'    ' حفظ أو تعديل بيانات المصروف في dbo_Expenses
+'    Set rsExpenses = db.OpenRecordset("dbo_Expenses", dbOpenDynaset, dbSeeChanges)
+'
+'    If isNew Then
+'        rsExpenses.AddNew
+'    Else
+'        rsExpenses.FindFirst "ExpenseID = " & Me.ExpenseID
+'        If rsExpenses.NoMatch Then
+'            MsgBox "لم يتم العثور على المصروف للتعديل", vbExclamation
+'            rsExpenses.Close
+'            Exit Sub
+'        End If
+'        rsExpenses.Edit
+'    End If
+'
+'    rsExpenses!ExpenseGroupID = Me.cboExpenseGroup
+'    rsExpenses!ExpenseName = Me.ExpenseName
+'    rsExpenses!Amount = expenseAmount
+'    rsExpenses!ExpenseDate = Nz(Me.ExpenseDate, Date)
+'    rsExpenses!CashBoxID = CashBoxID
+'    rsExpenses!Notes = Nz(Me.Notes, "")
+'    rsExpenses!CreatedBy = CurrentUser.UserName
+'    rsExpenses!CreatedAt = Now()
+'    rsExpenses.Update
+'
+'    ' الحصول على الـ ID للمصروف
+'    If isNew Then
+'        rsExpenses.Bookmark = rsExpenses.LastModified
+'        ExpenseID = rsExpenses!ExpenseID
+'    Else
+'        ExpenseID = Me.ExpenseID
+'    End If
+'    rsExpenses.Close
+'
+'    ' حفظ أو تعديل حركة الخزنة المرتبطة بالمصروف
+'    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+'
+'    If isNew Then
+'        rsCashTrans.AddNew
+'    Else
+'        rsCashTrans.FindFirst "ReferenceType = 'Expense' AND ReferenceID = " & ExpenseID
+'        If rsCashTrans.NoMatch Then
+'            rsCashTrans.AddNew
+'        Else
+'            rsCashTrans.Edit
+'        End If
+'    End If
+'
+'    rsCashTrans!CashBoxID = CashBoxID
+'    rsCashTrans!TransactionType = "صرف"    ' لأن المصروف هو صرف نقدي
+'    rsCashTrans!Amount = expenseAmount
+'    rsCashTrans!TransactionDate = Nz(Me.ExpenseDate, Date)
+'    rsCashTrans!ReferenceID = ExpenseID
+'    rsCashTrans!ReferenceType = "Expense"
+'    rsCashTrans!Notes = Nz(Me.Notes, "")
+'    rsCashTrans!CreatedBy = CurrentUser.UserName
+'    rsCashTrans!CreatedAt = Now()
+'    rsCashTrans.Update
+'    rsCashTrans.Close
+'
+'    MsgBox "تم حفظ/تعديل المصروف والحركة في الخزنة بنجاح", vbInformation
+'
+'    ' تنظيف الحقول إذا كان جديد
+'    If isNew Then
+'        Me.cboExpenseGroup = Null
+'        Me.ExpenseName = ""
+'        Me.Amount = 0
+'        Me.cboCashBox = Null
+'        Me.ExpenseDate = Date
+'        Me.Notes = ""
+'    End If
+'
+'End Sub
+
+
+
+Private Sub cboExpenseGroup_AfterUpdate()
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim SelectedID As Long
+    
+    If IsNull(Me.cboExpenseGroup) Then
+        Me.ExpenseName = ""
+        Exit Sub
+    End If
+    
+    SelectedID = Me.cboExpenseGroup.itemData(Me.cboExpenseGroup.ListIndex)
+    
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT ExpenseGroupName FROM dbo_ExpenseGroups WHERE ExpenseGroupID = " & SelectedID)
+    
+    If Not rs.EOF Then
+        Me.ExpenseName = Nz(rs!ExpenseGroupName, "")
+    Else
+        Me.ExpenseName = ""
+    End If
+    
+    rs.Close
+
+
+End Sub
+
+Private Sub cboExpenseGroup_GotFocus()
+Me.Requery
+End Sub
+
+Private Sub chkIsAdvance_AfterUpdate()
+
+    Me.txtAdvanceMonths.Visible = Me.chkIsAdvance.value
+    Me.lblAdvanceMonths.Visible = Me.chkIsAdvance.value
+    If Me.chkIsAdvance.value Then
+        Me.txtAdvanceMonths.SetFocus
+    End If
+End Sub
+
+
+Private Sub Form_Load()
+    Dim expID As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "لم يتم تحديد موظف للعرض.", vbExclamation
+       ' Me.btnSaveExpense.Visible = True
+       ' Me.btnEdit.Visible = False
+       ' Me.btnChangeBasicSalary.Visible = False
+       ' Me.Label66.Caption = "Add New Employees"
+        Exit Sub
+        Else
+       '  Me.btnSaveExpense.Visible = False
+       ' Me.btnEdit.Visible = True
+       ' Me.btnChangeBasicSalary.Visible = True
+       ' Me.Label66.Caption = "Edit Current Empolyee"
+       Me.txtAdvanceMonths.Visible = False
+    Me.lblAdvanceMonths.Visible = False
+    End If
+
+    expID = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Expenses WHERE ExpenseID = " & expID
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+       Me.ExpenseDate = Nz(rs!ExpenseDate, "")
+       Me.ExpenseID = Nz(rs!ExpenseID, "")
+       Me.cboCashBox = Nz(rs!CashBoxID, "")
+       Me.Amount = Nz(rs!Amount, "")
+       Me.cboExpenseGroup = Nz(rs!ExpenseGroupID, "")
+       Me.ExpenseName = Nz(rs!ExpenseName, "")
+       Me.Notes = Nz(rs!Notes, "")
+       Me.chkIsAdvance = rs!IsAdvance
+       Me.txtAdvanceMonths = rs!AdvanceMonths
+       Me.Torecipient = rs!Torecipient
+        ' ... املأ باقي الحقول بنفس الطريقة
+    Else
+        MsgBox "المصروف غير موجود.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

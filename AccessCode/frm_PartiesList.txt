@@ -1,0 +1,125 @@
+﻿Option Compare Database
+
+Private Sub btnAddProduct_Click()
+  If Not currentUser.HasPermission("frm_Parties") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_Parties"
+End Sub
+
+Private Sub btnClearSearch_Click()
+Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+Private Sub btnOpen_Click()
+  If Not currentUser.HasPermission("frm_Parties") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+  
+  Dim PRID As Long
+    PRID = Me.PartyID  ' معرف العميل/المورد الحالي
+
+    If PRID = 0 Then
+        MsgBox "اختر مصروف أولاً.", vbExclamation
+        Exit Sub
+    End If
+
+    ' افتح الفورم الغير مربوط، ومرر PartyID باستخدام OpenArgs
+    DoCmd.OpenForm "frm_Parties", , , , , , PRID
+End Sub
+
+Private Sub btnSearch_Click()
+
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+End Sub
+
+Private Sub Form_Load()
+DoCmd.Maximize
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+
+
+Private Sub ApplyProductFilter()
+    Dim strFilter As String
+    Dim strSQL As String
+    Dim patternFilter As String
+
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT PartyID, PartyName, ContactPerson,phone,Phone2,address,FloorNumber FROM dbo_Parties ORDER BY PartyID;"
+    Else
+        ' إنشاء الباترن للهمزات
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' البحث باستخدام الباترن
+        strSQL = "SELECT PartyID, PartyName, ContactPerson, Phone, Phone2, address,FloorNumber FROM dbo_Parties " & _
+             "WHERE PartyName LIKE '*" & patternFilter & "*' " & _
+             "OR Phone LIKE '*" & patternFilter & "*' " & _
+             "OR Phone2 LIKE '*" & patternFilter & "*' " & _
+             "ORDER BY PartyID;"
+    End If
+
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات - نفس الدالة بالظبط
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة"
+                tempend = tempend & "[ةه]"
+            Case "ى", "ئ"
+                tempend = tempend & "[ىئي]"
+            Case "ؤ"
+                tempend = tempend & "[ؤو]"
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+Private Sub txtSearch_AfterUpdate()
+If Nz(Me.txtSearch.value, "") = "" Then
+'        Exit Sub
+Me.txtSearch = ""
+ApplyProductFilter
+    Else
+ApplyProductFilter
+End If
+End Sub

@@ -1,0 +1,108 @@
+﻿Option Compare Database
+
+Private Sub btnApprove_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود سجل محدد في النموذج
+    If Me.Recordset.EOF And Me.Recordset.BOF Then
+        MsgBox "لا توجد فواتير للعرض", vbExclamation
+        Exit Sub
+    End If
+    
+    If IsNull(Me.TransactionID) Then
+        MsgBox "من فضلك اختر فاتورة للموافقة عليها", vbExclamation
+        Exit Sub
+    End If
+    
+      Dim Reason As String
+    Reason = InputBox("فضلا ادخل رأيك :", "موافقة على طلب التعديل")
+    
+    If Reason = "" Then
+        MsgBox "يجب إدخال سبب للموافقة", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim strSQL As String
+    Dim CurrentTransactionID As Long
+    
+    CurrentTransactionID = Me.TransactionID.value ' استخدام .Value للتأكد
+    
+    ' تحديث حالة الفاتورة
+   strSQL = "UPDATE dbo_Transactions SET " & _
+         "EditStatus = 2, " & _
+         "EditDone =  'تمت الموافقة على التعديل - " & Replace(Reason, "'", "''") & "' " & _
+         "WHERE TransactionID = " & CurrentTransactionID
+    
+    CurrentDb.Execute strSQL, dbSeeChanges
+    
+    ' إرسال إشعار للمستخدم
+'    Call SendApprovalNotification(CurrentTransactionID)
+    Call SendNotification(CreatedBy, "طلب تعديل فاتورة", _
+            "  تمت الموافقة تعديل الفاتورة رقم : " & Nz(Me.TransactionID, "") & " باسم العميل  " & " - " & PartyName & " - " & Nz(Reason, ""), _
+            "frm_SalesInvoiveNew", Nz(Me.TransactionID, 0), True, currentUser.UserName)
+    MsgBox "تمت الموافقة على التعديل بنجاح" & vbCrLf & _
+           "يمكن للمستخدم الآن تعديل الفاتورة   ", vbInformation
+    
+    ' تحديث البيانات في النموذج
+    Me.Requery
+    
+    Exit Sub
+'    DoCmd.Close acForm, Me.Name
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء الموافقة: " & Err.Description, vbCritical
+End Sub
+
+Private Sub btnReject_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود سجل محدد في النموذج
+    If Me.Recordset.EOF And Me.Recordset.BOF Then
+        MsgBox "لا توجد فواتير للعرض", vbExclamation
+        Exit Sub
+    End If
+    
+    If IsNull(Me.TransactionID) Then
+        MsgBox "من فضلك اختر فاتورة للرفض", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim Reason As String
+    Reason = InputBox("ادخل سبب الرفض:", "رفض طلب التعديل")
+    
+    If Reason = "" Then
+        MsgBox "يجب إدخال سبب الرفض", vbExclamation
+        Exit Sub
+    End If
+    
+    Dim strSQL As String
+    Dim CurrentTransactionID As Long
+    
+    CurrentTransactionID = Me.TransactionID.value
+    
+    ' تحديث حالة الفاتورة
+    strSQL = "UPDATE dbo_Transactions SET " & _
+             "EditStatus = 0, " & _
+             "EditDone = 'مرفوض - " & Replace(Reason, "'", "''") & "' " & _
+             "WHERE TransactionID = " & CurrentTransactionID
+    
+    CurrentDb.Execute strSQL, dbSeeChanges
+    
+    ' إرسال إشعار بالرفض
+'    Call SendRejectionNotification(CurrentTransactionID, Reason)
+    Call SendNotification(CreatedBy, "طلب تعديل فاتورة", _
+            " تم رفض طلبك الخاص بتعديل الفاتورة رقم : " & Nz(Me.TransactionID, "") & " وذلك بسبب " & Nz(Reason, ""), _
+            "frm_SalesInvoiveNew", Nz(Me.TransactionID, 0), True, currentUser.UserName)
+            
+    MsgBox "تم رفض طلب التعديل ", vbInformation
+    Me.Requery
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء الرفض: " & Err.Description, vbCritical
+End Sub
+
+
+Private Sub TransactionID_Click()
+DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & TransactionID
+End Sub

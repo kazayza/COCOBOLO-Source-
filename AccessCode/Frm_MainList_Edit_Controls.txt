@@ -1,0 +1,36 @@
+﻿Form: Frm_MainList_Edit
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label39		Label		نص الرسالة
+Label38		Label		قائمة النماذج/التقارير
+Label37		Label		الأمر
+Label36		Label		التسمية على الزر
+Label35		Label		فرعي من:
+Label34		Label		زر رئيسي/فرعي
+Label33		Label		الترتيب
+Label32		Label		ID
+Label11		Label		تحرير القائمة الرئيسية
+Label63		Label		الأيقونة
+Label70		Label		ملاحظات مهمة :
+Label71		Label		1 - ترتيب الأزرار في القائمة يعتمد بشكل رئيسي على ترتيب الأرقام في العمود ( الترتيب ) .
+2- يجب إسناد الأزرار الفرعية إلى الزر الرئيسي الصحيح لكي تظهر بشكل سليم من خلال العمود (فرعي من).
+UpdateMainList		Button		تحديث
+القائمة
+Label84		Label		تكبير النافذة
+Maximize		CheckBox		Maximize
+ID		TextBox		ID
+Order		TextBox		Order
+MainOrSub		ComboBox		MainOrSub
+Sub_Of		ComboBox		Sub_Of
+BtnCaption		TextBox		BtnCaption
+Action		ComboBox		Action
+FormsReportsList		ComboBox		FormsReportsList
+MsgBoxText		TextBox		MsgBoxText
+DeleteBtn		Button		حذف
+AddIconBtn		Button		الأيقونة
+IconAtt		Other (126)		IconAtt
+R		TextBox		
+DeleteIconBtn		Button		x
+MaxText		TextBox		=IIf([Maximize]=-1,ChrW(10004),ChrW(10008))

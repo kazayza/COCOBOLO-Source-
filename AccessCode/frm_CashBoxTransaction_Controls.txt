@@ -1,0 +1,42 @@
+﻿Form: frm_CashBoxTransaction
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box52		Rectangle		
+Box51		Rectangle		
+cboTransactionType		ComboBox		"صرف";"قبض";"الكل"
+Col1_Label		Label		قبض / صرف
+cboReferenceType		ComboBox		"الكل";"Expense";"Charge";"Payment";"Payroll";"Manual";"Transfer"
+Label3		Label		النوع
+txtDateFrom		TextBox		
+Label5		Label		من تاريخ
+txtDateTo		TextBox		
+Label7		Label		الى تاريخ
+btnFilter		Button		Filter
+btnClear		Button		ClearFilter
+cmdReport		Button		Report
+Label14		Label		المبلغ
+Label13		Label		المرجع
+Label12		Label		التاريخ
+Label11		Label		النوع
+Label16		Label		CashboxTransactionID
+Label15		Label		بيان ووصف العملية
+cboCashBox		ComboBox		
+Label44		Label		الخزينة
+Line53		Line		
+Image54		Image		
+Label55		Label		كل حركات الخزينة
+btnClose		Button		Command60
+TransactionType		TextBox		TransactionType
+TransactionDate		TextBox		TransactionDate
+ReferenceType		TextBox		ReferenceType
+Amount		TextBox		Amount
+Notes		TextBox		Notes
+CashboxTransactionID		TextBox		CashboxTransactionID
+txtTotalIn		TextBox		=Sum(IIf([TransactionType]="قبض",Nz([Amount],0),0))
+Label38		Label		إجمالى القبض
+txtTotalOut		TextBox		=Sum(IIf([TransactionType]="صرف",Nz([Amount],0),0))
+Label42		Label		إجمالى الصرف
+txtNet		TextBox		=[txtTotalIn]-[txtTotalOut]
+Label50		Label		الصافى / الرصيد

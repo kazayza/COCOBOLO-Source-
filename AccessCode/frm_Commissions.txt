@@ -1,0 +1,258 @@
+﻿Option Compare Database
+Private Sub btnAddEmployee_Click()
+ Dim db As DAO.Database
+Dim sqlInsert As String
+Dim sqlCheck As String
+Dim rs As DAO.Recordset
+Dim TransactionID As Long
+Dim EmployeeID As Long
+Dim EmployeeName As String
+Dim TransactionAmount As Double
+Dim CustomerName As String
+
+' التحقق من اختيار الفاتورة والموظف
+If IsNull(Me.cboInvoice) Then
+    MsgBox "اختر الفاتورة أولاً.", vbExclamation, "CCOBOLO System"
+    Exit Sub
+End If
+
+If IsNull(Me.cboEmployee) Then
+    MsgBox "اختر الموظف.", vbExclamation
+    Exit Sub
+End If
+
+' قراءة القيم من الكومبو بوكسات
+TransactionID = Me.cboInvoice.value
+TransactionAmount = Me.cboInvoice.Column(1) ' TotalAmount
+CustomerName = Me.cboInvoice.Column(2)      ' CustomerName (عمود رقم 3)
+EmployeeID = Me.cboEmployee.value
+EmployeeName = Me.cboEmployee.Column(1)
+
+Set db = CurrentDb
+
+' التحقق من وجود الموظف بالفعل لنفس الفاتورة
+sqlCheck = "SELECT 1 FROM TempCommissionAssignments " & _
+           "WHERE TransactionID = " & TransactionID & " AND EmployeeID = " & EmployeeID
+
+Set rs = db.OpenRecordset(sqlCheck)
+If Not rs.EOF Then
+    MsgBox "الموظف مضاف بالفعل لهذه الفاتورة!", vbInformation
+    rs.Close
+    Exit Sub
+End If
+rs.Close
+
+' إضافة السجل في الجدول المؤقت
+sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+            "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CommissionRate, CommissionAmount, CustomerName) " & _
+            "VALUES (" & TransactionID & ", " & EmployeeID & ", '" & EmployeeName & "', " & TransactionAmount & ", 0, 0, '" & CustomerName & "');"
+
+db.Execute sqlInsert, dbFailOnError
+
+' تحديث الفورم لعرض السجل الجديد
+Me.Requery
+
+MsgBox "تمت إضافة الموظف بنجاح.", vbInformation
+
+End Sub
+
+'Private Sub btnLoadTransactions_Click()
+'    Dim db As DAO.Database
+'    Dim sqlDelete As String
+'    Dim sqlInsert As String
+'
+'    Set db = CurrentDb
+'
+'    ' مسح البيانات القديمة من الجدول المؤقت
+'    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+'    db.Execute sqlDelete, dbFailOnError
+'
+'    ' تعبئة الجدول المؤقت بالبيانات الجديدة
+'    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+'                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount,  CustomerName, CommissionRate) " & _
+'                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+'                "t.TotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+'                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+'                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+'                "WHERE t.TransactionType = 'Sale' " & _
+'                "AND t.PaidAmount = t.TotalAmount " & _
+'                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                "ORDER BY t.TransactionDate, t.EmpId;"
+'
+'    db.Execute sqlInsert, dbFailOnError
+'
+'    ' تحديث الفورم لعرض البيانات الجديدة
+'    Me.Requery
+'
+''    MsgBox "تم تحميل الفواتير المدفوعة بالكامل التي لم تُحسب لها عمولة.", vbInformation
+'End Sub
+Private Sub btnLoadTransactions_Click()
+Call LoadCommissions
+End Sub
+
+Private Sub btnSaveCommissions_Click()
+Call approve
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+Private Sub txtCommissionRate_AfterUpdate()
+    Dim totalRate As Double
+    Dim TransactionID As Long
+    Dim rs As DAO.Recordset
+    Dim EmployeeID As Long
+    Dim newRate As Double
+    
+    ' قراءة البيانات من الفورم
+    TransactionID = Nz(Me.txtTransactionID.value, 0)
+    EmployeeID = Nz(Me.txtEmployeeID.value, 0)
+    newRate = Nz(Me.txtCommissionRate.value, 0)
+    
+    ' المدير يتم استثناؤه
+    If EmployeeID = 1 Then
+        ' المدير ثابت 1%، يتم حساب العمولة مباشرة
+        Me.txtCommissionRate.value = 0.01
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * 0.01, 2)
+        Exit Sub
+    End If
+    
+    ' فتح الجدول المؤقت للتحقق من مجموع نسب باقي الموظفين (باستثناء المدير)
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT SUM(CommissionRate) AS TotalRate FROM TempCommissionAssignments " & _
+        "WHERE TransactionID = " & TransactionID & " AND EmployeeID <> 1")
+    
+    totalRate = Nz(rs!totalRate, 0)
+    rs.Close
+    
+    ' التحقق من الحد الأقصى لمجموع الموظفين (1%)
+    If totalRate + newRate > 0.01 Then
+        MsgBox "مجموع نسب الموظفين لهذه الفاتورة لا يمكن أن يزيد عن 1%!", vbExclamation
+        Me.txtCommissionRate.value = 0
+        Me.txtCommissionAmount.value = 0
+    Else
+        ' حساب مبلغ العمولة تلقائيًا
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * newRate, 2)
+    End If
+End Sub
+
+Public Sub LoadCommissions()
+    Dim db As DAO.Database
+    Dim sqlDelete As String
+    Dim sqlInsert As String
+
+    Set db = CurrentDb
+
+    ' مسح البيانات القديمة من الجدول المؤقت
+    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+    db.Execute sqlDelete, dbFailOnError
+
+    ' تعبئة الجدول المؤقت بالبيانات الجديدة
+    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount,  CustomerName, CommissionRate) " & _
+                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+                "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+                "WHERE t.TransactionType = 'Sale' " & _
+                "AND t.PaidAmount = t.NetTotalAmount " & _
+                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+                "ORDER BY t.TransactionDate, t.EmpId;"
+
+    db.Execute sqlInsert, dbFailOnError
+
+    ' تحديث الفورم لعرض البيانات الجديدة
+    Me.Requery
+
+''    MsgBox "تم تحميل الفواتير المدفوعة بالكامل التي لم تُحسب لها عمولة.", vbInformation
+
+'    Dim db As DAO.Database
+'    Dim rsTransactions As DAO.Recordset
+'    Dim sqlDelete As String, sqlInsert As String, sqlInsertAuto As String
+'
+'    Set db = CurrentDb
+'
+'    ' مسح البيانات القديمة من الجدول المؤقت
+'    sqlDelete = "DELETE FROM TempCommissionAssignments;"
+'    db.Execute sqlDelete, dbFailOnError
+'
+'    ' تعبئة الجدول المؤقت بالبيانات الجديدة
+'    sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+'                "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CustomerName, CommissionRate) " & _
+'                "SELECT t.TransactionID, t.EmpId AS EmployeeID, e.FullName AS EmployeeName, " & _
+'                "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, 0 AS CommissionRate " & _
+'                "FROM (dbo_Transactions AS t INNER JOIN dbo_Employees AS e ON t.EmpId = e.EmployeeID) " & _
+'                "INNER JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+'                "WHERE t.TransactionType = 'Sale' " & _
+'                "AND t.PaidAmount = t.NetTotalAmount " & _
+'                "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                "ORDER BY t.TransactionDate, t.EmpId;"
+'
+'    db.Execute sqlInsert, dbFailOnError
+    
+    ' ?????? الجزء الجديد: إضافة الموظف الإضافي ??????
+    
+    ' إضافة موظف إضافي (كود 1) بنسبة 1% لكل فاتورة
+'    sqlInsertAuto = "INSERT INTO TempCommissionAssignments " & _
+'                    "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CustomerName, CommissionRate,CommissionAmount) " & _
+'                    "SELECT t.TransactionID, 1 AS EmployeeID, " & _
+'                    "(SELECT FullName FROM dbo_Employees WHERE EmployeeID = 1) AS EmployeeName, " & _
+'                    "t.NetTotalAmount AS TransactionAmount, p.PartyName AS CustomerName, .01 AS CommissionRate,t.TotalAmount * 0.01 AS CommissionAmount " & _
+'                    "FROM dbo_Transactions t " & _
+'                    "INNER JOIN dbo_Parties p ON t.PartyID = p.PartyID " & _
+'                    "WHERE t.TransactionType = 'Sale' " & _
+'                    "AND t.PaidAmount = t.NetTotalAmount " & _
+'                    "AND t.TransactionID NOT IN (SELECT TransactionID FROM dbo_CommissionAssignments) " & _
+'                    "AND t.TransactionID IN (SELECT TransactionID FROM TempCommissionAssignments);"
+'
+'    db.Execute sqlInsertAuto, dbFailOnError
+    
+    ' ?????? نهاية الجزء الجديد ??????
+    
+    ' تحديث الفورم لعرض البيانات الجديدة
+'    Me.Requery
+    
+End Sub
+Public Sub approve()
+    Dim db As DAO.Database
+    Dim sqlInsert As String
+    Dim msgTitle As String
+    Dim msgBody As String
+    Dim totalCommissions As Double
+
+    Set db = CurrentDb
+
+    ' إدراج البيانات من الجدول المؤقت للجدول الأساسي
+    sqlInsert = "INSERT INTO dbo_CommissionAssignments " & _
+                "(TransactionID, EmployeeID,TransactionAmount, CommissionRate, CommissionAmount, CommissionMonth, CommissionYear, CreatedBy, CreatedAt) " & _
+                "SELECT TransactionID, EmployeeID,TransactionAmount, CommissionRate, CommissionAmount, " & Month(Date) & ", " & Year(Date) & ", " & _
+                "'" & currentUser.UserName & "', Now() " & _
+                "FROM TempCommissionAssignments;"
+    db.Execute sqlInsert, dbFailOnError
+
+    ' تجميع إجمالي العمولة المحفوظة (اختياري بس لعرضها في الإشعار)
+    totalCommissions = Nz(DLookup("Sum(CommissionAmount)", "TempCommissionAssignments"), 0)
+
+    ' مسح الجدول المؤقت
+    db.Execute "DELETE FROM TempCommissionAssignments;", dbFailOnError
+
+    ' عمل إشعار للمدير
+    msgTitle = "ApproveCommissions"
+    msgBody = "رجاء اعتماد Commission لشهر " & Month(Date) & "/" & Year(Date) & _
+              ". إجمالي العمولات: " & Format(totalCommissions, "Currency")
+
+    ' استدعاء دالة الإشعار (للمدير admin)
+    Call SendNotification("nabil", msgTitle, msgBody, "frm_CommissionsReview", 0, True, currentUser.UserName)
+
+    ' رسالة تأكيد
+    MsgBox "تم حفظ بيانات العمولة وإرسال إشعار للمدير!", vbInformation
+
+    ' تحديث الفورم
+'    Me.Requery
+End Sub

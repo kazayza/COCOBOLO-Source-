@@ -1,0 +1,28 @@
+﻿Form: Form5
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboYear		ComboBox		SELECT DISTINCT Year(TransactionDate) AS FiscalYear FROM dbo_Transactions ORDER BY Year(TransactionDate) DESC; 
+TransactionDate_Label		Label		السنه
+cboMonth		ComboBox		SELECT MonthNo, MonthName
+FROM tbl_Months
+ORDER BY MonthNo;
+
+Label7		Label		الشهر
+CashInSales		TextBox		CashInSales
+Label0		Label		CashInSales
+CashOutPurchases		TextBox		CashOutPurchases
+Label1		Label		CashOutPurchases
+CashInOther		TextBox		CashInOther
+Label2		Label		CashInOther
+CashOutOther		TextBox		CashOutOther
+Label3		Label		CashOutOther
+Expenses		TextBox		Expenses
+Label4		Label		Expenses
+Salaries		TextBox		Salaries
+Label5		Label		Salaries
+NetCashFlow		TextBox		NetCashFlow
+Label6		Label		NetCashFlow
+CashConversionRatio		TextBox		
+Label13		Label		Text12

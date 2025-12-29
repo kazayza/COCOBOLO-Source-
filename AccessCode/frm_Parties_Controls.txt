@@ -1,0 +1,51 @@
+﻿Form: frm_Parties
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box18		Rectangle		
+Line21		Line		
+Label66		Label		&Add New Customer/Vendor
+btnClose		Button		Command60
+btnSave		Button		حفظ   .
+btnInvoices		Button		الفواتير الخاصة بالعميل
+btnStatment		Button		كشف حساب العميل
+PartyID		TextBox		
+Label0		Label		كود العميل
+PartyName		TextBox		
+Label1		Label		اسم العميل
+ContactPerson		TextBox		
+Label3		Label		مسئول التواصل
+Phone		TextBox		
+Label4		Label		Phone
+Email		TextBox		
+Label5		Label		Email
+Address		TextBox		
+Label6		Label		العنوان
+OpeningBalance		TextBox		
+Label9		Label		OpeningBalance
+BalanceType		TextBox		
+Label10		Label		BalanceType
+Notes		TextBox		
+Label11		Label		ملاحظات
+IsActive		CheckBox		
+Label12		Label		نشط
+NationalID		TextBox		
+Label15		Label		الرقم القومى
+FloorNumber		TextBox		
+Label16		Label		رقم الطابق
+cboPartyType		ComboBox		SELECT dbo_PartyTypes.PartyTypeID, dbo_PartyTypes.PartyTypeName FROM dbo_PartyTypes; 
+Label2		Label		CustomerType
+cboReferralSourceID		ComboBox		SELECT dbo_ReferralSources.ReferralSourceID, dbo_ReferralSources.SourceName FROM dbo_ReferralSources WHERE (((dbo_ReferralSources.IsActive)=True)); 
+Label14		Label		الجهه المرشح منها
+Label61		Label		*
+Label19		Label		*
+Label20		Label		*
+Box54		Rectangle		
+Box55		Rectangle		
+Phone2		TextBox		
+Label25		Label		Phone2
+cboReferralSourceClient		ComboBox		SELECT dbo_Parties.PartyID, dbo_Parties.PartyName FROM dbo_Parties WHERE (((dbo_Parties.PartyType)=1)); 
+Label28		Label		العميل صاحب الترشيح
+CreatedBy		TextBox		
+Label13		Label		CreatedBy:

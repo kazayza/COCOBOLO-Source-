@@ -1,0 +1,23 @@
+﻿Form: Frm_MainList_SubForm
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+SubBG		TextBox		
+BtnCaption		TextBox		BtnCaption
+Fcs		TextBox		
+IconBGTxt		TextBox		
+CommandBtn		Button		
+IconAtt		Other (126)		IconAtt
+ID		TextBox		ID
+Order		TextBox		Order
+MainOrSub		ComboBox		MainOrSub
+Action		ComboBox		Action
+FormsReportsList		ComboBox		FormsReportsList
+Sub_Of		ComboBox		Sub_Of
+MsgBoxText		TextBox		MsgBoxText
+AdminBtn		Button		
+Maximize		CheckBox		Maximize
+btnlogout		Button		LogOut
+Command63		Button		Exit
+Command64		Button		

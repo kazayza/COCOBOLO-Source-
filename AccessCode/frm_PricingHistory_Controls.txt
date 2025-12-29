@@ -1,0 +1,19 @@
+﻿Form: frm_PricingHistory
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		نوع السعر
+Label1		Label		السعر القديم
+Label2		Label		السعر الجديد
+Label3		Label		تم التغيير بواسطة
+Label4		Label		تاريخ التغيير
+Label5		Label		سبب التغيير
+Label18		Label		ProductName
+نوع السعر		TextBox		نوع السعر
+السعر القديم		TextBox		السعر القديم
+السعر الجديد		TextBox		السعر الجديد
+تم التغيير بواسطة		TextBox		تم التغيير بواسطة
+تاريخ التغيير		TextBox		تاريخ التغيير
+سبب التغيير		TextBox		سبب التغيير
+ProductName		TextBox		ProductName

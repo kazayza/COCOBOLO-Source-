@@ -1,0 +1,19 @@
+﻿Form: frm_InvoiceDetailsView
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label6		Label		Notes
+Label5		Label		TotalAmount
+Label4		Label		UnitPrice
+Label3		Label		Quantity
+Label2		Label		ProductID
+Label1		Label		TransactionID
+Label0		Label		DetailID
+DetailID		TextBox		DetailID
+TransactionID		TextBox		TransactionID
+Quantity		TextBox		Quantity
+UnitPrice		TextBox		UnitPrice
+TotalAmount		TextBox		TotalAmount
+Notes		TextBox		Notes
+ProductID		ComboBox		ProductID

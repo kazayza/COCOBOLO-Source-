@@ -1,0 +1,46 @@
+﻿Form: frm_PaymentsInvoicesNew
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		مدفوعات الفواتير 
+cboFilterStatus		ComboBox		"الكل";"مدفوعة";"غير مدفوعة"
+Label2		Label		حاله الفاتورة
+Label6		Label		طريقة الدفع
+Label5		Label		مبلغ الدفع
+Label4		Label		تاريخ الدفع
+Label3		Label		ID
+Label7		Label		بيان
+Label8		Label		رقم الفاتورة
+Label9		Label		تاريخ الفاتورة
+Label10		Label		إجمالى الفاتورة
+Label11		Label		اجمالى المدفوع
+txtCustomerSearch		TextBox		
+cmdcancel		Button		الغاء البحث
+cmdAddpayment		Button		دفع
+txtSelectedCustomer		TextBox		
+Label75		Label		العميل
+cboInvoices		ComboBox		
+Label77		Label		الفواتير
+cboCustomers		ComboBox		
+Label79		Label		العملاء
+cmdShowAll		Button		كافة المدفوعات
+lblInvoices		Label		.
+lblFilter		Label		.
+تاريخ_الفاتورة		TextBox		تاريخ_الفاتورة
+الإجمالي_الفاتورة		TextBox		الإجمالي_الفاتورة
+PaidAmount		TextBox		PaidAmount
+TransactionID		TextBox		TransactionID
+Label83		Label		المتبقى
+Text84		TextBox		=[الإجمالي_الفاتورة]-[PaidAmount]
+Label85		Label		صافى الفاتورة
+صافى الفاتورة		TextBox		صافى_الفاتوة
+Label87		Label		الرسوم
+الرسوم		TextBox		رسوم
+PaymentID		TextBox		PaymentID
+تاريخ_الدفع		TextBox		تاريخ_الدفع
+مبلغ_الدفع		TextBox		مبلغ_الدفع
+طريقة_الدفع		TextBox		طريقة_الدفع
+ملاحظات		TextBox		ملاحظات
+Command54		Button		Command54
+btnInvoice		Button		&Invoice

@@ -1,0 +1,58 @@
+﻿Form: frm_Employees
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Line63		Line		
+Label66		Label		تعديل بيانات الموظف الحالى
+Line67		Line		
+btnClose		Button		Close
+btnSave		Button		حفظ
+btnEdit		Button		تعديل
+EmployeeID		TextBox		
+Label70		Label		EmployeeID
+Box60		Rectangle		
+FullName		TextBox		
+Label0		Label		الاسم بالكامل
+JobTitle		TextBox		
+Label1		Label		الوظيفة
+NationalID		TextBox		
+Label3		Label		الرقم القومى
+Gender		TextBox		
+Label4		Label		النوع
+BirthDate		TextBox		
+Label5		Label		تاريخ الميلاد
+HireDate		TextBox		
+Label6		Label		تاريخ الالتحاق بالوظيفة
+CurrentSalaryBase		TextBox		
+Label7		Label		الاجر الاساسى
+Image54		Image		
+Address		TextBox		
+Label55		Label		العنوان
+MobilePhone		TextBox		
+Label56		Label		رقم هاتف
+MobilePhone2		TextBox		
+Label57		Label		رقم هاتف 2
+EmailAddress		TextBox		
+Label58		Label		EmailAddress
+Notes		TextBox		
+Label59		Label		ملاحظات
+Label61		Label		*
+Label62		Label		*
+Label74		Label		*
+qualification		TextBox		
+Label76		Label		المؤهل الدراسى
+yearqualification		TextBox		
+Label78		Label		سنه التخرج
+BioEmployeeID		TextBox		
+Label81		Label		كود البصمة
+EndDate		TextBox		
+Label83		Label		تاريخ نهاية الخدمة
+Status		ComboBox		"نشط";"موقوف"
+Label8		Label		حاله الموظف
+cmdEnterNumber		Button		ChangeBasicSalary
+chkBio		CheckBox		
+Label87		Label		معفى من البصمة
+Department		ComboBox		"الإدارة العامه";"المبيعات";"الماليه"
+Label2		Label		الإدارة التابع لها
+Line73		Line		

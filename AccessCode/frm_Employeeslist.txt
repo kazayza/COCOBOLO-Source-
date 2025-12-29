@@ -1,0 +1,199 @@
+﻿Option Compare Database
+
+Private Sub btnAddExpense_Click()
+If Not currentUser.HasPermission("frm_Employees") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_Employees"
+End Sub
+
+
+
+Private Sub btnClearSearch_Click()
+ Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+Private Sub btnDetails_Click()
+  If Not currentUser.HasPermission("frm_Employees") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+    
+    
+    Dim EmpId As Long
+    EmpId = Me.EmployeeID  ' معرف الموظف الحالي
+
+    If EmpId = 0 Then
+        MsgBox "اختر موظفًا أولاً.", vbExclamation
+        Exit Sub
+    End If
+
+    ' افتح الفورم الغير مربوط، ومرر EmployeeID باستخدام OpenArgs
+    DoCmd.OpenForm "frm_Employees", , , , , , EmpId
+End Sub
+
+
+Private Sub btnRefresh_Click()
+Me.Requery
+End Sub
+
+Private Sub btnSearch_Click()
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+End Sub
+Private Sub ApplyProductFilter()
+    Dim strFilter As String
+    Dim strSQL As String
+    Dim patternFilter As String
+
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT EmployeeID, FullName, JobTitle, Department,Status FROM dbo_Employees WHERE Status = 'نشط' ORDER BY EmployeeID;"
+    Else
+        ' إنشاء الباترن للهمزات
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' البحث باستخدام الباترن
+        strSQL = "SELECT EmployeeID, FullName, JobTitle, Department,Status FROM dbo_Employees " & _
+                 "WHERE Status = 'نشط' " & _
+                 "AND (FullName LIKE '*" & patternFilter & "*' " & _
+                 "OR JobTitle LIKE '*" & patternFilter & "*' " & _
+                 "OR Department LIKE '*" & patternFilter & "*') " & _
+                 "ORDER BY EmployeeID;"
+    End If
+
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات - معدلة من الكود اللي بعتته
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة"
+                tempend = tempend & "[ةه]"
+            Case "ى", "ئ"
+                tempend = tempend & "[ىئي]"
+            Case "ؤ"
+                tempend = tempend & "[ؤو]"
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+' دالة تنظيف النص - نفس الدالة بالظبط
+Private Function CleanArabicTextClient(text As String) As String
+    If text = "" Then
+        CleanArabicTextClient = ""
+        Exit Function
+    End If
+    
+    Dim result As String
+    result = text
+    
+    ' استبدال الحروف المختلفة
+  result = Replace(result, "أ", "ا")
+    result = Replace(result, "إ", "ا")
+    result = Replace(result, "آ", "ا")
+    result = Replace(result, "ؤ", "و")
+    result = Replace(result, "ئ", "ي")
+    result = Replace(result, "ء", "")
+    result = Replace(result, "ة", "ه")
+    result = Replace(result, "ى", "ي")
+    
+    CleanArabicTextClient = result
+End Function
+
+Private Sub btnShifts_Click()
+If Not currentUser.HasPermission("frm_EmpolyeeShifts") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_EmpolyeeShifts", , , , , , Me.EmployeeID
+End Sub
+
+
+Private Sub btnActive_Click()
+  Me.txtSearch = ""
+'   ApplyProductFilter
+'   Me.Requery
+    Me.Filter = "Status = 'نشط'"
+    Me.FilterOn = True
+    Me.Caption = "الموظفين - النشطين فقط"
+    Me.Label45.Caption = Me.Caption
+    ' أو إذا كنت تريد تغيير الـ Record Source مباشرة
+Me.RecordSource = "SELECT * FROM dbo_Employees WHERE Status = 'نشط' ORDER BY EmployeeID"
+End Sub
+
+
+
+Private Sub btnInactive_Click()
+  Me.txtSearch = ""
+    Me.Filter = "Status = 'موقوف'"
+    Me.FilterOn = True
+    Me.Caption = "الموظفين - الموقوفين فقط"
+    Me.Label45.Caption = Me.Caption
+    ' أو إذا كنت تريد تغيير الـ Record Source مباشرة
+     Me.RecordSource = "SELECT * FROM dbo_Employees WHERE Status = 'موقوف' ORDER BY EmployeeID"
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+Function NormalizeArabicText(txt As String) As String
+    If txt = "" Then NormalizeArabicText = "": Exit Function
+    
+    txt = UCase(txt)
+    txt = Replace(txt, "أ", "ا")
+    txt = Replace(txt, "إ", "ا")
+    txt = Replace(txt, "آ", "ا")
+    txt = Replace(txt, "ى", "ي")
+    txt = Replace(txt, "ؤ", "و")
+    txt = Replace(txt, "ئ", "ي")
+    txt = Replace(txt, "ة", "ه")
+    
+    NormalizeArabicText = txt
+End Function
+
+Private Sub txtSearch_AfterUpdate()
+If Nz(Me.txtSearch.value, "") = "" Then
+'        Exit Sub
+Me.txtSearch = ""
+ApplyProductFilter
+    Else
+ApplyProductFilter
+End If
+End Sub

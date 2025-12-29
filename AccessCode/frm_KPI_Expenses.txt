@@ -1,0 +1,87 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub Command18_Click()
+Call LoadKPIs
+Me.Chart12.Requery
+Me.Chart15.Requery
+End Sub
+
+Private Sub Form_Load()
+UpdateAppIcon
+    Call LoadKPIs
+    DoCmd.Maximize
+End Sub
+
+Private Sub btnRefresh_Click()
+    Call LoadKPIs
+End Sub
+
+Private Sub LoadKPIs()
+    On Error GoTo ErrHandler
+    Dim curAmt As Currency, prevAmt As Currency, yrAmt As Currency
+    Dim topAmt As Currency, cnt As Long
+    Dim growth As Double
+    
+    curAmt = GetMonthlyExpenses()           ' الشهر الحالي
+    prevAmt = GetPrevMonthlyExpenses()      ' الشهر السابق
+    yrAmt = GetYearlyExpenses()             ' السنة الحالية
+    topAmt = GetTopExpense()                ' أكبر مصروف في الشهر الحالي
+    cnt = GetExpenseCount()                 ' عدد الفواتير في الشهر الحالي
+    
+    Me.txtCurrentMonth = curAmt
+    Me.txtPrevMonth = prevAmt
+    If prevAmt = 0 Then
+        If curAmt = 0 Then
+            Me.txtGrowthRate = "0%"
+        Else
+            Me.txtGrowthRate = "?" ' أو "N/A"
+        End If
+    Else
+        growth = (curAmt - prevAmt) / prevAmt
+        Me.txtGrowthRate = Format(growth, "0.00%")
+    End If
+    Me.txtYearTotal = yrAmt
+    Me.txtTopExpense = topAmt
+    Me.txtCountMonth = cnt
+    
+    ' تطبيق ألوان بسيطة:
+    Call ApplyKPIColors(curAmt, prevAmt)
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ عند تحميل الـ KPI: " & Err.Description, vbCritical
+End Sub
+
+Private Sub ApplyKPIColors(curAmt As Currency, prevAmt As Currency)
+    ' مثال قواعد ألوان:
+    ' - لو المصروف انخفض مقارنة بالشهر السابق => أخضر
+    ' - لو زاد أكثر من 10% => أحمر
+    ' - غير ذلك => أصفر
+    Dim Pct As Double
+    If prevAmt = 0 Then
+        If curAmt = 0 Then
+            Me.txtCurrentMonth.BackColor = vbWhite
+        Else
+            Me.txtCurrentMonth.BackColor = vbYellow
+        End If
+        Exit Sub
+    End If
+    
+    Pct = (curAmt - prevAmt) / prevAmt
+    If Pct <= 0 Then
+        Me.txtCurrentMonth.BackColor = RGB(198, 239, 206) ' أخضر فاتح
+    ElseIf Pct > 0.1 Then
+        Me.txtCurrentMonth.BackColor = RGB(255, 199, 206) ' أحمر فاتح
+    Else
+        Me.txtCurrentMonth.BackColor = RGB(255, 242, 204) ' أصفر فاتح
+    End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

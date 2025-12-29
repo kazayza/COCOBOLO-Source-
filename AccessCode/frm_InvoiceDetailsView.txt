@@ -1,0 +1,51 @@
+﻿Option Compare Database
+
+Private Sub Quantity_AfterUpdate()
+Me.TotalAmount = Nz(Me.Quantity, 0) * Nz(Me.UnitPrice, 0)
+End Sub
+
+Private Sub UnitPrice_AfterUpdate()
+Me.TotalAmount = Nz(Me.Quantity, 0) * Nz(Me.UnitPrice, 0)
+End Sub
+
+Private Sub UnitPrice_BeforeUpdate(Cancel As Integer)
+
+    Dim ProductID As Long
+    Dim lastPurchasePrice As Currency
+    Dim minSalePrice As Currency
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    ' نتأكد إن الفاتورة بيع
+    If Forms![frm_SalesInvoive]![TransactionType] <> "Sale" Then Exit Sub
+    
+    ProductID = Me.ProductID
+    
+    ' نجيب آخر سعر شراء من جدول تفاصيل الفواتير
+    sql = "SELECT TOP 1 UnitPrice " & _
+          "FROM dbo_TransactionDetails AS TD " & _
+          "INNER JOIN dbo_Transactions AS T ON TD.TransactionID = T.TransactionID " & _
+          "WHERE TD.ProductID = " & ProductID & " AND T.TransactionType = 'Purchase' " & _
+          "ORDER BY T.TransactionDate DESC"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot)
+    If Not rs.EOF Then
+        lastPurchasePrice = rs!UnitPrice
+    Else
+        lastPurchasePrice = 0
+    End If
+    rs.Close
+    
+    ' لو مفيش مشتريات قبل كده ? اسمح بالسعر
+    If lastPurchasePrice = 0 Then Exit Sub
+    
+    ' احسب الحد الأدنى
+    minSalePrice = lastPurchasePrice * 1.3
+    
+    ' تحقق من السعر
+    If Me.UnitPrice < minSalePrice Then
+        MsgBox "سعر البيع لا يجب أن يقل عن 30% فوق سعر الشراء الأخير (" & Format(minSalePrice, "0.00") & ")", vbCritical
+        Cancel = True
+    End If
+End Sub
+

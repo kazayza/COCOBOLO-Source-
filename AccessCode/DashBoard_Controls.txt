@@ -1,0 +1,23 @@
+﻿Form: DashBoard
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Tt1		TextBox		=DCount("EmployeeID","dbo_Employees","status = 'نشط'")
+Im1		Image		
+Label85		Label		الموظفين
+t3		TextBox		=DCount("TransactionID","dbo_Transactions","TotalAmount>PaidAmount")
+Label79		Label		# الفواتير غير المسدده
+Image12		Image		
+Text14		TextBox		=DSum("NetSalary","qry_PaidPayroll","PaymentStatus='غير مدفوع'")
+Label15		Label		$ الرواتب غير المدفوعه
+Image16		Image		
+Text17		TextBox		=DLookUp("total","qry_thismonthExpese")
+Label18		Label		$ مصروفات الشهر الحالى
+Image19		Image		
+Text20		TextBox		=DSum("GrandTotal - PaidAmount","dbo_Transactions","TransactionType='Sale'")
+Image21		Image		
+Label22		Label		مديوينات العملاء
+Text23		TextBox		=DSum("GrandTotal - PaidAmount","dbo_Transactions","TransactionType='Purchase'")
+Image24		Image		
+Label25		Label		مديونيات للموردين

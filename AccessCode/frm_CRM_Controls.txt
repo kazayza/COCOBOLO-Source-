@@ -1,0 +1,22 @@
+﻿Form: frm_CRM
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box15		Rectangle		
+Box12		Rectangle		
+Box7		Rectangle		
+lblTotalClients		Label		.
+lblActiveClients		Label		.
+lblMonthlySales		Label		.
+lblTotalOverdue		Label		.
+lblOverdueInvoices		Label		.
+lblTopSource		Label		.
+Label8		Label		العملاء
+Label9		Label		إجمالى العملاء
+Image10		Image		
+Label11		Label		المبيعات
+Image13		Image		
+Label14		Label		افضل مصادر العملاء
+Image16		Image		
+lblAlert		Label		.

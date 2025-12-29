@@ -1,0 +1,28 @@
+﻿Form: frm_EmpolyeeShifts
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+EmployeeShiftID		TextBox		
+Label0		Label		كود
+BiometricCode		TextBox		
+Label2		Label		كود البصمة
+StartTime		TextBox		
+Label4		Label		وقت بداية الشيفت
+EndTime		TextBox		
+Label5		Label		وقت نهائة الشيفت
+EffectiveFrom		TextBox		
+Label6		Label		بداية من تاريخ
+EffectiveTo		TextBox		
+Label7		Label		الى
+ShiftType		ComboBox		"صباحى";"مسائى"
+Label3		Label		نوع الشيفت
+EmployeeID		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName, dbo_Employees.BioEmployeeID FROM dbo_Employees WHERE (((dbo_Employees.Status)="نشط")); 
+Label1		Label		الموظف
+btnSave		Button		حفظ
+Image9		Image		
+btnCancel		Button		Cancel
+Box10		Rectangle		
+Box11		Rectangle		
+Command12		Button		جديد
+Label13		Label		إضافة وتعديل شيفت الموظفين

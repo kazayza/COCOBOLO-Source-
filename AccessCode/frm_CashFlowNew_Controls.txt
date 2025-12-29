@@ -1,0 +1,32 @@
+﻿Form: frm_CashFlowNew
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboYear		ComboBox		"2025";"2026";"2027";"2028";"2029";"2030"
+Label1		Label		السنه
+cboMonth		ComboBox		SELECT tbl_months.MonthNo, tbl_months.MonthName FROM tbl_months; 
+lblMonth		Label		الشهر
+cboViewType		ComboBox		"شهري";"سنوي";"جميع البيانات"
+Label5		Label		نوع العرض
+cmdRefresh		Button		تحديث
+cmdExportExcel		Button		تصدير الى اكسيل
+cmdPrintReport		Button		معاينه التقرير
+lblTotalIncome		Label		253,930.50
+lblTotalExpenses		Label		207,545.30
+lblNetFlow		Label		46,385.20
+lblRecordCount		Label		عدد الأشهر: 1
+subData		Subform		
+Label17		Label		إجمالى الدخل
+Label18		Label		إجمالى المصروفات
+Label19		Label		صافى التدفق النقدى
+txtFinancialInsights		TextBox		
+lblGrossMargin		Label		18.27%
+lblNetMargin		Label		32.05%
+lblOperatingRatio		Label		81.73%
+lblEfficiency		Label		جيد
+Label31		Label		هامش الربح
+Label32		Label		صافى الربح
+Label33		Label		نسبة المصروفات
+Label34		Label		التقييم
+Box35		Rectangle		

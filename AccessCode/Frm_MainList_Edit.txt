@@ -1,0 +1,242 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub AddIconBtn_Click()
+On Error GoTo HandleError
+    Me.Refresh
+    If Me.NewRecord Then Exit Sub
+    ' Delete Old Icon
+    DeleteAttachmentFiles "MainListT", "IconAtt", "ID", Me.ID
+    Me.Refresh
+    ' Add The New Icon
+    AddAttacmentToTable "MainListT", "IconAtt", "ID", Me.ID
+    Me.Refresh
+    
+HandleExit:
+    Exit Sub
+
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : AddIconBtn_Click()"
+    End If
+    Resume HandleExit
+End Sub
+
+Private Sub BtnCaption_AfterUpdate()
+    Me.Sub_Of.Requery
+End Sub
+
+Private Sub DeleteIconBtn_Click()
+    If Me.NewRecord Then Exit Sub
+    R.SetFocus
+    DeleteAttachmentFiles "MainListT", "IconAtt", "ID", Me.ID
+    Me.Refresh
+End Sub
+
+Private Sub Form_BeforeInsert(Cancel As Integer)
+    Me.Order = Int(Nz(DMax("Order", "MainListT"), 0) + 1)
+End Sub
+
+Private Sub Form_Close()
+    On Error Resume Next
+    Forms![Frm_Main_Page]![Frm_MainList_SubForm].Requery
+End Sub
+
+Private Sub Form_Current()
+    R = ID
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub Form_Resize()
+    Me.DeleteIconBtn.Left = Me.IconAtt.Left
+End Sub
+
+Private Sub Order_AfterUpdate()
+    Me.Recordset.Requery
+End Sub
+
+Private Sub Sub_Of_GotFocus()
+    Me.Refresh
+    Me.Sub_Of.Requery
+End Sub
+
+Private Sub MaxText_Click()
+    If Me.NewRecord Then Exit Sub
+    Me.Maximize = Not Me.Maximize
+    Me.MsgBoxText.SetFocus
+End Sub
+
+Private Sub UpdateMainList_Click()
+    On Error Resume Next
+    Me.Refresh
+    Forms![Frm_Main_Page]![Frm_MainList_SubForm].Requery
+End Sub
+
+Private Sub Sub_Of_AfterUpdate()
+On Error GoTo HandleError
+    
+    Dim CountSameMainOf  As Integer
+    
+    CountSameMainOf = DCount("[Order]", "[MainListT]", "[Sub_Of] ='" & [Sub_Of] & "'")
+    
+        If CountSameMainOf > 0 And Not IsNull(Me.Sub_Of) Then
+            Me.Order = DMax("[Order]", "[MainListT]", "[Sub_Of] ='" & [Sub_Of] & "'") + 0.1
+        ElseIf CountSameMainOf = 0 And Not IsNull(Me.Sub_Of) Then
+            Me.Order = DMax("[Order]", "[MainListT]", "[BtnCaption] ='" & [Sub_Of] & "'") + 0.1
+        End If
+        
+    Me.Recordset.Requery
+    
+HandleExit:
+    Exit Sub
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : Sub_Of_AfterUpdate()"
+    End If
+    Resume HandleExit
+End Sub
+
+
+Private Sub AddAttacmentToTable(tableName As String, AttachmentFieldName As String, IDField As String, IDvalue As Long)
+'TableName = اسم الجدول
+'AttachmentFieldName = اسم حقل المرفقات
+'IDField = اسم حقل الآيدي
+'IDvalue = رقم الآيدي
+
+On Error GoTo HandleError
+    
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim attachFld As DAO.Recordset
+    
+    Dim File As String
+    
+    File = selectFile
+    If Len(File & "") = 0 Then Exit Sub
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("select * from " & tableName & " where " & IDField & " = " & IDvalue & ";")    ' Or OpenRecordset("TableName")
+'    Debug.Print "select * from " & TableName & " where " & IDField & " = " & IDvalue & ";"
+    If Not rs.BOF And Not rs.EOF Then
+        rs.MoveFirst
+        rs.Edit
+  
+             Set attachFld = rs.Fields(AttachmentFieldName).value
+  
+            attachFld.AddNew
+            attachFld.Fields("FileData").LoadFromFile File
+            attachFld.Update
+        rs.Update
+    End If
+    
+MsgBox "تمت الإضافة بنجاح"
+    
+    rs.Close
+    Set attachFld = Nothing
+    Set db = Nothing
+    Set rs = Nothing
+
+HandleExit:
+    Exit Sub
+
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description
+    End If
+    Resume HandleExit
+End Sub
+
+ Private Function selectFile()
+' دالة مستعرض الملفات
+    On Error GoTo ErrHandler
+    
+    Dim fd As Object
+    Dim filedialogPath As String
+    
+    Set fd = Application.fileDialog(1)
+    
+    fd.AllowMultiSelect = False
+    fd.Title = "حدد الملف المطلوب"
+'    fd.InitialFileName = CurrentProject.Path
+    fd.Filters.Clear
+    fd.Filters.Add "PNG or ICO Files", "*.Png , *.Ico , *.Gif , *.jp*g"
+      
+    If fd.Show = True Then
+    selectFile = fd.SelectedItems(1)
+'    Exit Function
+    Else
+    MsgBox "لم تقم باختيار أي ملف"
+    Exit Function
+    End If
+
+ErrHandler:
+    If Err.Number = 0 Then Exit Function Else
+    MsgBox "Error Number : " & Err.Number & " :::: " & Err.Description
+'    End If
+    
+End Function
+
+Private Function DeleteAttachmentFiles(ByVal tableName As String, ByVal AttchmentFieldName As String, ByVal IDFieldName As String, ByVal IDNumber As Long) As Boolean
+
+' TableName : اسم الجدول
+' AttchmentFieldName : اسم حقل المرفقات
+' IDFieldName : اسم حقل المعرف
+' IDNumber: رقم معرف السجل المراد حذف مرفقاته
+
+On Error GoTo HandleError
+
+    DeleteAttachmentFiles = False
+
+    Dim RsMainrecords As DAO.Recordset2
+    Dim RsAttachments As DAO.Recordset2
+    
+    Set RsMainrecords = CurrentDb.OpenRecordset("select " & AttchmentFieldName & _
+                                                " from " & tableName & _
+                                                " where " & IDFieldName & " = " & IDNumber & " AND " & AttchmentFieldName & ".FileName is not Null")
+    Do Until RsMainrecords.EOF
+        Set RsAttachments = RsMainrecords.Fields(AttchmentFieldName).value
+        
+        Do Until RsAttachments.EOF
+            RsAttachments.Delete
+            RsAttachments.MoveNext
+        Loop
+        
+        'RsAttachments.Update
+        RsAttachments.Close
+        
+        RsMainrecords.MoveNext
+    Loop
+    
+    DeleteAttachmentFiles = True
+    
+    RsMainrecords.Close
+    
+    Set RsMainrecords = Nothing
+    Set RsAttachments = Nothing
+
+HandleExit:
+    Exit Function
+HandleError:
+    If Err.Number = 0 Then
+        Resume Next
+    Else
+        MsgBox Err.Number & vbNewLine & vbNewLine & Err.Description, , "Code : DeleteAttachmentFiles()"
+    End If
+    Resume HandleExit
+End Function
+
+
+

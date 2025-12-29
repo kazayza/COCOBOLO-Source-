@@ -1,0 +1,40 @@
+﻿Option Compare Database
+
+Private Sub Form_Load()
+
+    On Error GoTo ErrHandler
+
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim tempPath As String
+    Dim fileNum As Integer
+
+    'افتح الجدول وجيب أول سجل (لو عندك أكتر من سجل ممكن تحدد WHERE)
+    Set rs = CurrentDb.OpenRecordset("SELECT TOP 1 Logo FROM dbo_CompanyInfo", dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        If Not IsNull(rs!Logo) Then
+            'اقرأ الصورة كبايتات
+            fileData = rs!Logo
+
+            'حدد مكان مؤقت للملف
+            tempPath = Environ("TEMP") & "\CompanyLogo.jpg"
+
+            'اكتب الملف المؤقت
+            fileNum = FreeFile
+            Open tempPath For Binary As #fileNum
+                Put #fileNum, , fileData
+            Close #fileNum
+
+            'اعرض الصورة في عنصر imgLogo
+            Me.imgLogo.Picture = tempPath
+        End If
+    End If
+
+    rs.Close
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ " & Err.Number & ": " & Err.Description, vbCritical
+
+End Sub

@@ -1,0 +1,38 @@
+﻿Form: frm_AllShifts
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtFromDate		TextBox		
+Label1		Label		من تاريخ
+txtToDate		TextBox		
+Label3		Label		الى تاريخ
+cboEmployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.Status)="نشط") AND ((dbo_Employees.IsPermanentlyExempt)=False)); 
+Label5		Label		الموظف
+cboShiftType		ComboBox		صباحى;مسائى
+Label7		Label		الشيفت
+Label21		Label		وقت النهاية
+Label17		Label		نوع الشيفت
+Label15		Label		كود البصمة
+Label19		Label		وقت البداية
+Label9		Label		رقم الشيفت
+Label11		Label		كود الموظف
+Label13		Label		الاسم
+Label25		Label		الى تاريخ
+Label23		Label		من تاريخ
+Box64		Rectangle		
+Box65		Rectangle		
+btnAddShifts		Button		إضافة شيفت
+cmdExport		Button		تصدير الى اكسيل
+btnOpenReport		Button		تقرير
+EmployeeShiftID		TextBox		EmployeeShiftID
+EmployeeID		TextBox		EmployeeID
+FullName		TextBox		FullName
+BiometricCode		TextBox		BiometricCode
+ShiftType		TextBox		ShiftType
+StartTime		TextBox		StartTime
+EndTime		TextBox		EndTime
+EffectiveFrom		TextBox		EffectiveFrom
+EffectiveTo		TextBox		EffectiveTo
+Command66		Button		تعديل
+Line87		Line		

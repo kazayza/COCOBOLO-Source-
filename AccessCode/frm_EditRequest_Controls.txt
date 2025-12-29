@@ -1,0 +1,19 @@
+﻿Form: frm_EditRequest
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		رقم الفاتورة
+Label1		Label		تاريخ الفاتورة
+Label2		Label		العميل
+Label3		Label		السبب
+Label4		Label		تاريخ الطلب
+Label5		Label		مرسل الاشعار
+TransactionID		TextBox		TransactionID
+TransactionDate		TextBox		TransactionDate
+PartyName		TextBox		PartyName
+EditReason		TextBox		EditReason
+EditRequestDate		TextBox		EditRequestDate
+CreatedBy		TextBox		CreatedBy
+btnapprove		Button		موافقة
+btnReject		Button		رفض

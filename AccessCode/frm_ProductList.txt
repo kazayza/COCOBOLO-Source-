@@ -1,0 +1,167 @@
+﻿Option Compare Database
+
+
+Private Sub btnAddProduct_Click()
+If Not currentUser.HasPermission("frm_Products") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+   
+   
+   DoCmd.OpenForm "frm_Products"
+End Sub
+
+Private Sub btnClearSearch_Click()
+    Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+
+Private Sub btnOpen_Click()
+If Not currentUser.HasPermission("frm_Products") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+        
+        
+        DoCmd.OpenForm "frm_Products", , , , , , ProductID
+        DoCmd.Close acForm, "frm_ProductList"
+        
+    
+
+
+
+'DoCmd.OpenForm "frm_ProductDetails", , , , , , ProductID
+End Sub
+Private Sub btnPricing_Click()
+  If Not currentUser.HasPermission(Me.Name) Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        'DoCmd.Close acForm, Me.Name
+        Exit Sub
+    End If
+    
+    DoCmd.OpenForm "frm_ProductPricing", , , , , , Me.ProductID
+    DoCmd.Close acForm, Me.Name
+    
+End Sub
+
+Private Sub btnSearch_Click()
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+   
+End Sub
+
+Private Sub ApplyProductFilter()
+    Dim patternFilter As String
+    Dim strFilter As String
+    Dim strSQL As String
+
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT dbo_Products.ProductID, dbo_Products.ProductName,dbo_Products.Customer, " & _
+                 "dbo_Products.ProductDescription, dbo_Parties.PartyName " & _
+                 "FROM dbo_Products LEFT JOIN dbo_Parties " & _
+                 "ON dbo_Products.Customer = dbo_Parties.PartyID " & _
+                 "ORDER BY dbo_Products.ProductID;"
+    Else
+        ' إنشاء الباترن للهمزات
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' البحث باستخدام الباترن على جميع الحقول
+        strSQL = "SELECT p.ProductID, p.ProductName,p.Customer, " & _
+                 "p.ProductDescription, pt.PartyName " & _
+                 "FROM dbo_Products AS p LEFT JOIN dbo_Parties AS pt " & _
+                 "ON p.Customer = pt.PartyID " & _
+                 "WHERE (p.ProductName LIKE '*" & patternFilter & "*' OR " & _
+                 "pt.PartyName LIKE '*" & patternFilter & "*' OR " & _
+                 "p.ProductDescription LIKE '*" & patternFilter & "*') " & _
+                 "ORDER BY p.ProductID;"
+    End If
+
+    ' طباعة الباترن للت debug
+'    Debug.Print "الباترن: " & patternFilter
+'    Debug.Print "SQL: " & strSQL
+    
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات - معدلة
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة", "ه"
+                tempend = tempend & "[ةه]"  ' التاء المربوطة والهاء
+            Case "ى", "ئ", "ي"
+                tempend = tempend & "[ىئي]"  ' كل أنواع الياء
+            Case "ؤ", "و"
+                tempend = tempend & "[ؤو]"   ' الواو مع الهمزة والواو العادية
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+Private Sub Command25_Click()
+If Not currentUser.HasPermission("frmCustomerProduct") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+
+
+
+If Not IsNull(Customer) Then
+DoCmd.OpenForm "frmCustomerProduct", , , , , , Customer
+DoCmd.Close acForm, Me.Name
+Exit Sub
+Else
+MsgBox "لم يتم ربط هذاالمنتج بعميل بعد", vbCritical, "انتبه"
+End If
+End Sub
+
+
+
+
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub txtSearch_AfterUpdate()
+If Nz(Me.txtSearch.value, "") = "" Then
+'        Exit Sub
+Me.txtSearch = ""
+ApplyProductFilter
+    Else
+ApplyProductFilter
+End If
+End Sub

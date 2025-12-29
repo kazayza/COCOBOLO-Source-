@@ -1,0 +1,31 @@
+﻿Form: frm_Employeeslist
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box36		Rectangle		
+Label2		Label		الاسم بالكامل
+Label1		Label		الادارة
+Label0		Label		ID
+btnSearch		Button		بحث
+btnClearSearch		Button		الغاء البحث
+btnAddExpense		Button		اضافة موظف
+Label28		Label		الوظيفة
+Line37		Line		
+btnRefresh		Button		Refresh
+Line40		Line		
+btnClose		Button		Close
+Label45		Label		كافة الموظفين المتاحين 
+btnActive		Button		المتاحين
+btnInactive		Button		المنتهية خدمتهم
+Command64		Button		
+Command63		Button		
+txtSearch		TextBox		
+Line65		Line		
+ExpenseID		TextBox		EmployeeID
+ExpenseGroupName		TextBox		Department
+ExpenseDate		TextBox		FullName
+ParentGroupName		TextBox		JobTitle
+Line35		Line		
+btnDetails		Button		تفاصيل
+btnShifts		Button		&Shifts

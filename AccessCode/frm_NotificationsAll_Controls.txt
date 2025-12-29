@@ -1,0 +1,27 @@
+﻿Form: frm_NotificationsAll
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		مرسل الاشعار
+Label1		Label		الاشعار
+Label2		Label		تفاصيل الاشعار .........
+Label4		Label		RelatedID
+Label5		Label		RecipientUser
+Label34		Label		FormName
+Text81		TextBox		
+txtSearch		TextBox		
+btnSearch		Button		    بحث
+btnClearSearch		Button		    الغاء البحث
+Text79		TextBox		=Count([Title])
+Label85		Label		FormName
+Label100		Label		CreatedAt
+NotificationID		TextBox		NotificationID
+Title		TextBox		Title
+Message		TextBox		Message
+RelatedID		TextBox		RelatedID
+RecipientUser		TextBox		RecipientUser
+Command61		Button		عرض
+CreatedBy		TextBox		CreatedBy
+FormName		TextBox		FormName
+CreatedAt		TextBox		CreatedAt

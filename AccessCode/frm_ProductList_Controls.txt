@@ -1,0 +1,24 @@
+﻿Form: frm_ProductList
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Command26		Button		
+Label2		Label		وصف المنتج
+Label1		Label		اسم المنتج
+Label0		Label		ProductID
+btnSearch		Button		    بحث
+btnClearSearch		Button		    الغاء البحث
+btnAddProduct		Button		  إضافة منتج جديد
+Label16		Label		     قائمة المنتجات            .
+Label18		Label		العميــــــــــــــــل
+txtSearch		TextBox		
+Line28		Line		
+ProductID		TextBox		ProductID
+ProductName		TextBox		ProductName
+ProductDescription		TextBox		ProductDescription
+Line9		Line		
+btnOpen		Button		تفاصيل
+btnPricing		Button		تسعير
+PartyName		TextBox		PartyName
+Command25		Button		تعاقد

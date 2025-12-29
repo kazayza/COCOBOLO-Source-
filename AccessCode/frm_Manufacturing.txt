@@ -1,0 +1,105 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود قيمة لمعرف المنتج
+    If IsNull(Me.txtProductID) Or Me.txtProductID = "" Then
+        MsgBox "معرف المنتج غير محدد", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    ' تحديث البيانات في جدول المنتجات
+    CurrentDb.Execute "UPDATE dbo_Products SET " & _
+        "ProductName = '" & Replace(Nz(Me.txtProductName, ""), "'", "''") & "', " & _
+        "ManufacturingDescription = '" & Replace(Nz(Me.txtManufacturing, ""), "'", "''") & "' " & _
+        "WHERE ProductID = " & Me.txtProductID, dbSeeChanges
+    
+    MsgBox "تم حفظ البيانات بنجاح", vbInformation, "تم"
+    
+    ' تحديث النموذج الرئيسي إذا كان مفتوحاً
+    If CurrentProject.AllForms("frm_ProductPricing").IsLoaded Then
+        Forms!frm_ProductPricing.Requery
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء الحفظ: " & Err.Description, vbCritical, "خطأ"
+
+End Sub
+
+Private Sub Form_Load()
+    Dim ProductID As Long
+    
+    ' الحصول على معرّف المنتج المُمرر من النموذج الرئيسي
+    If Not IsNull(Me.OpenArgs) Then
+        ProductID = CLng(Me.OpenArgs)
+        Me.txtProductID = ProductID
+        LoadProductData ProductID
+    Else
+        MsgBox "لم يتم تحديد منتج", vbExclamation, "تنبيه"
+        DoCmd.Close acForm, Me.Name
+    End If
+    Me.Caption = "المواصفات التفصيليه لتصنيع المنتج :  " & txtProductName
+End Sub
+
+' دالة لتحميل بيانات المنتج
+Private Sub LoadProductData(ProductID As Long)
+    Dim rs As DAO.Recordset
+    
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT ProductName, ManufacturingDescription FROM dbo_Products WHERE ProductID = " & ProductID)
+    
+    If Not rs.EOF Then
+        Me.txtProductName = Nz(rs!ProductName, "")
+        Me.txtManufacturing = Nz(rs!ManufacturingDescription, "")
+    Else
+        MsgBox "لم يتم العثور على المنتج", vbExclamation, "تنبيه"
+        Me.txtProductName = ""
+        Me.txtManufacturing = ""
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+End Sub
+
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود قيمة لمعرف المنتج
+    If IsNull(Me.txtProductID) Or Me.txtProductID = "" Then
+        MsgBox "معرف المنتج غير محدد", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+    
+    ' تحديث البيانات في جدول المنتجات
+    CurrentDb.Execute "UPDATE dbo_Products SET " & _
+        "ProductName = '" & Replace(Nz(Me.txtProductName, ""), "'", "''") & "', " & _
+        "ManufacturingDescription = '" & Replace(Nz(Me.txtManufacturingDesc, ""), "'", "''") & "' " & _
+        "WHERE ProductID = " & Me.txtProductID, dbSeeChanges
+    
+    MsgBox "تم حفظ البيانات بنجاح", vbInformation, "تم"
+    
+    ' تحديث النموذج الرئيسي إذا كان مفتوحاً
+    If CurrentProject.AllForms("frmProductPricing").IsLoaded Then
+        Forms!frmProductPricing.Requery
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء الحفظ: " & Err.Description, vbCritical, "خطأ"
+End Sub
+
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+' (اختياري) السماح ببحث منتج مختلف يدوياً
+Private Sub txtProductID_AfterUpdate()
+    If Not IsNull(Me.txtProductID) Then
+        LoadProductData CLng(Me.txtProductID)
+    End If
+End Sub

@@ -1,0 +1,23 @@
+﻿Form: frm_ProductDetails
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+btnEdit		Button		&Edit
+btnSave		Button		&Save
+Command14		Button		Component
+Text32		TextBox		="Edit" & " : " & [ProductName]
+Line34		Line		
+btnClose		Button		Command60
+Command39		Button		imges
+ProductID		TextBox		ProductID
+Label0		Label		ProductID
+ProductName		TextBox		ProductName
+Label1		Label		ProductName
+ProductDescription		TextBox		ProductDescription
+Label2		Label		ProductDescription
+txtProductID		TextBox		
+Label11		Label		Text10
+sub_ProductComponentsDetalis		Subform		
+ProductGroupID		ComboBox		ProductGroupID
+Label3		Label		ProductGroupID

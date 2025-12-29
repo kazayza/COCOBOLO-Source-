@@ -1,0 +1,57 @@
+﻿Private Sub Form_Load()
+    ' تعيين تواريخ افتراضية فقط
+    Me.txtStartDate = DateSerial(Year(Date), 1, 1)
+    Me.txtEndDate = Date
+    Me.subData.SourceObject = ""  ' اترك الـ Subform فارغ
+End Sub
+
+Private Sub cmdRun_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من التواريخ
+    If IsNull(Me.txtStartDate) Or IsNull(Me.txtEndDate) Then
+        MsgBox "يجب إدخال تاريخ البداية والنهاية", vbExclamation
+        Exit Sub
+    End If
+    
+    ' إخفاء الـ Subform مؤقتاً
+    Me.subData.Visible = False
+    Me.subData.SourceObject = ""
+    
+    ' أولاً: تحديث باراميترات الاستعلام
+    Call UpdateQueryParameters(Me.txtStartDate, Me.txtEndDate)
+    
+    ' ثانياً: تعيين الـ Subform
+    Me.subData.SourceObject = "Query.qry_ExpenseByGroupParameter"
+    
+    ' ثالثاً: جعله مرئي وتحديثه
+    Me.subData.Visible = True
+    Me.subData.Requery
+    
+    MsgBox "تم تحميل البيانات", vbInformation
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ: " & Err.Description, vbCritical
+    Me.subData.Visible = True
+End Sub
+
+Private Sub UpdateQueryParameters(pStart As Date, pEnd As Date)
+    On Error GoTo ErrorHandler
+    
+    Dim qdf As Object
+    Set qdf = CurrentDb.QueryDefs("qry_ExpenseByGroupParameter")
+    
+    ' تعيين الباراميترات قبل فتح الاستعلام
+    qdf.Parameters("pStart").value = pStart
+    qdf.Parameters("pEnd").value = pEnd
+    
+    ' حفظ التغييرات
+    ' qdf.Close  ' لا تستخدم Close مع QueryDefs
+    
+    Set qdf = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تعيين الباراميترات: " & Err.Description
+End Sub

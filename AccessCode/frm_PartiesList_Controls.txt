@@ -1,0 +1,34 @@
+﻿Form: frm_PartiesList
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Command64		Button		
+btnSearch		Button		    بحث
+btnClearSearch		Button		   الغاء البحث
+btnAddProduct		Button		   إضافة عميل جديد
+Label0		Label		كود
+Label1		Label		اسم العميل
+Label2		Label		الهاتف
+Label3		Label		العنوان
+Label4		Label		مسئول التواصل
+btnClose		Button		Close
+Line28		Line		
+Label29		Label		كافة العمــــــــــــلاء
+Label32		Label		هاتف 2
+Label39		Label		FloorNumber
+Command60		Button		
+Image31		Image		
+Text61		TextBox		=Count([partyID])
+Label62		Label		عدد العملاء
+Command63		Button		
+txtSearch		TextBox		
+Line65		Line		
+PartyID		TextBox		PartyID
+PartyName		TextBox		PartyName
+Phone		TextBox		Phone
+Address		TextBox		Address
+ContactPerson		TextBox		ContactPerson
+btnOpen		Button		تفاصيل
+Phone2		TextBox		Phone2
+FloorNumber		TextBox		FloorNumber

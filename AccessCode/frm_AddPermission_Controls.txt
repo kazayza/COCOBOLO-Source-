@@ -1,0 +1,23 @@
+﻿Form: frm_AddPermission
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box11		Rectangle		
+Box10		Rectangle		
+txtPermissionName		TextBox		
+Label1		Label		اسم الصلاحية 
+txtDescription		TextBox		
+Label3		Label		الوصف
+cboCategory		ComboBox		"Forms";"Reports";"Settings";"Administration"
+Label5		Label		التصنيف
+cmdSave		Button		Save
+cmdCancel		Button		&Close
+txtFormName		ComboBox		SELECT MSysObjects.Name FROM MSysObjects WHERE (((MSysObjects.Type)=-32768 Or (MSysObjects.Type)=-32764)); 
+Label9		Label		النموذج
+Box12		Rectangle		
+Line13		Line		
+Box14		Rectangle		
+Box15		Rectangle		
+Image16		Image		
+Label17		Label		&Add Permission

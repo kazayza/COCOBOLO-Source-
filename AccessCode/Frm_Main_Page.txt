@@ -1,0 +1,165 @@
+﻿Option Compare Database
+Option Explicit
+
+
+Private Sub btnlogout_Click()
+DoCmd.Close
+        DoCmd.OpenForm "frm_Login"
+End Sub
+
+Private Sub btnNotifications_Click()
+  ' افتح نموذج عرض الإشعارات (مثلاً frm_Notifications)
+    DoCmd.OpenForm "frm_Notifications"
+    
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    Call UpdateUnreadBadge
+End Sub
+
+Private Sub Command23_Click()
+ ' افتح نموذج عرض تذكيرالإشعارات (مثلاً frm_Notifications)
+
+    
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    
+   DoCmd.OpenForm "frm_ReminderNotifications"
+   
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    Call UpdateUnreadBadge
+End Sub
+
+Private Sub Command28_Click()
+' افتح نموذج عرض الإشعارات (مثلاً frm_Notifications)
+    DoCmd.OpenForm "frm_Notifications"
+    
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    Call UpdateUnreadBadge
+End Sub
+
+Private Sub Command29_Click()
+' افتح نموذج عرض تذكيرالإشعارات (مثلاً frm_Notifications)
+
+    
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    
+   DoCmd.OpenForm "frm_ReminderNotifications"
+   
+    ' إعادة تحديث البادج بعد فتح الشاشة (فى حالة تعليم المقروء هناك)
+    Call UpdateUnreadBadge
+End Sub
+
+Private Sub Form_Current()
+'If currentUser.UserName = "admin" Or currentUser.UserName = "hassan" Then
+'    Me.SubFrm.SourceObject = "DashBoard"
+'    Else
+'    Me.SubFrm.SourceObject = "Frm_MainSubForm"
+'    End If
+
+End Sub
+
+Private Sub Form_Load()
+
+  DoCmd.Maximize
+  UpdateAppIcon
+    ' التحقق من وجود مستخدم مسجل دخوله
+    
+    If currentUser Is Nothing Then
+        DoCmd.Close
+        DoCmd.OpenForm "frm_Login"
+        Exit Sub
+    End If
+    
+    CheckForUpdates
+    
+    ' عرض بيانات المستخدم
+    Me.lblWelcome.Caption = "مرحباً، " & vbCrLf & currentUser.FullName
+    Me.lblusername.Caption = currentUser.UserName
+   
+   Call ShowUnreadNotifications(currentUser.UserName)
+   Me.TimerInterval = 25000   ' 10000 ms = كل 10 ثواني (غيّره لـ 60000 لكل دقيقة)
+   Call UpdateUnreadBadge
+   Call ShowReminderNotifications
+
+End Sub
+
+Private Sub Form_Unload(Cancel As Integer)
+    ' تنظيف الذاكرة عند إغلاق التطبيق
+    AppCleanup
+End Sub
+' === تحديث بادج الإشعارات (من الممكن استدعاؤها من subform) ===
+Public Sub UpdateUnreadBadge()
+    Dim cnt As Long
+    Dim rnt As Long
+    Dim UserName As String
+
+    ' اسم المستخدم الحالي — غيّر لو تستخدم كائن CurrentUser غير متوفر
+    On Error Resume Next
+    UserName = currentUser.UserName
+    If Err.Number <> 0 Or UserName = "" Then
+        Err.Clear
+        UserName = Environ$("USERNAME")
+    End If
+    On Error GoTo 0
+    
+    cnt = GetUnreadCount(UserName)
+    
+    If cnt > 0 Then
+        Me.lblUnread.Caption = cnt
+        Me.lblUnread.Visible = True
+        Me.btnNotifications.Visible = True
+        
+        ' إبراز الزر
+'        Me.btnNotifications.BackColor = RGB(220, 20, 60)
+    Else
+        Me.lblUnread.Visible = False
+'    Me.Label22.SetFocus
+   Me.btnNotifications.Visible = False
+
+        ' ارجع اللون الافتراضي
+'        Me.btnNotifications.BackColor = vbButtonFace
+    End If
+rnt = GetRemindCount(UserName)
+If rnt > 0 Then
+    Me.lblReminderAlert.Visible = True
+    Me.Command23.Visible = True
+    Else
+        Me.lblReminderAlert.Visible = False
+        Me.Command23.Visible = False
+    End If
+
+End Sub
+Private Sub Form_Timer()
+    ' يحدث البادج كل مرة الـ Timer ينطلق
+
+    Call UpdateUnreadBadge
+  Call ShowUnreadNotifications(currentUser.UserName)
+  Call ShowReminderNotifications
+'   If HasDueReminders(currentUser.UserName) Then
+'        ' لو الليبل ظاهر نخفيه، ولو مخفي نظهره (Flash Effect)
+'        Me.lblReminderAlert.Visible = Not Me.lblReminderAlert.Visible
+'    Else
+'        Me.lblReminderAlert.Visible = False
+'    End If
+ 
+End Sub
+Public Sub CheckNewNotifications()
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim currentUser As String
+    currentUser = Environ$("USERNAME")
+    
+    sql = "SELECT * FROM dbo_Notifications WHERE IsRead = 0 AND RecipientUser = '" & currentUser & "'"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot)
+    
+    Do While Not rs.EOF
+        ShowWindowsBalloon rs!Title, rs!Message
+        CurrentDb.Execute "UPDATE Notifications SET IsRead = -1 WHERE NotificationID = " & rs!NotificationID
+        rs.MoveNext
+    Loop
+    
+    rs.Close
+    Set rs = Nothing
+End Sub
+
+Private Sub Image10_DblClick(Cancel As Integer)
+DoCmd.OpenForm "frm_ProgInfo"
+End Sub

@@ -1,0 +1,23 @@
+﻿Form: frm_AddUser
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtUsername		TextBox		
+Label3		Label		Username
+txtPassword		TextBox		
+f		Label		Password
+txtFullName		TextBox		
+Label7		Label		FullName
+txtEmail		TextBox		
+Label9		Label		Email 
+chkIsActive		CheckBox		
+Label11		Label		IsActive 
+cmdSave		Button		Save
+cmdCancel		Button		&Close
+Image14		Image		
+Box15		Rectangle		
+Line16		Line		
+Label17		Label		&Add User
+txtempolyeeID		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.Status)="نشط")); 
+Label19		Label		Employee

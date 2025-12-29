@@ -1,0 +1,1096 @@
+﻿Option Compare Database
+
+'Private Sub Amount_AfterUpdate()
+'
+'    Dim paymentAmount As Double
+'    Dim firstPayment As Double, secondPayment As Double, thirdPayment As Double
+'    Dim remainingFirst As Double, remainingSecond As Double, remainingThird As Double
+'
+'    paymentAmount = Nz(Me.Amount.value, 0)
+'    TotalAmount = Nz(Me.TransactionID.Column(2), 0)
+'    PaidTotal = Nz(Me.TransactionID.Column(3), 0)
+'
+'    ' حساب مبالغ الدفعات
+'    firstPayment = Round(TotalAmount * 0.7, 2)
+'    secondPayment = Round(TotalAmount * 0.2, 2)
+'    thirdPayment = Round(TotalAmount * 0.1, 2)
+'
+'    ' حساب المتبقي من كل دفعة
+'    remainingFirst = firstPayment - PaidTotal
+'    remainingSecond = secondPayment - IIf(PaidTotal > firstPayment, PaidTotal - firstPayment, 0)
+'    remainingThird = thirdPayment - IIf(PaidTotal > firstPayment + secondPayment, PaidTotal - (firstPayment + secondPayment), 0)
+'
+'    ' تحديد نوع الدفعة بدقة
+'    Select Case True
+'        Case paymentAmount <= remainingFirst And remainingFirst > 0
+'            Me.lblPaymentType.Caption = IIf(paymentAmount = remainingFirst, "إكمال الدفعة الأولى (70%)", "جزء من الدفعة الأولى (70%)")
+'
+'        Case paymentAmount <= (remainingFirst + remainingSecond) And remainingSecond > 0
+'            If paymentAmount > remainingFirst Then
+'                Me.lblPaymentType.Caption = "إكمال الأولى (70%) + جزء من الثانية (20%)"
+'            Else
+'                Me.lblPaymentType.Caption = "جزء من الدفعة الثانية (20%)"
+'            End If
+'
+'        Case paymentAmount <= (remainingFirst + remainingSecond + remainingThird) And remainingThird > 0
+'            If paymentAmount > (remainingFirst + remainingSecond) Then
+'                Me.lblPaymentType.Caption = "إكمال الثانية (20%) + جزء من الأخيرة (10%)"
+'            Else
+'                Me.lblPaymentType.Caption = "جزء من الدفعة الأخيرة (10%)"
+'            End If
+'
+'        Case paymentAmount = TotalAmount
+'            Me.lblPaymentType.Caption = "كامل قيمة الفاتورة دفعة واحدة"
+'
+'        Case Else
+'            Me.lblPaymentType.Caption = "مبلغ إضافي"
+'    End Select
+'
+'End Sub
+Private Sub Amount_AfterUpdate()
+    Dim paymentAmount As Double
+    Dim firstPayment As Double, secondPayment As Double, thirdPayment As Double
+    Dim remainingFirst As Double, remainingSecond As Double, remainingThird As Double
+    Dim localTotalAmount As Double, localPaidTotal As Double
+    
+    paymentAmount = Nz(Me.Amount.value, 0)
+    localTotalAmount = Nz(Me.TransactionID.Column(2), 0)  ' إجمالي الفاتورة
+    localPaidTotal = Nz(Me.TransactionID.Column(3), 0)    ' المدفوع
+    
+    ' حساب مبالغ الدفعات
+    firstPayment = Round(localTotalAmount * 0.7, 2)
+    secondPayment = Round(localTotalAmount * 0.2, 2)
+    thirdPayment = Round(localTotalAmount * 0.1, 2)
+    
+    ' حساب المتبقي من كل دفعة مع منع القيم السالبة
+    If localPaidTotal <= firstPayment Then
+        remainingFirst = firstPayment - localPaidTotal
+        remainingSecond = secondPayment
+        remainingThird = thirdPayment
+    ElseIf localPaidTotal <= (firstPayment + secondPayment) Then
+        remainingFirst = 0
+        remainingSecond = (firstPayment + secondPayment) - localPaidTotal
+        remainingThird = thirdPayment
+    Else
+        remainingFirst = 0
+        remainingSecond = 0
+        remainingThird = (firstPayment + secondPayment + thirdPayment) - localPaidTotal
+    End If
+    
+    ' التأكد من عدم وجود قيم سالبة
+    If remainingFirst < 0 Then remainingFirst = 0
+    If remainingSecond < 0 Then remainingSecond = 0
+    If remainingThird < 0 Then remainingThird = 0
+    
+    ' تحديد نوع الدفعة
+    Select Case True
+        Case paymentAmount <= remainingFirst And remainingFirst > 0
+            Me.lblPaymentType.Caption = IIf(paymentAmount = remainingFirst, _
+                "إكمال الدفعة الأولى (70%)", _
+                "جزء من الدفعة الأولى (70%)")
+            
+        Case paymentAmount <= (remainingFirst + remainingSecond) And remainingSecond > 0
+            If paymentAmount > remainingFirst Then
+                Me.lblPaymentType.Caption = "إكمال الأولى (70%) + جزء من الثانية (20%)"
+            Else
+                Me.lblPaymentType.Caption = "جزء من الدفعة الثانية (20%)"
+            End If
+            
+        Case paymentAmount <= (remainingFirst + remainingSecond + remainingThird) And remainingThird > 0
+            If paymentAmount > (remainingFirst + remainingSecond) Then
+                Me.lblPaymentType.Caption = "إكمال الثانية (20%) + جزء من الأخيرة (10%)"
+            Else
+                Me.lblPaymentType.Caption = "جزء من الدفعة الأخيرة (10%)"
+            End If
+            
+        Case paymentAmount = localTotalAmount
+            Me.lblPaymentType.Caption = "كامل قيمة الفاتورة دفعة واحدة"
+            
+        Case Else
+            Me.lblPaymentType.Caption = "مبلغ إضافي"
+    End Select
+End Sub
+
+Private Sub btnAddNew_Click()
+Me.TransactionID = ""
+Me.cboCashBox = ""
+Me.PaymentDate = ""
+Me.cboPaymentMethod = ""
+Me.cboCashBox = ""
+Me.Notes = ""
+Me.cboPaymentType = ""
+Me.txtPartyName = ""
+Me.lblPaymentType.Caption = ""
+Me.Amount = ""
+Me.txtBaqy = ""
+Me.Form.Requery
+End Sub
+
+
+'=============
+'الكود الاساسى لحفظ الدفع الى شغال عليه
+'=============
+
+'Private Sub btnSavePayment__Click()
+'
+'    Dim db As DAO.Database
+'    Dim rsPayments As DAO.Recordset
+'    Dim rsCashTrans As DAO.Recordset
+'    Dim rsTrans As DAO.Recordset
+'    Dim newPaymentID As Long
+'    Dim newCashTransID As Long
+'    Dim CashBoxID As Long
+'    Dim paymentAmount As Double
+'    Dim TransactionID As Long
+'    Dim TransactionType As String
+'    Dim RemainingAmount As Double
+'    Dim isCharge As Boolean
+'
+'    ' التحقق من البيانات الأساسية
+'    If IsNull(Me.TransactionID) Then
+'        MsgBox "يرجى اختيار الفاتورة/الرسوم", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If IsNull(Me.cboCashBox) Then
+'        MsgBox "يرجى اختيار الخزينة", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    If Nz(Me.Amount, 0) <= 0 Then
+'        MsgBox "يرجى إدخال مبلغ صحيح أكبر من صفر", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'
+'    TransactionID = Me.TransactionID
+'    CashBoxID = Me.cboCashBox
+'    paymentAmount = Nz(Me.Amount, 0)
+'
+'    ' جلب نوع المعاملة من جدول dbo_Transactions
+'    Set rsTrans = db.OpenRecordset("SELECT TransactionType, TotalAmount, PaidAmount FROM dbo_Transactions WHERE TransactionID = " & TransactionID, dbOpenDynaset)
+'    If rsTrans.EOF Then
+'        MsgBox "لم يتم العثور على العملية المحددة", vbCritical
+'        rsTrans.Close
+'        Exit Sub
+'    End If
+'
+'    TransactionType = rsTrans!TransactionType
+'    isCharge = (Me.cboPaymentType = "رسوم")
+'
+'    ' ----------- لو العملية فاتورة -----------
+'    If isCharge = False Then
+'        ' إضافة سجل جديد في dbo_Payments
+'        Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+'        rsPayments.AddNew
+'        rsPayments!TransactionID = TransactionID
+'        rsPayments!Amount = paymentAmount
+'        rsPayments!PaymentDate = Nz(Me.PaymentDate, Date)
+'        rsPayments!PaymentMethod = Me.cboPaymentMethod
+'        rsPayments!Notes = Nz(Me.Notes & " - " & Me.lblPaymentType.Caption & " للفاتورة " & Me.TransactionID & " باسم : " & Me.TransactionID.Column(1), "")
+'        rsPayments!CreatedBy = CurrentUser.UserName
+'        rsPayments!CreatedAt = Now()
+'        rsPayments.Update
+'        rsPayments.Bookmark = rsPayments.LastModified
+'        newPaymentID = rsPayments!PaymentID
+'        rsPayments.Close
+'    End If
+''     Me.Notes = rsPayments!Notes
+'    ' تحديد نوع الحركة النقدية
+'    Dim cashTransactionType As String
+'    Select Case LCase(TransactionType)
+'        Case "sale"
+'            cashTransactionType = "قبض"
+'        Case "purchase"
+'            cashTransactionType = "صرف"
+'        Case Else
+'            cashTransactionType = "قبض"
+'    End Select
+'
+'    ' ----------- إضافة حركة الخزينة -----------
+'    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+'    rsCashTrans.AddNew
+'    rsCashTrans!CashBoxID = CashBoxID
+'    rsCashTrans!TransactionType = cashTransactionType
+'    rsCashTrans!Amount = paymentAmount
+'    rsCashTrans!TransactionDate = Nz(Me.PaymentDate, Date)
+'
+'    If isCharge = False Then
+'        rsCashTrans!PaymentID = newPaymentID
+'        rsCashTrans!ReferenceType = "Payment"
+'    Else
+'        rsCashTrans!ReferenceType = "Charge"
+'    End If
+'
+'
+'' ? هنا الإضافة الجديدة لتسجيل رقم الفاتورة
+'rsCashTrans!ReferenceID = TransactionID
+'
+'rsCashTrans!Notes = Nz(Me.Notes & " - " & cashTransactionType & " : " & rsCashTrans!ReferenceType & " فاتورة رقم " & " - " & Me.TransactionID.Column(0) & " باسم " & Me.TransactionID.Column(1), "")
+'rsCashTrans!CreatedBy = CurrentUser.UserName
+'rsCashTrans!CreatedAt = Now()
+'rsCashTrans.Update
+'rsCashTrans.Bookmark = rsCashTrans.LastModified
+'newCashTransID = rsCashTrans!CashboxTransactionID
+'rsCashTrans.Close
+'
+'    ' تحديث الربط بين الدفع والخزينة (لو فاتورة فقط)
+'    If isCharge = False Then
+'        Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+'        rsPayments.FindFirst "PaymentID = " & newPaymentID
+'        If Not rsPayments.NoMatch Then
+'            rsPayments.Edit
+'            rsPayments!CashboxTransactionID = newCashTransID
+'            rsPayments.Update
+'        End If
+'        rsPayments.Close
+'    End If
+'
+'    ' ----------- تحديث PaidAmount فى الفاتورة -----------
+'    rsTrans.Edit
+'    rsTrans!PaidAmount = Nz(rsTrans!PaidAmount, 0) + paymentAmount
+'
+'    ' تحديث المبلغ المتبقي
+'    RemainingAmount = Nz(rsTrans!TotalAmount, 0) - rsTrans!PaidAmount
+'    If RemainingAmount < 0 Then RemainingAmount = 0
+'
+'    Me.PaymentID = newPaymentID
+''    Me.Notes = rsPayments!Notes
+'    rsTrans.Update
+'    rsTrans.Close
+'
+'    MsgBox "تم حفظ العملية وتحديث الخزينة بنجاح", vbInformation
+'
+'End Sub
+'===================
+'Private Sub cboPaymentType_AfterUpdate()
+'    Dim sql As String
+'
+'    If Me.cboPaymentType = "فاتورة" Then
+'        sql = "SELECT " & _
+'              "T.TransactionID, " & _
+'              "P.PartyName, " & _
+'              "T.TotalAmount, " & _
+'              "Nz((SELECT SUM(Amount) FROM dbo_Payments WHERE TransactionID = T.TransactionID),0) AS PaidTotal, " & _
+'              "[T].[TotalAmount] - Nz((SELECT SUM(Amount) FROM dbo_Payments WHERE TransactionID = T.TransactionID),0) AS Remaining " & _
+'              "FROM dbo_Transactions AS T " & _
+'              "INNER JOIN dbo_Parties AS P ON T.PartyID = P.PartyID " & _
+'              "WHERE (([T].[TotalAmount] - Nz((SELECT SUM(Amount)FROM dbo_Payments WHERE TransactionID = T.TransactionID),0)) > 0) " & _
+'              "ORDER BY T.TransactionDate DESC;"
+'
+'        ' تعيين مصدر الصفوف
+'        Me.TransactionID.RowSource = sql
+'
+'        ' تحديد عدد الأعمدة
+'        Me.TransactionID.ColumnCount = 5
+'
+'        ' عرض الأعمدة بشكل منظم (عرض بالـ Twips = 1/1440 بوصة)
+'        Me.TransactionID.ColumnWidths = "1cm;3.575cm;2cm;2cm;2cm"
+'
+'    ElseIf Me.cboPaymentType = "رسوم" Then
+'        sql = "SELECT " & _
+'              "dbo_Transactions.TransactionID, " & _
+'              "dbo_Parties.PartyName, " & _
+'              "Sum(dbo_AdditionalCharges.ChargeAmount) AS ChargesTotal " & _
+'              "FROM (dbo_Transactions " & _
+'              "INNER JOIN dbo_Parties ON dbo_Transactions.PartyID = dbo_Parties.PartyID) " & _
+'              "INNER JOIN dbo_AdditionalCharges ON dbo_Transactions.TransactionID = dbo_AdditionalCharges.TransactionID " & _
+'              "GROUP BY dbo_Transactions.TransactionID, dbo_Parties.PartyName;"
+'
+'        ' تعيين مصدر الصفوف
+'        Me.TransactionID.RowSource = sql
+'
+'        ' تحديد عدد الأعمدة
+'        Me.TransactionID.ColumnCount = 3
+'
+'        ' عرض الأعمدة بشكل منظم
+'        Me.TransactionID.ColumnWidths = "1cm;4cm;4cm"
+'    End If
+'
+'    ' تحديث الكومبو
+'    Me.TransactionID.Requery
+'End Sub
+'==============
+'work fine
+'=============
+'Private Sub cboPaymentType_AfterUpdate()
+'    Dim sql As String
+'    Dim TransactionType As String
+'
+'    Select Case Me.cboPaymentType
+'        Case "فاتورة مبيعات"
+'            TransactionType = "Sale"
+'        Case "فاتورة مشتريات"
+'            TransactionType = "Purchase"
+'        Case "رسوم"
+'            ' استعلام الرسوم
+'            sql = "SELECT " & _
+'                  "dbo_Transactions.TransactionID, " & _
+'                  "dbo_Parties.PartyName, " & _
+'                  "Sum(dbo_AdditionalCharges.ChargeAmount) AS ChargesTotal " & _
+'                  "FROM (dbo_Transactions " & _
+'                  "INNER JOIN dbo_Parties ON dbo_Transactions.PartyID = dbo_Parties.PartyID) " & _
+'                  "INNER JOIN dbo_AdditionalCharges ON dbo_Transactions.TransactionID = dbo_AdditionalCharges.TransactionID " & _
+'                  "GROUP BY dbo_Transactions.TransactionID, dbo_Parties.PartyName;"
+'
+'            Me.TransactionID.RowSource = sql
+'            Me.TransactionID.ColumnCount = 3
+'            Me.TransactionID.ColumnWidths = "1cm;4cm;4cm"
+'            Me.TransactionID.Requery
+'            Exit Sub
+'    End Select
+'
+'    ' استعلام الفواتير (مبيعات أو مشتريات)
+'    sql = "SELECT " & _
+'          "T.TransactionID, " & _
+'          "P.PartyName, " & _
+'          "T.TotalAmount, " & _
+'          "Nz((SELECT SUM(Amount) FROM dbo_Payments WHERE TransactionID = T.TransactionID),0) AS PaidTotal, " & _
+'          "[T].[TotalAmount] - Nz((SELECT SUM(Amount) FROM dbo_Payments WHERE TransactionID = T.TransactionID),0) AS Remaining " & _
+'          "FROM dbo_Transactions AS T " & _
+'          "INNER JOIN dbo_Parties AS P ON T.PartyID = P.PartyID " & _
+'          "WHERE (([T].[TotalAmount] - Nz((SELECT SUM(Amount)FROM dbo_Payments WHERE TransactionID = T.TransactionID),0)) > 0) " & _
+'          "AND T.TransactionType = '" & TransactionType & "' " & _
+'          "ORDER BY T.TransactionDate DESC;"
+'
+'    Me.TransactionID.RowSource = sql
+'    Me.TransactionID.ColumnCount = 5
+'    Me.TransactionID.ColumnWidths = "1cm;3.575cm;2cm;2cm;2cm"
+'    Me.TransactionID.Requery
+'End Sub
+
+Private Sub btnOpenReport_Click()
+    Dim lngID As Long
+    
+    ' التأكد من وجود رقم العملية
+    lngID = Nz(Me.PaymentID, 0)
+    If lngID = 0 Then
+        MsgBox "من فضلك اختر العملية أولاً.", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    ' تحديد نوع التقرير من الكومبو
+    Select Case Me.cboPaymentType
+        Case "فاتورة مبيعات"
+            DoCmd.OpenReport "rpt_Payment", acViewPreview, , "PaymentID=" & lngID
+        
+        Case "فاتورة مشتريات"
+            DoCmd.OpenReport "rpt_Payment", acViewPreview, , "PaymentID=" & lngID
+            
+        Case "رسوم"
+            DoCmd.OpenReport "rpt_PaymentCharge", acViewPreview, , "ReferenceID=" & lngID & " AND ReferenceType='Charge'"
+        
+        Case Else
+            MsgBox "من فضلك اختر نوع الدفع من القائمة.", vbExclamation, "COCOBOLO SYSTEM"
+    End Select
+End Sub
+
+Private Sub Form_Load()
+    ' إذا كان فيه TransactionID محمل، حدث البيانات تلقائياً
+    If Not IsNull(Me.TransactionID) And Me.TransactionID <> 0 Then
+       cboPaymentType_AfterUpdate
+       Me.cboPaymentType.Requery
+        Call TransactionIDUpdate
+        Call DisplayPaymentPlan(CDbl(TotalAmount))
+    End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation, "COCOBOLO SYSTEM"
+        Cancel = True
+        Exit Sub
+    End If
+   
+End Sub
+
+Public Sub TransactionIDUpdate()
+   Dim TotalAmount As Double
+        Dim PaidTotal As Double
+        Dim RemainingAmount As Double
+        
+        TotalAmount = Me.TransactionID.Column(2)  ' العمود الثالث (إجمالي المبلغ)
+       If Me.cboPaymentType <> "رسوم" Then
+        PaidTotal = Me.TransactionID.Column(3)    ' العمود الرابع (المبلغ المدفوع)
+        End If
+      If Me.cboPaymentType <> "رسوم" Then
+
+       RemainingAmount = Me.TransactionID.Column(4) ' العمود الخامس (الباقي)
+        End If
+Me.txtPartyName = Me.TransactionID.Column(1)
+Me.txtPartyName.Visible = True
+If Me.cboPaymentType = "فاتورة مبيعات" Or Me.cboPaymentType = "فاتورة مشتريات" Then
+Me.txtBaqy = Me.TransactionID.Column(4)
+Me.Label15.Caption = "المتبقى"
+Else
+Me.txtBaqy = Me.TransactionID.Column(2)
+Me.Label15.Caption = "إجمالى مبلغ الرسوم"
+End If
+Me.txtBaqy.Visible = True
+Me.Label15.Visible = True
+CalculateSuggestedPayment TotalAmount, PaidTotal, RemainingAmount
+
+End Sub
+
+
+Private Sub CalculateSuggestedPayment(TotalAmount As Double, PaidTotal As Double, RemainingAmount As Double)
+    Dim paidPercentage As Double
+    
+    If Me.cboPaymentType = "رسوم" Then
+            Me.lblPaymentType.Caption = ""
+Else
+    ' حساب نسبة ما تم سداده
+    If TotalAmount > 0 Then
+        paidPercentage = (PaidTotal / TotalAmount) * 100
+    Else
+        paidPercentage = 0
+    End If
+    
+    ' تحديد نوع الدفعة بناء على نسبة السداد
+    If paidPercentage < 70 Then
+        ' الدفعة الأولى: 70% من الإجمالي ناقص ما تم دفعه
+        Me.Amount.value = Round((TotalAmount * 0.7) - PaidTotal, 2)
+        Me.lblPaymentType.Caption = "الدفعة الأولى (70%)"
+    ElseIf paidPercentage < 90 Then
+        ' الدفعة الثانية: 20% من الإجمالي ناقص ما تم دفعه بعد الأولى
+        Me.Amount.value = Round((TotalAmount * 0.9) - PaidTotal, 2)
+        Me.lblPaymentType.Caption = "الدفعة الثانية (20%)"
+    Else
+        ' الدفعة الأخيرة: المتبقي كاملاً
+        Me.Amount.value = Round(RemainingAmount, 2)
+        Me.lblPaymentType.Caption = "الدفعة الأخيرة (10%)"
+    End If
+    End If
+End Sub
+
+Private Sub TransactionID_AfterUpdate()
+Call TransactionIDUpdate
+'If IsNumeric(TotalAmount) Then
+        Call DisplayPaymentPlan(CDbl(TotalAmount))
+'    End If
+End Sub
+Private Sub DisplayPaymentPlan(TotalAmount As Currency)
+    Dim payment1 As Currency, payment2 As Currency, payment3 As Currency
+    Dim paymentText As String
+    
+    ' حساب مبالغ الدفعات
+    payment1 = Round(Me.TransactionID.Column(2) * 0.7, 2)
+    payment2 = Round(Me.TransactionID.Column(2) * 0.2, 2)
+    payment3 = Round(Me.TransactionID.Column(2) * 0.1, 2)
+    
+    ' بناء النص بشكل منسق
+    paymentText = " خطة السداد" & vbCrLf
+    paymentText = paymentText & "-----------------" & vbCrLf
+    paymentText = paymentText & "الدفعة الأولى (70%) بقيمة :" & "  " & Format(payment1, "#,##0.00") & " ج" & vbCrLf & vbCrLf
+    
+    paymentText = paymentText & "الدفعة الثانية (20%) بقيمة :" & "  " & Format(payment2, "#,##0.00") & " ج" & vbCrLf & vbCrLf
+        
+    paymentText = paymentText & "الدفعة الأخيرة (10%) بقيمة :" & "  " & Format(payment3, "#,##0.00") & " ج" & vbCrLf & vbCrLf
+        
+    paymentText = paymentText & "-----------------" & vbCrLf
+    paymentText = paymentText & "الإجمالي: " & Format(Me.TransactionID.Column(2), "#,##0.00") & " ج"
+    
+    ' استخدام TextBox بدلاً من Label لتحسين المظهر
+   If Me.cboPaymentType = "رسوم" Then
+   Me.txtPaymentPlan.value = ""
+   Else
+    Me.txtPaymentPlan.value = paymentText
+    End If
+End Sub
+Private Sub cboPaymentType_AfterUpdate()
+    Dim qryName As String
+    
+    Select Case Me.cboPaymentType
+        Case "فاتورة مبيعات"
+            qryName = "qryPT_Sales"
+            Me.TransactionID.ColumnCount = 5
+            Me.TransactionID.ColumnWidths = "1cm;3.575cm;2cm;2cm;2cm"
+            
+        Case "فاتورة مشتريات"
+            ' أنشئ query آخر للمشتريات
+            qryName = "qryPT_Purchases"
+            Me.TransactionID.ColumnCount = 7
+            Me.TransactionID.ColumnWidths = "1cm;1.575cm;2cm;2cm;2cm;0cm;3.575cm"
+            
+        Case "رسوم"
+            qryName = "qryPT_Fees"
+            Me.TransactionID.ColumnCount = 3
+            Me.TransactionID.ColumnWidths = "1cm;4cm;4cm"
+    End Select
+    
+    Me.TransactionID.rowSource = qryName
+    Me.TransactionID.Requery
+End Sub
+Private Sub btnSavePayment__Click()
+If Not currentUser.HasPermission(Me.Name, "Add") Then
+        
+        MsgBox "غير مصرح لك بالتعديل", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+    Dim db As DAO.Database
+    Dim rsPayments As DAO.Recordset
+    Dim rsCashTrans As DAO.Recordset
+    Dim rsTrans As DAO.Recordset
+    Dim newPaymentID As Long
+    Dim newCashTransID As Long
+    Dim CashBoxID As Long
+    Dim paymentAmount As Double
+    Dim TransactionID As Long
+    Dim TransactionType As String
+    Dim RemainingAmount As Double
+    Dim isCharge As Boolean
+    Dim TotalAmount As Double
+    Dim NetTotalAmount As Double      'new
+    Dim ChargeAmount As Double         'new
+    Dim PaidAmount As Double
+    
+    ' التحقق من البيانات الأساسية
+    If IsNull(Me.TransactionID) Then
+        MsgBox "يرجى اختيار الفاتورة/الرسوم", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If IsNull(Me.cboCashBox) Then
+        MsgBox "يرجى اختيار الخزينة", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    If Nz(Me.Amount, 0) <= 0 Then
+        MsgBox "يرجى إدخال مبلغ صحيح أكبر من صفر", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    Set db = CurrentDb
+    
+    TransactionID = Me.TransactionID
+    CashBoxID = Me.cboCashBox
+    paymentAmount = Nz(Me.Amount, 0)
+    
+    ' جلب نوع المعاملة من جدول dbo_Transactions
+    Set rsTrans = db.OpenRecordset("SELECT TransactionType, TotalAmount,NetTotalAmount, PaidAmount, TotalChargesAmount FROM dbo_Transactions WHERE TransactionID = " & TransactionID, dbOpenDynaset)
+    If rsTrans.EOF Then
+        MsgBox "لم يتم العثور على العملية المحددة", vbCritical, "COCOBOLO SYSTEM"
+        rsTrans.Close
+        Exit Sub
+    End If
+    
+    TransactionType = rsTrans!TransactionType
+    TotalAmount = Nz(rsTrans!NetTotalAmount, 0)
+    PaidAmount = Nz(rsTrans!PaidAmount, 0)
+    ChargeAmount = Nz(rsTrans!TotalChargesAmount, 0)
+    isCharge = (Me.cboPaymentType = "رسوم")
+    
+    ' ----------- التحقق من عدم تجاوز المبلغ الإجمالي -----------
+'    If (PaidAmount + paymentAmount) > TotalAmount And Not isCharge Then
+  If paymentAmount > (TotalAmount + ChargeAmount - PaidAmount) And Not isCharge Then
+        MsgBox "المبلغ المدخل يتجاوز المبلغ المتبقي للفاتورة!" & vbCrLf & _
+               "المبلغ الإجمالي: " & TotalAmount & vbCrLf & _
+               "المبلغ المدفوع: " & PaidAmount & vbCrLf & _
+               "المبلغ المتبقي: " & (TotalAmount - PaidAmount), vbExclamation, "COCOBOLO SYSTEM"
+        rsTrans.Close
+        Exit Sub
+    End If
+    
+    ' ----------- لو العملية فاتورة -----------
+    If isCharge = False Then
+        ' إضافة سجل جديد في dbo_Payments
+        Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+        rsPayments.AddNew
+        rsPayments!TransactionID = TransactionID
+        rsPayments!Amount = paymentAmount
+        rsPayments!PaymentDate = Nz(Me.PaymentDate, Date)
+        rsPayments!PaymentMethod = Me.cboPaymentMethod
+        rsPayments!Notes = Nz(Me.Notes & " - " & Me.lblPaymentType.Caption & " للفاتورة " & Me.TransactionID & " باسم : " & Me.TransactionID.Column(1), "")
+        rsPayments!CreatedBy = currentUser.UserName
+        rsPayments!CreatedAt = Now()
+        rsPayments.Update
+        rsPayments.Bookmark = rsPayments.LastModified
+        newPaymentID = rsPayments!PaymentID
+        rsPayments.Close
+    End If
+    
+    ' تحديد نوع الحركة النقدية
+    Dim cashTransactionType As String
+    Select Case LCase(TransactionType)
+        Case "sale"
+            cashTransactionType = "قبض"
+        Case "purchase"
+            cashTransactionType = "صرف"
+        Case Else
+            cashTransactionType = "قبض"
+    End Select
+    
+    ' ----------- إضافة حركة الخزينة -----------
+    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+    rsCashTrans.AddNew
+    rsCashTrans!CashBoxID = CashBoxID
+    rsCashTrans!TransactionType = cashTransactionType
+    rsCashTrans!Amount = paymentAmount
+    rsCashTrans!TransactionDate = Nz(Me.PaymentDate, Date)
+    
+    If isCharge = False Then
+        rsCashTrans!PaymentID = newPaymentID
+        rsCashTrans!ReferenceType = "Payment"
+    Else
+        rsCashTrans!ReferenceType = "Charge"
+    End If
+    
+    rsCashTrans!ReferenceID = TransactionID
+    rsCashTrans!Notes = Nz(Me.Notes & " - " & cashTransactionType & " : " & rsCashTrans!ReferenceType & " فاتورة رقم " & " - " & Me.TransactionID.Column(0) & " باسم " & Me.TransactionID.Column(1), "")
+    rsCashTrans!CreatedBy = currentUser.UserName
+    rsCashTrans!CreatedAt = Now()
+    rsCashTrans.Update
+    rsCashTrans.Bookmark = rsCashTrans.LastModified
+    newCashTransID = rsCashTrans!CashboxTransactionID
+    rsCashTrans.Close
+    
+    ' تحديث الربط بين الدفع والخزينة (لو فاتورة فقط)
+    If isCharge = False Then
+        Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+        rsPayments.FindFirst "PaymentID = " & newPaymentID
+        If Not rsPayments.NoMatch Then
+            rsPayments.Edit
+            rsPayments!CashboxTransactionID = newCashTransID
+            rsPayments.Update
+        End If
+        rsPayments.Close
+    End If
+    
+    ' ----------- تحديث PaidAmount فى الفاتورة -----------
+    rsTrans.Edit
+    rsTrans!PaidAmount = PaidAmount + paymentAmount
+    
+    ' حساب المبلغ المتبقي بعد الدفع
+    RemainingAmount = TotalAmount - (PaidAmount + paymentAmount)
+    If RemainingAmount < 0 Then RemainingAmount = 0
+    
+    rsTrans.Update
+    
+    ' ----------- التحقق من حالة السداد بعد التحديث -----------
+    Dim FinalPaidAmount As Double
+    Dim FinalRemainingAmount As Double
+    
+    FinalPaidAmount = rsTrans!PaidAmount
+'    FinalRemainingAmount = TotalAmount - FinalPaidAmount
+    FinalRemainingAmount = (TotalAmount + ChargeAmount) - FinalPaidAmount
+    
+    ' إغلاق Recordset بعد الانتهاء منه
+    rsTrans.Close
+    
+    'من هنا كود مدفوعه المشتريات الجديد
+    ' ----------- إنشاء مدفوعه تلقائية لفاتورة المشتريات -----------
+    If isCharge = False And LCase(TransactionType) = "sale" Then
+        Debug.Print "=== بداية البحث عن فاتورة مشتريات ==="
+        Debug.Print "فاتورة المبيعات: " & TransactionID
+        Debug.Print "مبلغ الدفعة: " & paymentAmount
+        Debug.Print "إجمالي المبيعات: " & TotalAmount
+        Debug.Print "المدفوع سابقاً: " & PaidAmount
+        
+        Dim purchaseTransactionID As Long
+        Dim purchaseTotalAmount As Double
+        Dim purchasePaidAmount As Double
+        Dim purchasePaymentAmount As Double
+        
+        ' البحث عن فاتورة المشتريات المرتبطة بنفس العميل
+        purchaseTransactionID = FindRelatedPurchaseTransaction(TransactionID)
+        Debug.Print "وجد فاتورة مشتريات: " & purchaseTransactionID
+        
+        If purchaseTransactionID > 0 Then
+            ' جلب بيانات فاتورة المشتريات
+            Dim rsPurchase As Recordset
+            Set rsPurchase = db.OpenRecordset("SELECT TotalAmount,NetTotalAmount, PaidAmount FROM dbo_Transactions WHERE TransactionID = " & purchaseTransactionID)
+            
+            If Not rsPurchase.EOF Then
+                purchaseTotalAmount = Nz(rsPurchase!NetTotalAmount, 0)    'new
+                purchasePaidAmount = Nz(rsPurchase!PaidAmount, 0)
+                
+                Debug.Print "إجمالي المشتريات: " & purchaseTotalAmount
+                Debug.Print "المدفوع للمشتريات: " & purchasePaidAmount
+                
+                ' حساب مبلغ مدفوعه المشتريات (بنفس نسبة المبيعات)
+                purchasePaymentAmount = CalculatePurchasePaymentAmount(paymentAmount, TotalAmount, PaidAmount, purchaseTotalAmount, purchasePaidAmount)
+                Debug.Print "مبلغ مدفوعات المشتريات المحسوب: " & purchasePaymentAmount
+                
+                ' التحقق من عدم تجاوز المبلغ الإجمالي للمشتريات
+                If (purchasePaidAmount + purchasePaymentAmount) > purchaseTotalAmount Then
+                    purchasePaymentAmount = purchaseTotalAmount - purchasePaidAmount
+                    Debug.Print "مبلغ مدفوعات المشتريات المعدل: " & purchasePaymentAmount
+                End If
+                
+                If purchasePaymentAmount > 0 Then
+                    ' إنشاء مدفوعه تلقائية
+                    Call CreateAutoPurchasePayment(purchaseTransactionID, purchasePaymentAmount, _
+                                                  CashBoxID, Me.cboPaymentMethod, _
+                                                  Nz(Me.PaymentDate, Date), _
+                                                  "تلقائية - مرتبطة بفاتورة مبيعات " & TransactionID)
+                    
+                    Debug.Print "تم إنشاء مدفوعه المشتريات بنجاح"
+                    
+                    ' رسالة تأكيد (اختياري)
+                    ' MsgBox "تم إنشاء مدفوعه تلقائية لفاتورة المشتريات بقيمة: " & purchasePaymentAmount, vbInformation
+                Else
+                    Debug.Print "مبلغ المشتريات = 0 - لم يتم الإنشاء"
+                End If
+            Else
+                Debug.Print "لا توجد بيانات لفاتورة المشتريات"
+            End If
+            
+            rsPurchase.Close
+        Else
+            Debug.Print "لم يتم العثور على فاتورة مشتريات مرتبطة"
+        End If
+        Debug.Print "=== نهاية البحث عن فاتورة مشتريات ==="
+    End If
+    
+    Me.PaymentID = newPaymentID
+    
+    ' ----------- رسالة تأكيد السداد مع حالة الفاتورة -----------
+    If isCharge = False Then
+        If FinalRemainingAmount <= 0 Then
+        
+            MsgBox "تم حفظ العملية وتحديث الخزينة بنجاح" & vbCrLf & _
+                   "? تم سداد الفاتورة بالكامل" & vbCrLf & _
+                   "المبلغ الإجمالي: " & TotalAmount & vbCrLf & _
+                   "المبلغ المدفوع: " & FinalPaidAmount, vbInformation
+                   If Me.cboPaymentType = "فاتورة مبيعات" Then
+'                   DoCmd.OpenForm "frm_Commissions", , , , , acHidden
+'                   Dim frm As Form
+'                   Set frm = Forms("frm_Commissions")
+'                   frm.LoadCommissions
+'                   frm.approve
+                   Call SendNotification("nada", "مراجعة اسماء الموظفين المستحقين للعمولة", _
+            "تم سداد كامل الفاتورة رقم : " & Nz(Me.TransactionID, "") & " للعميل  : " & Me.txtPartyName, _
+            "frm_Commissions", 0, True, currentUser.UserName)
+              Else
+              Exit Sub
+              End If
+              'ارسال اشعار للمصنع بسداد قيمة ال 70%
+           
+        Else
+            MsgBox "تم حفظ العملية وتحديث الخزينة بنجاح" & vbCrLf & _
+                   " المبلغ المتبقي للدفع: " & FinalRemainingAmount & vbCrLf & _
+                   "المبلغ الإجمالي: " & TotalAmount & vbCrLf & _
+                   "المبلغ المدفوع: " & FinalPaidAmount, vbInformation, "COCOBOLO SYSTEM"
+                      If FinalPaidAmount >= Round(TotalAmount * 0.7, 2) And FinalPaidAmount < Round(TotalAmount * 0.9, 2) Then
+                                 Call SendNotification("factory", "تعاقد جديد ", _
+            " تم انشاء تعاقد جديد بالفاتورة رقم :  " & purchaseTransactionID & " للعميل  : " & Me.txtPartyName, _
+            "frm_SalesInvoiveNew", purchaseTransactionID, True, currentUser.UserName)
+
+            
+          Else
+              Exit Sub
+              End If
+        End If
+    Else
+        MsgBox "تم حفظ العملية وتحديث الخزينة بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    End If
+    
+End Sub
+
+Public Sub LoadFromInvoice(InvoiceID As Long, InvoiceType As String)
+    On Error GoTo ErrorHandler
+    
+    ' تعيين نوع الفاتورة
+    If InvoiceType = "Sale" Then
+        Me.cboPaymentType = "فاتورة مبيعات"
+    ElseIf InvoiceType = "Purchase" Then
+        Me.cboPaymentType = "فاتورة مشتريات"
+    End If
+    
+    ' استدع الدالة علشان تحدث الـ ComboBox
+    Call cboPaymentType_AfterUpdate
+    
+    ' انتظر علشان البيانات تتحمل
+    DoEvents
+    
+    ' تعيين رقم الفاتورة
+    Me.TransactionID = InvoiceID
+    
+    ' انتظر علشان البيانات تتحمل
+    DoEvents
+    
+    ' استدع الدالة علشان تظهر كل البيانات
+    Call TransactionIDUpdate
+    TransactionID_AfterUpdate
+    ' تعيين القيم الأخرى
+    Me.PaymentDate = Date
+    Me.cboPaymentMethod = "نقدى"
+    Me.cboCashBox = 5
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تحميل البيانات: " & Err.Description, vbExclamation
+End Sub
+' دالة البحث عن فاتورة المشتريات المرتبطة بنفس العميل
+' دالة البحث عن فاتورة المشتريات المرتبطة بنفس العميل (من PartyID إلى EmpID)
+' دالة بحث مرنة
+' دالة البحث عن فاتورة المشتريات المرتبطة بنفس العميل (من PartyID إلى EmpID)
+Private Function FindRelatedPurchaseTransaction(SaleTransactionID As Long) As Long
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim rs As Recordset
+    Dim customerPartyID As Long
+    
+    Set db = CurrentDb
+    
+    ' جلب الـ PartyID (العميل) من فاتورة المبيعات
+    Set rs = db.OpenRecordset("SELECT PartyID FROM dbo_Transactions WHERE TransactionID = " & SaleTransactionID, dbOpenDynaset, dbSeeChanges)
+    
+    If rs.EOF Or IsNull(rs!PartyID) Then
+        FindRelatedPurchaseTransaction = 0
+        rs.Close
+        Exit Function
+    End If
+    
+    customerPartyID = rs!PartyID
+    rs.Close
+    
+    Debug.Print "PartyID للعميل: " & customerPartyID
+    
+    ' البحث عن فاتورة المشتريات المرتبطة بنفس العميل (EmpID = PartyID)
+    Set rs = db.OpenRecordset("SELECT TOP 1 TransactionID, TotalAmount,NetTotalAmount, PaidAmount " & _
+        "FROM dbo_Transactions " & _
+        "WHERE TransactionType = 'Purchase' " & _
+        "AND EmpID = " & customerPartyID & _
+        "AND (NetTotalAmount - Nz(PaidAmount, 0)) > 0 " & _
+        "ORDER BY TransactionDate DESC", dbOpenDynaset, dbSeeChanges)
+    
+    If Not rs.EOF Then
+        FindRelatedPurchaseTransaction = rs!TransactionID
+        Debug.Print "وجد فاتورة مشتريات: " & rs!TransactionID
+        Debug.Print "إجمالي المشتريات: " & rs!NetTotalAmount
+        Debug.Print "المدفوع سابقاً: " & Nz(rs!PaidAmount, 0)
+    Else
+        FindRelatedPurchaseTransaction = 0
+        Debug.Print "لم يتم العثور على فاتورة مشتريات مرتبطة بـ EmpID = " & customerPartyID
+        
+        ' بحث إضافي: شوف كل فواتير المشتريات علشان نتأكد
+        Debug.Print "=== البحث في كل فواتير المشتريات ==="
+        Set rs = db.OpenRecordset("SELECT TransactionID, EmpID, TotalAmount,NetTotalAmount, PaidAmount, PartyID " & _
+            "FROM dbo_Transactions " & _
+            "WHERE TransactionType = 'Purchase' " & _
+            "AND (NetTotalAmount - Nz(PaidAmount, 0)) > 0 " & _
+            "ORDER BY TransactionDate DESC", dbOpenDynaset, dbSeeChanges)
+        
+        Do While Not rs.EOF
+            Debug.Print "فاتورة مشتريات: " & rs!TransactionID & _
+                       ", EmpID: " & Nz(rs!EmpId, "NULL") & _
+                       ", PartyID: " & Nz(rs!PartyID, "NULL") & _
+                       ", الإجمالي: " & rs!NetTotalAmount & _
+                       ", المدفوع: " & Nz(rs!PaidAmount, 0)
+            rs.MoveNext
+        Loop
+        rs.Close
+    End If
+    
+    Set db = Nothing
+    Exit Function
+    
+ErrorHandler:
+    Debug.Print "خطأ في البحث: " & Err.Description
+    FindRelatedPurchaseTransaction = 0
+End Function
+
+
+' دالة محسنة تأخذ في الاعتبار ما تم دفعه سابقاً للمشتريات
+Private Function CalculatePurchasePaymentAmount(salePaymentAmount As Double, saleTotalAmount As Double, salePaidAmount As Double, purchaseTotalAmount As Double, purchasePaidAmount As Double)
+    Dim totalPaidAfterThis As Double
+    totalPaidAfterThis = salePaidAmount + salePaymentAmount
+    
+    Debug.Print "حساب مدفوعات المشتريات:"
+    Debug.Print "المبيعات - الإجمالي: " & saleTotalAmount & ", المدفوع: " & salePaidAmount & ", الدفعة: " & salePaymentAmount
+    Debug.Print "المشتريات - الإجمالي: " & purchaseTotalAmount & ", المدفوع: " & purchasePaidAmount
+    
+    ' تحديد أي دفعة اكتملت في المبيعات
+    Dim targetPayment As Double
+    If totalPaidAfterThis >= saleTotalAmount Then
+        targetPayment = 1#   ' 100%
+        Debug.Print "اكتمل سداد كامل فاتورة المبيعات"
+    ElseIf totalPaidAfterThis >= saleTotalAmount * 0.9 Then
+        targetPayment = 0.9  ' 90%
+        Debug.Print "اكتملت الدفعة الثانية (20%) في المبيعات"
+    ElseIf totalPaidAfterThis >= saleTotalAmount * 0.7 Then
+        targetPayment = 0.7  ' 70%
+        Debug.Print "اكتملت الدفعة الأولى (70%) في المبيعات"
+    Else
+        targetPayment = totalPaidAfterThis / saleTotalAmount  ' نسبة جزئية
+        Debug.Print "دفعة جزئية في المبيعات: " & Format(targetPayment * 100, "0.00") & "%"
+    End If
+    
+    ' حساب المبلغ المطلوب دفعه للمشتريات
+    Dim requiredPurchasePayment As Double
+    requiredPurchasePayment = purchaseTotalAmount * targetPayment
+    
+    ' المبلغ المطلوب دفعه حالياً (بعد خصم ما تم دفعه سابقاً)
+    Dim currentPurchasePayment As Double
+    currentPurchasePayment = requiredPurchasePayment - purchasePaidAmount
+    
+    ' التأكد من أن المبلغ غير سالب
+    If currentPurchasePayment < 0 Then
+        currentPurchasePayment = 0
+    End If
+    
+    ' لا ندفع أكثر من المبلغ المتبقي في فاتورة المشتريات
+    Dim remainingPurchaseAmount As Double
+    remainingPurchaseAmount = purchaseTotalAmount - purchasePaidAmount
+    If currentPurchasePayment > remainingPurchaseAmount Then
+        currentPurchasePayment = remainingPurchaseAmount
+    End If
+    
+    Debug.Print "المبلغ المطلوب للمشتريات: " & requiredPurchasePayment & " (" & Format(targetPayment * 100, "0") & "%)"
+    Debug.Print "المبلغ الحالي للمشتريات: " & currentPurchasePayment
+    
+    CalculatePurchasePaymentAmount = Round(currentPurchasePayment, 2)
+End Function
+
+
+' دالة إنشاء مدفوعه المشتريات التلقائية
+' دالة إنشاء مدفوعه المشتريات التلقائية
+Private Sub CreateAutoPurchasePayment(TransactionID As Long, Amount As Double, _
+                                     CashBoxID As Long, PaymentMethod As String, _
+                                     PaymentDate As Date, Notes As String)
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim rsPayments As Recordset
+    Dim rsCashTrans As Recordset
+    Dim rsTrans As Recordset
+    Dim newPaymentID As Long
+    Dim newCashTransID As Long
+    Dim TotalAmount As Double
+    Dim PaidAmount As Double
+    
+    Set db = CurrentDb
+    
+    Debug.Print "=== بداية CreateAutoPurchasePayment ==="
+    Debug.Print "فاتورة المشتريات: " & TransactionID
+    Debug.Print "المبلغ: " & Amount
+    
+    ' جلب بيانات فاتورة المشتريات
+    Set rsTrans = db.OpenRecordset("SELECT TotalAmount, NetTotalAmount, PaidAmount FROM dbo_Transactions WHERE TransactionID = " & TransactionID, dbOpenDynaset, dbSeeChanges)
+    
+    If rsTrans.EOF Then
+        Debug.Print "خطأ: لم يتم العثور على فاتورة المشتريات"
+        rsTrans.Close
+        Exit Sub
+    End If
+    
+    TotalAmount = Nz(rsTrans!NetTotalAmount, 0)
+    PaidAmount = Nz(rsTrans!PaidAmount, 0)
+    
+    Debug.Print "إجمالي المشتريات: " & TotalAmount
+    Debug.Print "المدفوع سابقاً: " & PaidAmount
+    
+    ' التحقق من عدم تجاوز المبلغ الإجمالي
+    If (PaidAmount + Amount) > TotalAmount Then
+        Amount = TotalAmount - PaidAmount ' تعديل المبلغ للمتبقي فقط
+        Debug.Print "المبلغ المعدل: " & Amount
+    End If
+    
+    If Amount <= 0 Then
+        Debug.Print "المبلغ = 0 - الخروج"
+        rsTrans.Close
+        Exit Sub
+    End If
+    
+    ' إضافة سجل جديد في dbo_Payments
+    Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+    rsPayments.AddNew
+    rsPayments!TransactionID = TransactionID
+    rsPayments!Amount = Amount
+    rsPayments!PaymentDate = PaymentDate
+    rsPayments!PaymentMethod = PaymentMethod
+    rsPayments!Notes = "مدفوعه تلقائية - " & Notes & " - نظام تلقائي"
+    rsPayments!CreatedBy = "System"
+    rsPayments!CreatedAt = Now()
+    ' rsPayments!IsAutoPayment = True ' إذا عندك حقل علشان تتعرف إنها مدفوعه تلقائية
+    rsPayments.Update
+    rsPayments.Bookmark = rsPayments.LastModified
+    newPaymentID = rsPayments!PaymentID
+    rsPayments.Close
+    
+    Debug.Print "تم إنشاء PaymentID: " & newPaymentID
+    
+    ' إضافة حركة الخزينة
+    Set rsCashTrans = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+    rsCashTrans.AddNew
+    rsCashTrans!CashBoxID = CashBoxID
+    rsCashTrans!TransactionType = "صرف" ' لأنها فاتورة مشتريات
+    rsCashTrans!Amount = Amount
+    rsCashTrans!TransactionDate = PaymentDate
+    rsCashTrans!PaymentID = newPaymentID
+    rsCashTrans!ReferenceType = "Payment"
+    rsCashTrans!ReferenceID = TransactionID
+    rsCashTrans!Notes = "مدفوعه تلقائية للمشتريات - " & Notes & " - نظام تلقائي"
+    rsCashTrans!CreatedBy = "System"
+    rsCashTrans!CreatedAt = Now()
+    rsCashTrans.Update
+    rsCashTrans.Bookmark = rsCashTrans.LastModified
+    newCashTransID = rsCashTrans!CashboxTransactionID
+    rsCashTrans.Close
+    
+    Debug.Print "تم إنشاء CashboxTransactionID: " & newCashTransID
+    
+    ' تحديث PaidAmount فى فاتورة المشتريات
+    rsTrans.Edit
+    rsTrans!PaidAmount = PaidAmount + Amount
+    rsTrans.Update
+    rsTrans.Close
+    
+    Debug.Print "تم تحديث PaidAmount إلى: " & (PaidAmount + Amount)
+    
+    ' الربط بين الدفع والخزينة
+    Set rsPayments = db.OpenRecordset("dbo_Payments", dbOpenDynaset, dbSeeChanges)
+    rsPayments.FindFirst "PaymentID = " & newPaymentID
+    If Not rsPayments.NoMatch Then
+        rsPayments.Edit
+        rsPayments!CashboxTransactionID = newCashTransID
+        rsPayments.Update
+        Debug.Print "تم ربط Payment بالخزينة"
+    Else
+        Debug.Print "تحذير: لم يتم العثور على Payment للربط"
+    End If
+    rsPayments.Close
+    
+    ' تسجيل في السجل (لو عندك جدول للسجلات النظامية)
+    Call LogAutoPayment(TransactionID, Amount, "Purchase")
+    
+    Debug.Print "=== نهاية CreateAutoPurchasePayment بنجاح ==="
+    
+    Set db = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    Debug.Print "خطأ في CreateAutoPurchasePayment: " & Err.Description & " (رقم: " & Err.Number & ")"
+End Sub
+
+' دالة تسجيل العملية التلقائية (اختيارية)
+Private Sub LogAutoPayment(TransactionID As Long, Amount As Double, TransactionType As String)
+    On Error Resume Next
+    ' يمكنك إضافة كود لتسجيل العملية في جدول للسجلات
+    ' CurrentDb.Execute "INSERT INTO SystemLogs ..."
+End Sub
+
+' دالة تحديد النسبة المدفوعة من فاتورة المبيعات
+' دالة تحديد النسبة المدفوعة من فاتورة المبيعات
+Private Function GetPaymentPercentage(salePaymentAmount As Double, saleTotalAmount As Double, salePaidAmount As Double) As Double
+    Dim totalPaidAfterThis As Double
+    totalPaidAfterThis = salePaidAmount + salePaymentAmount
+    
+    ' تحديد أي دفعة اكتملت بالضبط
+    If totalPaidAfterThis >= saleTotalAmount Then
+        GetPaymentPercentage = 0.1 ' اكتملت الـ 10% الأخيرة
+    ElseIf totalPaidAfterThis >= saleTotalAmount * 0.9 Then
+        GetPaymentPercentage = 0.2 ' اكتملت الـ 20% الثانية
+    ElseIf totalPaidAfterThis >= saleTotalAmount * 0.7 Then
+        GetPaymentPercentage = 0.7 ' اكتملت الـ 70% الأولى
+    Else
+        ' نسبة جزئية - لم تكتمل أي دفعة
+        GetPaymentPercentage = salePaymentAmount / saleTotalAmount
+    End If
+End Function

@@ -1,0 +1,151 @@
+﻿Option Compare Database
+
+'Private Sub Command11_Click()
+'Dim fdialog As Office.FileDialog
+'Dim filepath As String
+'
+'Set fdialog = Application.FileDialog(msoFileDialogFilePicker)
+'
+'With fdialog
+'            .Title = "Select image"
+'            .AllowMultiSelect = False
+'            .Filters.Clear
+'            .Filters.Add "Image file", "*.jpg ; *.bmp ; *.png"
+'
+'            If .Show Then
+'                filepath = .SelectedItems(1)
+'                [LogoPath] = filepath
+'                Else
+'                Exit Sub
+'            End If
+'End With
+
+
+Option Explicit
+
+
+
+' مساعد لإرجاع مسار TEMP بشكل موثوق
+Private Function GetTempPath() As String
+    Dim p As String
+    p = Environ$("TEMP")
+    If Len(p) = 0 Then p = Environ$("TMP")
+    If Len(p) = 0 Then p = CurrentProject.Path
+    GetTempPath = p
+End Function
+
+
+
+Private Sub btnUploadLogo_Click()
+If Not currentUser.HasPermission(Me.Name, "Edit") Then
+        
+        MsgBox "غير مصرح لك بالتعديل", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+        
+    On Error GoTo ErrHandler
+    
+    Dim fd As fileDialog
+    Dim filePath As String
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim fileNum As Integer
+    
+    ' اختيار الصورة
+    Set fd = Application.fileDialog(msoFileDialogFilePicker)
+    With fd
+        .Title = "اختر شعار الشركة"
+        .Filters.Clear
+        .Filters.Add "صور", "*.jpg; *.jpeg; *.png; *.bmp; *.gif"
+        .AllowMultiSelect = False
+        If .Show <> -1 Then Exit Sub
+        filePath = .SelectedItems(1)
+    End With
+    
+    ' اقرأ الصورة في مصفوفة بايت
+    fileNum = FreeFile
+    Open filePath For Binary As #fileNum
+        ReDim fileData(LOF(fileNum) - 1)
+        Get #fileNum, , fileData
+    Close #fileNum
+    
+    ' افتح الجدول المرتبط
+    Set rs = CurrentDb.OpenRecordset("dbo_CompanyInfo", dbOpenDynaset, dbSeeChanges)
+    rs.Edit
+        rs!Logo = fileData
+        rs!LogoPath = filePath
+    rs.Update
+    rs.Close
+    
+    ' اعرض الصورة في الفورم مباشرة
+    Me.imgLogo.Picture = filePath
+    
+    MsgBox "? تم رفع الشعار وتخزينه بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ " & Err.Number & " - " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+Private Sub Form_Current()
+LoadCompanyLogo
+End Sub
+
+Private Sub Form_Delete(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "Delete") Then
+        MsgBox "ليس لديك صلاحية الحذف.", vbExclamation, "COCOBOLO SYSTEM"
+        Cancel = True
+        Me.Undo
+    End If
+End Sub
+
+Private Sub Form_Dirty(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "Edit") Then
+        MsgBox "ليس لديك صلاحية لتعديل هذه الشاشة.", vbExclamation, "COCOBOLO SYSTEM"
+        Cancel = True
+        Me.Undo
+    End If
+End Sub
+
+Private Sub Form_Load()
+UpdateAppIcon
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation, "COCOBOLO SYSTEM"
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+Private Sub LoadCompanyLogo()
+    On Error GoTo ErrHandler
+    
+    Dim rs As DAO.Recordset
+    Dim fileData() As Byte
+    Dim tempPath As String
+    Dim fileNum As Integer
+    
+    ' استعلام بسيط
+    Set rs = CurrentDb.OpenRecordset("SELECT TOP 1 Logo FROM dbo_CompanyInfo WHERE Logo IS NOT NULL", dbOpenSnapshot)
+    
+    If Not rs.EOF Then
+        fileData = rs!Logo
+        tempPath = Environ("TEMP") & "\CompanyLogo.jpg"
+        
+        fileNum = FreeFile
+        Open tempPath For Binary As #fileNum
+            Put #fileNum, , fileData
+        Close #fileNum
+        
+        Me.imgLogo.Picture = tempPath
+    End If
+    
+    rs.Close
+    Exit Sub
+    
+ErrHandler:
+    Debug.Print "Error " & Err.Number & ": " & Err.Description
+End Sub

@@ -1,0 +1,29 @@
+﻿Form: frm_CompanyInfo
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box9		Rectangle		
+Line10		Line		
+Label15		Label		&Company Info
+Command17		Button		Command17
+CompanyName		TextBox		CompanyName
+Label0		Label		CompanyName
+LogoPath		TextBox		LogoPath
+Label2		Label		LogoPath
+Address		TextBox		Address
+Label3		Label		Address
+Phone1		TextBox		Phone1
+Label4		Label		Phone1
+Phone2		TextBox		Phone2
+Label5		Label		Phone2
+SalesEmail		TextBox		SalesEmail
+Label6		Label		SalesEmail
+InfoEmail		TextBox		InfoEmail
+Label7		Label		InfoEmail
+Website		TextBox		Website
+Label8		Label		Website
+btnUploadLogo		Button		&AddLogo
+imgLogo		Image		
+Box54		Rectangle		
+Box55		Rectangle		

@@ -1,0 +1,428 @@
+﻿Option Compare Database
+Option Explicit
+
+' اسم الجدول المؤقت
+Private Const TEMP_TABLE As String = "tmp_PayrollDetails"
+
+Private Sub btnClear_Click()
+Me.cboEmployee = ""
+Me.txtAllowancesTotal = ""
+Me.txtBasicSalary = ""
+Me.txtNetSalary = ""
+Me.txtNotes = ""
+Me.txtPayRollMonth = Format(Date, "yyyy-mm")
+Me.txtDeductionsTotal = ""
+Me.Form.Requery
+End Sub
+
+' -----------------------
+' عند تحميل النموذج
+' -----------------------
+Private Sub Form_Load()
+    On Error GoTo ErrHandler
+    
+    Me.txtPayRollMonth = Format(Date, "yyyy-mm")
+    If Nz(Me.chkPayNow, False) = False Then Me.cboCashBox = Null
+    If Nz(Me.txtNotes, "") = "" Then Me.txtNotes = ""
+    If Nz(Me.txtBasicSalary, "") = "" Then Me.txtBasicSalary = 0
+
+    Call EnsureTempTableExists
+    Call PopulateEmployees
+    Call PopulateCashBoxes
+    Call LoadDetailsToSubform
+    Call CalculateTotals
+
+    Exit Sub
+ErrHandler:
+    MsgBox "Load Error: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' -----------------------
+' انشئ جدول مؤقت لو مش موجود
+' -----------------------
+Private Sub EnsureTempTableExists()
+    Dim db As DAO.Database
+    Dim tdf As DAO.TableDef
+    Dim exists As Boolean
+
+    Set db = CurrentDb
+    exists = False
+    For Each tdf In db.TableDefs
+        If tdf.Name = TEMP_TABLE Then
+            exists = True
+            Exit For
+        End If
+    Next
+    If Not exists Then
+        db.Execute "CREATE TABLE " & TEMP_TABLE & " (" & _
+                   "TmpID COUNTER PRIMARY KEY, " & _
+                   "DetailKind TEXT(50), " & _
+                   "DetailDesc TEXT(255), " & _
+                   "Amount CURRENCY, " & _
+                   "CreatedAt DATETIME);", dbFailOnError
+    End If
+    Set tdf = Nothing
+    Set db = Nothing
+End Sub
+
+' -----------------------
+' ملأ قائمة الموظفين
+' -----------------------
+Private Sub PopulateEmployees()
+    Me.cboEmployee.rowSource = "SELECT [EmployeeID], [FullName],[JobTitle] FROM [dbo_Employees] WHERE (((dbo_Employees.EmployeeID) Not In (Select [EmployeeID] from [dbo_Payroll] where [PayRollMonth]= Forms![frm_Payroll]![txtPayRollMonth] )) AND ((dbo_Employees.Status)='نشط'));"
+    Me.cboEmployee.BoundColumn = 1
+    Me.cboEmployee.ColumnCount = 2
+    Me.cboEmployee.ColumnWidths = "0cm;6cm"
+'    SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName, dbo_Employees.JobTitle
+'FROM dbo_Employees
+'WHERE (((dbo_Employees.EmployeeID) Not In (Select [EmployeeID] from [dbo_Payroll] where [PayRollMonth]= Forms![frm_Payroll]![txtPayRollMonth] )) AND ((dbo_Employees.Status)='???'))
+'ORDER BY dbo_Employees.FullName;
+End Sub
+
+' -----------------------
+' ملأ قائمة الخزنات
+' -----------------------
+Private Sub PopulateCashBoxes()
+    Me.cboCashBox.rowSource = "SELECT [CashBoxID], [CashBoxName] FROM [dbo_CashBoxes] ORDER BY [CashBoxName];"
+    Me.cboCashBox.BoundColumn = 1
+    Me.cboCashBox.ColumnCount = 2
+    Me.cboCashBox.ColumnWidths = "0cm;6cm"
+End Sub
+
+' -----------------------
+' عند اختيار الموظف
+' -----------------------
+Private Sub cboEmployee_AfterUpdate()
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim EmpId As Long
+
+    EmpId = Nz(Me.cboEmployee.value, 0)
+    If EmpId = 0 Then Exit Sub
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT [CurrentSalaryBase] FROM [dbo_Employees] WHERE [EmployeeID]=" & EmpId, dbOpenSnapshot)
+    If Not rs.EOF Then
+        Me.txtBasicSalary = Nz(rs!CurrentSalaryBase, 0)
+    Else
+        Me.txtBasicSalary = 0
+    End If
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    Call CalculateTotals
+End Sub
+
+' -----------------------
+' زر إضافة بند في الجدول المؤقت
+' -----------------------
+Private Sub btnAddDetail_Click()
+    On Error GoTo ErrHandler
+
+    Dim sqlInsert As String
+    Dim DetailKind As String
+    Dim DetailDesc As String
+    Dim Amount As Currency
+
+    DetailKind = Nz(Me.cboDetailKind.value, "")
+    DetailDesc = Nz(Me.txtDetailDesc.value, "")
+    Amount = Nz(Me.txtDetailAmount.value, 0)
+
+    If DetailKind = "" Then
+        MsgBox "اختر نوع البند (بدل / خصم / ساعات إضافية).", vbExclamation
+        Exit Sub
+    End If
+
+    If Amount <= 0 Then
+        MsgBox "أدخل مبلغ أكبر من صفر.", vbExclamation
+        Exit Sub
+    End If
+
+    sqlInsert = "INSERT INTO " & TEMP_TABLE & " (DetailKind, DetailDesc, Amount, CreatedAt) " & _
+                "VALUES ('" & Replace(DetailKind, "'", "''") & "', '" & Replace(DetailDesc, "'", "''") & "', " & Amount & ", Now())"
+
+    CurrentDb.Execute sqlInsert, dbFailOnError
+
+    ' إعادة تحميل النموذج الفرعي
+    Me.sub_PayRoollDetalis.Form.Requery
+
+    ' مسح الحقول
+    Me.cboDetailKind = Null
+    Me.txtDetailDesc = Null
+    Me.txtDetailAmount = Null
+
+    Call CalculateTotals
+
+    Exit Sub
+ErrHandler:
+    MsgBox "خطأ أثناء الإضافة: " & Err.Description, vbCritical
+End Sub
+
+' -----------------------
+' زر حذف بند من الجدول المؤقت
+' -----------------------
+Private Sub btnRemoveDetail_Click()
+    On Error GoTo ErrHandler
+    Dim TmpID As Long
+
+    If Me.sub_PayRoollDetalis.Form.SelHeight = 0 Then
+        MsgBox "اختر بند للحذف من النموذج الفرعي.", vbExclamation
+        Exit Sub
+    End If
+
+    TmpID = Me.sub_PayRoollDetalis.Form!TmpID
+
+    If TmpID = 0 Then
+        MsgBox "معرف البند غير صالح.", vbExclamation
+        Exit Sub
+    End If
+
+    CurrentDb.Execute "DELETE FROM " & TEMP_TABLE & " WHERE TmpID=" & TmpID, dbFailOnError
+
+    Me.sub_PayRoollDetalis.Form.Requery
+    Call CalculateTotals
+
+    Exit Sub
+ErrHandler:
+    MsgBox "خطأ أثناء الحذف: " & Err.Description, vbCritical
+End Sub
+
+' -----------------------
+' تحديث مجاميع البدلات والخصومات والصافي
+' -----------------------
+Private Sub CalculateTotals()
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sSQL As String
+    Dim inAmt As Currency, outAmt As Currency, net As Currency
+
+    Set db = CurrentDb
+
+    sSQL = "SELECT Nz(Sum(IIf([DetailKind] IN ('ساعات إضافية','بدل'), [Amount], 0)),0) AS InAmt, " & _
+           "Nz(Sum(IIf([DetailKind]='خصم',[Amount],0)),0) AS OutAmt FROM " & TEMP_TABLE & ";"
+
+    Set rs = db.OpenRecordset(sSQL, dbOpenSnapshot)
+    If Not rs.EOF Then
+        inAmt = Nz(rs!inAmt, 0)
+        outAmt = Nz(rs!outAmt, 0)
+    Else
+        inAmt = 0
+        outAmt = 0
+    End If
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    Me.txtAllowancesTotal = Format(inAmt, "General Number")
+    Me.txtDeductionsTotal = Format(outAmt, "General Number")
+
+    net = Nz(Me.txtBasicSalary, 0) + inAmt - outAmt
+    Me.txtNetSalary = Format(net, "Standard")
+End Sub
+
+' -----------------------
+' تحميل السجلات في النموذج الفرعي (اختياري لو Requery كافي)
+' -----------------------
+Private Sub LoadDetailsToSubform()
+    Me.sub_PayRoollDetalis.Form.RecordSource = "SELECT * FROM " & TEMP_TABLE & " ORDER BY TmpID;"
+    Me.sub_PayRoollDetalis.Form.Requery
+End Sub
+
+'' -----------------------
+'' زر حفظ المرتب النهائي
+'' -----------------------
+'_____________________
+' الكود هنا مخفف بدون ربط الخزينه وبدون اختيار بدلات
+Private Sub btnSavePayroll_Click()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim rsPayroll As DAO.Recordset
+    Dim rsDetailsTmp As DAO.Recordset
+    Dim rsPayrollDetails As DAO.Recordset
+
+    Dim EmpId As Long
+    Dim payMonth As String
+    Dim basic As Currency
+    Dim Allowances As Currency, Deductions As Currency, NetSalary As Currency
+    Dim Notes As String
+    Dim CreatedBy As String
+    Dim newPayrollID As Long
+
+    If IsNull(Me.cboEmployee) Then
+        MsgBox "اختر موظفًا أولاً.", vbExclamation
+        Exit Sub
+    End If
+
+    EmpId = Me.cboEmployee.value
+    payMonth = Trim(Nz(Me.txtPayRollMonth.value, ""))
+    If payMonth = "" Then
+        MsgBox "أدخل شهر الفاتورة (YYYY-MM).", vbExclamation
+        Exit Sub
+    End If
+
+    basic = Nz(Me.txtBasicSalary, 0)
+    Allowances = val(Me.txtAllowancesTotal)
+    Deductions = val(Me.txtDeductionsTotal)
+    NetSalary = basic + Allowances - Deductions
+    Notes = Trim(Nz(Me.txtNotes, ""))
+    CreatedBy = currentUser.UserName 'Trim(Nz(Me.txtCreatedBy, "System"))
+'    Call SaveSalaryHistoryIfChanged(empID, basic, createdBy)
+
+    Set db = CurrentDb
+
+    ' فتح الجدول المؤقت بدون شرط EOF
+    Set rsDetailsTmp = db.OpenRecordset("SELECT * FROM " & TEMP_TABLE, dbOpenSnapshot) 'TEMP_TABLE
+    rsDetailsTmp.Close
+
+    DBEngine.BeginTrans
+
+    ' حفظ بيانات المرتب
+    Set rsPayroll = db.OpenRecordset("dbo_Payroll", dbOpenDynaset, dbSeeChanges)
+    rsPayroll.AddNew
+    rsPayroll!EmployeeID = EmpId
+    rsPayroll!PayrollMonth = payMonth
+    rsPayroll!BasicSalary = basic
+    rsPayroll!Allowances = Allowances
+    rsPayroll!Deductions = Deductions
+    rsPayroll!Notes = Notes
+    rsPayroll!CreatedBy = CreatedBy
+    rsPayroll.Update
+    rsPayroll.Bookmark = rsPayroll.LastModified
+    newPayrollID = rsPayroll!PayrollID
+    rsPayroll.Close
+
+    ' نسخ البنود من الجدول المؤقت إلى dbo_PayrollDetails لو فيه بنود
+    Set rsDetailsTmp = db.OpenRecordset("SELECT TmpID, DetailKind, DetailDesc, Amount FROM " & TEMP_TABLE & " ORDER BY TmpID", dbOpenSnapshot)
+    If Not rsDetailsTmp.EOF Then
+        Set rsPayrollDetails = db.OpenRecordset("dbo_PayrollDetails", dbOpenDynaset, dbSeeChanges)
+        Do While Not rsDetailsTmp.EOF
+            rsPayrollDetails.AddNew
+            rsPayrollDetails!PayrollID = newPayrollID
+            rsPayrollDetails!DetailType = Nz(rsDetailsTmp!DetailKind, "")
+            rsPayrollDetails!DetailDescription = Nz(rsDetailsTmp!DetailDesc, "")
+            rsPayrollDetails!Amount = Nz(rsDetailsTmp!Amount, 0)
+            rsPayrollDetails!CreatedBy = currentUser.UserName
+            rsPayrollDetails.Update
+
+            rsDetailsTmp.MoveNext
+        Loop
+        rsPayrollDetails.Close
+    End If
+    rsDetailsTmp.Close
+
+    DBEngine.CommitTrans
+
+ 
+
+    MsgBox "تم حفظ المرتب بنجاح. PayrollID = " & newPayrollID, vbInformation
+   ' تنظيف الجدول المؤقت وتحديث النموذج الفرعي والحسابات
+    db.Execute "DELETE FROM " & TEMP_TABLE & ";", dbFailOnError
+    Me.sub_PayRoollDetalis.Form.Requery
+    Call CalculateTotals
+    Me.txtAllowancesTotal = ""
+    Me.txtDeductionsTotal = ""
+    Me.txtNetSalary = ""
+    Me.cboEmployee = Null
+    Me.txtNotes = ""
+    Exit Sub
+
+ErrHandler:
+ '   If DBEngine.InTransaction Then DBEngine.Rollback
+    MsgBox "خطأ أثناء الحفظ: " & Err.Number & " - " & Err.Description, vbCritical
+    Debug.Print "Error: " & Err.Number & " - " & Err.Description
+End Sub
+
+' افترض أن جدول SalaryHistory يحتوي على الحقول التالية:
+' EmployeeID (Long), OldBasicSalary (Currency), ChangedAt (DateTime), ChangedBy (Text)
+
+'Private Sub SaveSalaryHistoryIfChanged(empID As Long, newBasicSalary As Currency, createdBy As String)
+'    Dim db As DAO.Database
+'    Dim rsHist As DAO.Recordset
+'    Dim lastBasicSalary As Currency
+'    Dim sql As String
+'
+'    Set db = CurrentDb
+'
+'    ' جلب آخر قيمة BasicSalary محفوظة في SalaryHistory للموظف
+'    sql = "SELECT TOP 1 NewSalary FROM dbo_SalaryHistory WHERE EmployeeID = " & empID & " ORDER BY ChangedAt DESC"
+'    Set rsHist = db.OpenRecordset(sql, dbOpenSnapshot)
+'
+'    If rsHist.EOF Then
+'        ' لو مفيش تاريخ سابق، نعتبر لا توجد قيمة سابقة
+'        lastBasicSalary = -1 ' قيمة غير منطقية لضمان الدخول للإضافة
+'    Else
+'        lastBasicSalary = Nz(rsHist!OldSalary, -1)
+'    End If
+'    rsHist.Close
+'
+'    ' لو الراتب الأساسي الجديد مختلف عن القديم، نضيف سجل جديد في SalaryHistory
+'    If newBasicSalary <> lastBasicSalary Then
+'        Set rsHist = db.OpenRecordset("dbo_SalaryHistory", dbOpenDynaset, dbSeeChanges)
+'        rsHist.AddNew
+'        rsHist!EmployeeID = empID
+'        rsHist!OldSalary = newBasicSalary
+'        rsHist!ChangeDate = Now()
+'        rsHist!ChangedAt = Now()
+'        rsHist!ChangedBy = "System"
+'        rsHist.Update
+'        rsHist.Close
+'    End If
+'
+'    Set db = Nothing
+'End Sub
+'
+'Private Sub SaveSalaryHistoryIfChanged(empID As Long, newBasicSalary As Currency, createdBy As String)
+'    Dim db As DAO.Database
+'    Dim rsHist As DAO.Recordset
+'    Dim qdf As DAO.QueryDef
+'    Dim lastBasicSalary As Currency
+'    Dim sql As String
+'
+'    Set db = CurrentDb
+'
+'    ' نحصل على آخر مرتب أساسي مسجل للموظف في جدول SalaryHistory
+'    sql = "SELECT TOP 1 NewSalary FROM dbo_SalaryHistory WHERE EmployeeID = " & empID & " ORDER BY ChangedAt DESC"
+'
+'    Set qdf = db.CreateQueryDef("", sql)
+'    qdf.Parameters(0) = empID
+'    Set rsHist = qdf.OpenRecordset(dbOpenSnapshot)
+'
+'    If rsHist.EOF Then
+'        ' لو مفيش سجل سابق، اعتبر المرتب القديم غير موجود
+'        lastBasicSalary = -1
+'    Else
+'        lastBasicSalary = Nz(rsHist!NewSalary, -1)
+'    End If
+'    rsHist.Close
+'    Set qdf = Nothing
+'
+'    ' لو المرتب الجديد مختلف عن القديم نسجل التغيير
+'    If newBasicSalary <> lastBasicSalary Then
+'        Set rsHist = db.OpenRecordset("dbo_SalaryHistory", dbOpenDynaset, dbSeeChanges)
+'        rsHist.AddNew
+'        rsHist!EmployeeID = empID
+'        rsHist!OldSalary = lastBasicSalary
+'        rsHist!NewSalary = newBasicSalary
+'        rsHist!CreatedAt = Now()
+'        rsHist!createdBy = "system"
+'        rsHist.Update
+'        rsHist.Close
+'    End If
+'
+'    Set db = Nothing
+'End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+Private Sub txtPayRollMonth_AfterUpdate()
+'Me.Requery
+ Call PopulateEmployees
+End Sub

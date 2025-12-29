@@ -1,0 +1,500 @@
+﻿Option Compare Database
+
+
+'Private Sub btnEdit_Click()
+'    On Error GoTo ErrHandler
+'
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'    Dim EmpId As Long
+'
+'    ' تأكد إن المعرف موجود (لازم يكون موجود في الفورم كحقل مخفي أو مفتاح رئيسي)
+'    EmpId = Nz(Me.EmployeeID, 0) ' استبدل EmployeeID باسم الحقل الموجود عندك في الفورم
+'
+'    If EmpId = 0 Then
+'        MsgBox "لا يمكن تعديل الموظف. معرف الموظف غير موجود.", vbExclamation, "COCOBOLO SYSTEM"
+'        Exit Sub
+'    End If
+'
+'    ' التحقق من البيانات الأساسية
+'    If Trim(Nz(Me.FullName, "")) = "" Then
+'        MsgBox "من فضلك أدخل اسم الموظف", vbExclamation, "COCOBOLO SYSTEM"
+'        Exit Sub
+'    End If
+'
+'    If Len(Me.NationalID) <> 14 Or Not IsNumeric(Me.NationalID) Then
+'        MsgBox "من فضلك أدخل رقم قومي صحيح مكون من 14 رقم", vbExclamation, "COCOBOLO SYSTEM"
+'        Exit Sub
+'    End If
+'
+'    Set db = CurrentDb
+'    Set rs = db.OpenRecordset("dbo_Employees", dbOpenDynaset, dbSeeChanges)
+'
+'    rs.FindFirst "EmployeeID = " & EmpId
+'
+'    If rs.NoMatch Then
+'        MsgBox "الموظف غير موجود للتعديل.", vbExclamation, "COCOBOLO SYSTEM"
+'        rs.Close
+'        Set rs = Nothing
+'        Set db = Nothing
+'        Exit Sub
+'    Else
+'        rs.Edit
+'        rs!FullName = Me.FullName
+'        rs!NationalID = Me.NationalID
+'        rs!JobTitle = Me.JobTitle
+'        rs!Department = Me.Department
+'        rs!BirthDate = Me.BirthDate
+'        rs!Gender = Me.Gender
+'        rs!BioEmployeeID = Me.BioEmployeeID
+'        rs!IsPermanentlyExempt = CBool(Me.chkBio)
+'        rs!qualification = Me.qualification
+'        rs!yearqualification = Me.yearqualification
+'        rs!Address = Nz(Me.Address, "")
+'        rs!MobilePhone = Nz(Me.MobilePhone, "")
+'        rs!MobilePhone2 = Nz(Me.MobilePhone2, "")
+'        rs!CurrentSalaryBase = Nz(Me.CurrentSalaryBase, 0)
+'        rs!EmailAddress = Me.EmailAddress
+'        rs!HireDate = Me.HireDate
+'        rs!EndDate = Me.EndDate
+'        rs!Status = Me.Status
+'        rs!Notes = Me.Notes
+'        ' ممكن تحدث CreatedBy و CreatedAt لو عايز، أو تضيف حقول تحديث مثل ModifiedBy و ModifiedAt
+'        rs.Update
+'    End If
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    MsgBox "تم تعديل بيانات الموظف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+'    Me.Requery
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ أثناء التعديل: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+'End Sub
+Private Sub btnEdit_Click()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim EmpId As Long
+
+    ' قراءة الـ ID من الفورم
+    EmpId = Nz(Me.EmployeeID, 0)
+
+    If EmpId = 0 Then
+        MsgBox "لا يمكن تعديل الموظف. معرف الموظف غير موجود.", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    ' التحقق من البيانات الأساسية
+    If Trim(Nz(Me.FullName, "")) = "" Then
+        MsgBox "من فضلك أدخل اسم الموظف", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    ' التحقق من الرقم القومي
+    If Len(Me.NationalID & "") <> 14 Or Not IsNumeric(Me.NationalID & "") Then
+        MsgBox "من فضلك أدخل رقم قومي صحيح مكون من 14 رقم", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_Employees", dbOpenDynaset, dbSeeChanges)
+
+    ' البحث عن الموظف
+    rs.FindFirst "EmployeeID = " & EmpId
+
+    If rs.NoMatch Then
+        MsgBox "الموظف غير موجود للتعديل.", vbExclamation, "COCOBOLO SYSTEM"
+        rs.Close
+        Set rs = Nothing
+        Set db = Nothing
+        Exit Sub
+    End If
+
+    ' **** تعديل البيانات ****
+    rs.Edit
+
+    rs!FullName = Nz(Me.FullName, "")
+    rs!NationalID = Nz(Me.NationalID, "")
+    rs!JobTitle = Nz(Me.JobTitle, "")
+    rs!Department = Nz(Me.Department, "")
+    rs!BirthDate = IIf(IsDate(Me.BirthDate), Me.BirthDate, Null)
+    rs!Gender = Nz(Me.Gender, "")
+
+    ' معالجة BioEmployeeID (INT يسمح بـ NULL)
+    If Trim(Me.BioEmployeeID & "") = "" Then
+        rs!BioEmployeeID = Null
+    Else
+        If IsNumeric(Me.BioEmployeeID) Then
+            rs!BioEmployeeID = CLng(Me.BioEmployeeID)
+        Else
+            MsgBox "من فضلك أدخل رقم صحيح لكود البصمة", vbExclamation, "COCOBOLO SYSTEM"
+            rs.CancelUpdate
+            Exit Sub
+        End If
+    End If
+
+    rs!IsPermanentlyExempt = Nz(Me.chkBio, False)
+    rs!qualification = Nz(Me.qualification, "")
+    rs!yearqualification = Nz(Me.yearqualification, "")
+    rs!Address = Nz(Me.Address, "")
+    rs!MobilePhone = Nz(Me.MobilePhone, "")
+    rs!MobilePhone2 = Nz(Me.MobilePhone2, "")
+    rs!CurrentSalaryBase = Nz(Me.CurrentSalaryBase, 0)
+    rs!EmailAddress = Nz(Me.EmailAddress, "")
+    rs!HireDate = IIf(IsDate(Me.HireDate), Me.HireDate, Null)
+    rs!EndDate = IIf(IsDate(Me.EndDate), Me.EndDate, Null)
+    rs!Status = Nz(Me.Status, "نشط")
+    rs!Notes = Nz(Me.Notes, "")
+
+    ' تحديث السجل
+    rs.Update
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    MsgBox "تم تعديل بيانات الموظف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    Me.Requery
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ أثناء التعديل: " & Err.Number & vbCrLf & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+
+
+'Private Sub btnSave_Click()
+'
+'    On Error GoTo ErrHandler
+'
+'    Dim db As DAO.Database
+'
+'    ' التحقق من البيانات الأساسية
+'    If Trim(Nz(Me.FullName, "")) = "" Then
+'        MsgBox "من فضلك أدخل اسم الموظف", vbExclamation, "COCOBOLO SYSTEM"
+'        Exit Sub
+'    End If
+'
+'    If Len(NationalID) <> 14 Or Not IsNumeric(NationalID) Then
+'        MsgBox "من فضلك أدخل رقم قومي صحيح مكون من 14 رقم", vbExclamation, "COCOBOLO SYSTEM"
+'        Exit Sub
+'    End If
+'
+'
+'    ' حفظ البيانات في الجدول
+'    Set db = CurrentDb
+'    Set rs = db.OpenRecordset("dbo_Employees", dbOpenDynaset, dbSeeChanges)
+'
+'    rs.AddNew
+'    rs!FullName = Me.FullName
+'    rs!NationalID = Me.NationalID
+'    rs!JobTitle = Me.JobTitle
+'    rs!Department = Me.Department
+'    rs!BirthDate = Me.BirthDate
+'    rs!Gender = Me.Gender
+'    rs!BioEmployeeID = Nz(Me.BioEmployeeID, "")
+'    rs!IsPermanentlyExempt = CBool(Me.chkBio)
+'    rs!qualification = Me.qualification
+'    rs!yearqualification = Me.yearqualification
+'    rs!Address = Nz(Me.Address, "")
+'    rs!MobilePhone = Nz(Me.MobilePhone, "")
+'    rs!MobilePhone2 = Nz(Me.MobilePhone2, "")
+'    rs!CurrentSalaryBase = Nz(Me.CurrentSalaryBase, 0)
+'    rs!EmailAddress = Me.EmailAddress
+'    rs!HireDate = Me.HireDate
+'    rs!EndDate = Me.EndDate
+'    rs!Status = Me.Status
+'    rs!Notes = Me.Notes
+'    rs!CreatedBy = currentUser.UserName
+'    rs!CreatedAt = Now()
+'    rs.Update
+'
+'    rs.Close
+'    Set rs = Nothing
+'    Set db = Nothing
+'
+'    MsgBox "تم حفظ بيانات الموظف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+'    Me.Requery
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ أثناء الحفظ: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+'End Sub
+Private Sub btnSave_Click()
+
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+
+    ' التحقق من البيانات الأساسية
+    If Trim(Nz(Me.FullName, "")) = "" Then
+        MsgBox "من فضلك أدخل اسم الموظف", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    ' رقم قومي صحيح
+    If Len(Me.NationalID & "") <> 14 Or Not IsNumeric(Me.NationalID & "") Then
+        MsgBox "من فضلك أدخل رقم قومي صحيح مكون من 14 رقم", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_Employees", dbOpenDynaset, dbSeeChanges)
+
+    rs.AddNew
+
+    rs!FullName = Nz(Me.FullName, "")
+    rs!NationalID = Nz(Me.NationalID, "")
+    rs!JobTitle = Nz(Me.JobTitle, "")
+    rs!Department = Nz(Me.Department, "")
+    rs!BirthDate = IIf(IsDate(Me.BirthDate), Me.BirthDate, Null)
+    rs!Gender = Nz(Me.Gender, "")
+'    rs!BioEmployeeID = Nz(Me.BioEmployeeID, "")
+If Trim(Me.BioEmployeeID & "") = "" Then
+    rs!BioEmployeeID = Null
+Else
+    If IsNumeric(Me.BioEmployeeID) Then
+        rs!BioEmployeeID = CLng(Me.BioEmployeeID)
+    Else
+        MsgBox "من فضلك أدخل رقم صحيح لكود البصمة", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+End If
+
+    rs!IsPermanentlyExempt = Nz(Me.chkBio, False)
+    rs!qualification = Nz(Me.qualification, "")
+    rs!yearqualification = Nz(Me.yearqualification, "")
+    rs!Address = Nz(Me.Address, "")
+    rs!MobilePhone = Nz(Me.MobilePhone, "")
+    rs!MobilePhone2 = Nz(Me.MobilePhone2, "")
+    rs!CurrentSalaryBase = Nz(Me.CurrentSalaryBase, 0)
+    rs!EmailAddress = Nz(Me.EmailAddress, "")
+    rs!HireDate = IIf(IsDate(Me.HireDate), Me.HireDate, Null)
+    rs!EndDate = IIf(IsDate(Me.EndDate), Me.EndDate, Null)
+    rs!Status = Nz(Me.Status, "نشط")
+    rs!Notes = Nz(Me.Notes, "")
+
+    ' سجل الإنشاء
+    If Not IsNull(currentUser.UserName) Then
+        rs!CreatedBy = currentUser.UserName
+    Else
+        rs!CreatedBy = "SYSTEM"
+    End If
+
+    rs!CreatedAt = Now()
+
+    rs.Update
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    MsgBox "تم حفظ بيانات الموظف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    Me.Requery
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ أثناء الحفظ: " & Err.Number & vbCrLf & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+Private Sub Form_Current()
+If Me.Status = "موقوف" Then
+Me.Label83.Visible = True
+Me.EndDate.Visible = True
+Else
+Me.Label83.Visible = False
+Me.EndDate.Visible = False
+End If
+End Sub
+
+Private Sub Form_Load()
+    Dim EmpId As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "لم يتم تحديد موظف للعرض.", vbExclamation
+        Me.btnSave.Visible = True
+        Me.btnEdit.Visible = False
+        Me.cmdEnterNumber.Visible = False
+        Me.Label66.Caption = "إضافة موظف جديد"
+        Exit Sub
+        Else
+         Me.btnSave.Visible = False
+        Me.btnEdit.Visible = True
+        Me.cmdEnterNumber.Visible = True
+        Me.Label66.Caption = "تعديل بيانات الموظف الحالى"
+    End If
+
+    EmpId = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Employees WHERE EmployeeID = " & EmpId
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        Me.FullName = Nz(rs!FullName, "")
+        Me.JobTitle = Nz(rs!JobTitle, "")
+        Me.Department = Nz(rs!Department, "")
+        Me.CurrentSalaryBase = Nz(rs!CurrentSalaryBase, 0)
+        Me.NationalID = Nz(rs!NationalID, "")
+        Me.BioEmployeeID = Nz(rs!BioEmployeeID, "")
+        Me.chkBio = Nz(rs!IsPermanentlyExempt, False)
+        Me.Gender = Nz(rs!Gender, "")
+        Me.BirthDate = Nz(rs!BirthDate, "")
+        Me.qualification = Nz(rs!qualification, "")
+        Me.yearqualification = Nz(rs!yearqualification, "")
+        Me.MobilePhone = Nz(rs!MobilePhone, "")
+        Me.MobilePhone2 = Nz(rs!MobilePhone2, "")
+        Me.EmailAddress = Nz(rs!EmailAddress, "")
+        Me.Address = Nz(rs!Address, "")
+        Me.HireDate = Nz(rs!HireDate, "")
+        Me.EndDate = Nz(rs!EndDate, "")
+        Me.Status = rs!Status
+        Me.Notes = Nz(rs!Notes, "")
+        Me.EmployeeID = Nz(rs!EmployeeID, "")
+        ' ... املأ باقي الحقول بنفس الطريقة
+    Else
+        MsgBox "الموظف غير موجود.", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+        Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+Private Sub NationalID_AfterUpdate()
+    Dim natID As String
+    Dim yearPart As Integer, monthPart As Integer, dayPart As Integer
+    Dim century As Integer
+    Dim BirthDate As Date
+    Dim genderDigit As Integer
+    Dim Gender As String
+
+    natID = Me.NationalID & ""
+
+    ' التحقق من أن الرقم القومي 14 رقم
+    If Len(natID) = 14 And IsNumeric(natID) Then
+
+        ' تحديد القرن
+        Select Case Mid(natID, 1, 1)
+            Case "2"
+                century = 1900
+            Case "3"
+                century = 2000
+            Case Else
+                MsgBox "الرقم القومي غير صحيح", vbExclamation, "COCOBOLO SYSTEM"
+                Exit Sub
+        End Select
+
+        ' استخراج تاريخ الميلاد
+        yearPart = CInt(Mid(natID, 2, 2))
+        monthPart = CInt(Mid(natID, 4, 2))
+        dayPart = CInt(Mid(natID, 6, 2))
+
+        BirthDate = DateSerial(century + yearPart, monthPart, dayPart)
+        Me.BirthDate = BirthDate
+
+        ' استخراج النوع
+        genderDigit = CInt(Mid(natID, 13, 1))
+        If genderDigit Mod 2 = 0 Then
+            Gender = "أنثى"
+        Else
+            Gender = "ذكر"
+        End If
+        Me.Gender = Gender
+
+    Else
+        MsgBox "من فضلك أدخل رقم قومي صحيح مكون من 14 رقم", vbExclamation, "COCOBOLO SYSTEM"
+    End If
+End Sub
+
+Private Sub cmdEnterNumber_Click()
+
+    Dim EmpId As Long
+    Dim newSalary As Currency
+    Dim oldSalary As Currency
+    Dim strInput As String
+    Dim UserName As String
+    Dim sqlU As String, sqlI As String
+
+    On Error GoTo ErrHandler
+
+    ' تأكد إن عندك قيمة لمعرف الموظف من الفورم
+    EmpId = Nz(Me.EmployeeID, 0)
+    If EmpId = 0 Then
+        MsgBox "لم يتم تحديد الموظف.", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    ' قراءة المرتب القديم من الجدول (اللينكد تيبل في أكسس اسمه dbo_Employees)
+    oldSalary = Nz(DLookup("CurrentSalaryBase", "dbo_Employees", "EmployeeID=" & EmpId), 0)
+
+    ' طلب المرتب الجديد
+    strInput = InputBox("اكتب المرتب الأساسي الجديد:", "تعديل المرتب", oldSalary)
+    If Len(strInput) = 0 Then Exit Sub       ' المستخدم لغى
+
+    If Not IsNumeric(strInput) Then
+        MsgBox "من فضلك أدخل رقم صحيح.", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    newSalary = CCur(strInput)
+
+    If newSalary = oldSalary Then
+        MsgBox "لا يوجد تغيير في المرتب.", vbInformation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+
+    ' اسم المستخدم (وتأمين علامات الاقتباس)
+    UserName = currentUser.UserName ' Replace(Environ$("USERNAME"), "'", "''")
+
+    ' 1) تحديث المرتب في Employees
+    sqlU = "UPDATE dbo_Employees " & _
+           "SET CurrentSalaryBase=" & Replace(CStr(newSalary), ",", ".") & _
+           " WHERE EmployeeID=" & EmpId
+    CurrentDb.Execute sqlU, dbSeeChanges
+
+    ' 2) تسجيل التغيير في SalaryHistory
+    ' ملاحظة: العمود الصحيح هو CreatedBy (مش ChangedBy)، وChangeDate ليه DEFAULT في SQL Server
+    sqlI = "INSERT INTO dbo_SalaryHistory (EmployeeID, OldSalary, NewSalary, CreatedBy) VALUES (" & _
+            EmpId & ", " & Replace(CStr(oldSalary), ",", ".") & ", " & Replace(CStr(newSalary), ",", ".") & ", '" & UserName & "')"
+    CurrentDb.Execute sqlI, dbSeeChanges
+
+    ' عكس القيمة الجديدة على الفورم فورًا
+    Me.CurrentSalaryBase = newSalary
+    If Me.Dirty Then Me.Dirty = False
+
+    MsgBox "تم تعديل المرتب الأساسي وتسجيل التغيير بنجاح.", vbInformation, "COCOBOLO SYSTEM"
+    Exit Sub
+
+ErrHandler:
+    MsgBox "حدث خطأ: " & Err.Number & " - " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+
+Private Sub Status_AfterUpdate()
+If Me.Status = "نشط" Then
+Me.EndDate.Visible = False
+Me.Label83.Visible = False
+ElseIf Me.Status = "موقوف" Then
+Me.EndDate.Visible = True
+Me.Label83.Visible = True
+End If
+End Sub

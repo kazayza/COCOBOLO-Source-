@@ -1,0 +1,73 @@
+﻿Option Compare Database
+
+Private Sub btnCancel_Click()
+ 
+         DoCmd.Close acForm, "frm_ExpensesGroup"
+End Sub
+
+Private Sub btnSve_Click()
+   
+
+    On Error GoTo ErrorHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim GroupName As String
+    Dim parentID As Variant
+    Dim CreatedBy As String
+
+    ' جلب القيم من عناصر الفورم
+    GroupName = Trim(Nz(Me.ExpenseGroupName.value, ""))
+    CreatedBy = currentUser.UserName '"System" ' أو اجلبه من متغير عام أو دالة
+
+    ' التحقق من إدخال اسم المجموعة
+    If GroupName = "" Then
+        MsgBox "من فضلك أدخل اسم المجموعة", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+
+    ' تحديد قيمة ParentGroupID
+    If IsNull(Me.cboParentGroup.value) Or Me.cboParentGroup.value = "" Then
+        parentID = Null
+    Else
+        parentID = Me.cboParentGroup.value
+    End If
+
+    ' فتح اتصال بالجدول
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("dbo_ExpenseGroups", dbOpenDynaset, dbSeeChanges)
+
+    ' إضافة سجل جديد
+    rs.AddNew
+    rs!ExpenseGroupName = GroupName
+    rs!ParentGroupID = parentID
+    rs!CreatedBy = CreatedBy
+    rs.Update
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    MsgBox "تم حفظ المجموعة بنجاح", vbInformation
+    Me.ExpenseGroupName = ""
+    Me.cboParentGroup = ""
+    Me.Requery
+    Exit Sub
+
+
+
+
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء حفظ المجموعة: " & Err.Description & vbCrLf & _
+           "رقم الخطأ: " & Err.Number, vbCritical
+
+
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

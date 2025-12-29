@@ -1,0 +1,132 @@
+﻿Option Compare Database
+
+
+Private Sub btnClear_Click()
+On Error Resume Next
+    Me.FilterOn = False
+    Me.cboCashBox = -1
+    Me.cboTransactionType = "الكل"
+    Me.cboReferenceType = "الكل"
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    Me.Requery
+End Sub
+
+Private Sub btnFilter_Click()
+    Dim strFilter As String
+    strFilter = "1=1"
+
+    ' فلترة بالخزنة: -1 = (الكل) => لا نضيف شرط
+    If Not IsNull(Me.cboCashBox) Then
+        If Me.cboCashBox <> -1 Then
+            strFilter = strFilter & " AND CashBoxID = " & CLng(Me.cboCashBox)
+        End If
+    End If
+
+    ' نوع العملية (قبض/صرف)
+    If Not IsNull(Me.cboTransactionType) And Me.cboTransactionType <> "الكل" Then
+        strFilter = strFilter & " AND TransactionType = '" & Replace(Me.cboTransactionType, "'", "''") & "'"
+    End If
+
+    ' نوع المرجع
+    If Not IsNull(Me.cboReferenceType) And Me.cboReferenceType <> "الكل" Then
+        strFilter = strFilter & " AND ReferenceType = '" & Replace(Me.cboReferenceType, "'", "''") & "'"
+    End If
+
+    ' الفترة (transactionDate)
+    If Not IsNull(Me.txtDateFrom) Then
+        strFilter = strFilter & " AND transactionDate >= #" & Format(Me.txtDateFrom, "yyyy\/mm\/dd") & "#"
+    End If
+    If Not IsNull(Me.txtDateTo) Then
+        strFilter = strFilter & " AND transactionDate <= #" & Format(Me.txtDateTo, "yyyy\/mm\/dd") & "#"
+    End If
+
+    ' تطبيق الفلتر على الفورم
+    Me.Filter = strFilter
+    Me.FilterOn = True
+    Me.Requery
+End Sub
+
+Private Sub cboCashBox_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cboReferenceType_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cboTransactionType_AfterUpdate()
+btnFilter_Click
+End Sub
+
+Private Sub cmdReport_Click()
+
+    ' اجعل الفلتر في الفورم مُطَبَّقًا (لو لم يطبق)
+    If Not Me.FilterOn Then
+        Call btnFilter_Click   ' يفترض إن عندك دالة لعمل الفلتر
+    End If
+
+    Dim sWhere As String
+    sWhere = ""
+    If Me.FilterOn Then sWhere = Me.Filter
+
+    DoCmd.OpenReport "rptCashboxTransactions", acViewPreview, , sWhere
+End Sub
+
+
+
+Private Sub Form_Load()
+    On Error GoTo ErrHandler
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sRowSource As String
+    Dim safeName As String
+
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset("SELECT CashBoxID, CashBoxName FROM dbo_CashBoxes ORDER BY CashBoxName", dbOpenSnapshot)
+
+    ' نبدأ بالعنصر (الكل) باستخدام -1 كقيمة معرف
+    sRowSource = "-1;(الكل)"
+
+    If Not (rs.BOF And rs.EOF) Then
+        rs.MoveFirst
+        Do While Not rs.EOF
+            ' نؤمن اسم الخزنة من الفواصل أو علامات اقتباس قد تكسر RowSource
+            safeName = Nz(rs!CashBoxName, "")
+            safeName = Replace(safeName, ";", " ")     ' نشيل الفواصل
+            safeName = Replace(safeName, """", "'")    ' نبدّل الاقتباسات المزدوجة
+            sRowSource = sRowSource & ";" & Nz(rs!CashBoxID, 0) & ";" & safeName
+            rs.MoveNext
+        Loop
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+
+    With Me.cboCashBox
+        .RowSourceType = "Value List"
+        .rowSource = sRowSource
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0cm;4cm"   ' نخفي الـ ID ونظهر الاسم
+        .LimitToList = True
+        .value = -1                 ' افتراضي: الكل
+    End With
+
+    ' افتراضيات لباقي الفلاتر
+    Me.cboTransactionType = "الكل"   ' تأكد إن RowSource فيها "الكل","قبض","صرف"
+    Me.cboReferenceType = "الكل"     ' تأكد إن RowSource فيها "الكل","Expense",...
+    Exit Sub
+
+ErrHandler:
+    MsgBox "خطأ فى Form_Load: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

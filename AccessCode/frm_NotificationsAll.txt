@@ -1,0 +1,195 @@
+﻿Option Compare Database
+
+
+Private Sub btnClearSearch_Click()
+Me.txtSearch = ""
+    ApplyProductFilter
+End Sub
+
+Private Sub btnSearch_Click()
+If Nz(Me.txtSearch.value, "") = "" Then
+        Exit Sub
+    Else
+ApplyProductFilter
+End If
+   
+
+End Sub
+Private Sub ApplyProductFilter()
+    Dim patternFilter As String
+    Dim strFilter As String
+    Dim strSQL As String
+ 
+    Dim currentUserName As String
+
+    ' جلب اسم المستخدم الحالي
+    currentUserName = currentUser.UserName
+    
+    strFilter = Trim(Me.txtSearch)
+
+    If strFilter = "" Then
+        strSQL = "SELECT * FROM dbo_Notifications " & _
+          "WHERE IsRead = 1 " & _
+          "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'"
+    Else
+        ' إنشاء الباترن للهمزات
+        patternFilter = CreateArabicPattern(strFilter)
+        
+        ' البحث باستخدام الباترن على جميع الحقول
+    strSQL = "SELECT *FROM dbo_Notifications " & _
+                  "WHERE (Message LIKE '*" & patternFilter & "*') " & _
+                  "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'" & _
+         "ORDER BY NotificationID;"
+    End If
+
+    ' طباعة الباترن للت debug
+'    Debug.Print "الباترن: " & patternFilter
+'    Debug.Print "SQL: " & strSQL
+    
+    Me.RecordSource = strSQL
+    Me.Requery
+End Sub
+
+' دالة إنشاء باترن للهمزات - معدلة
+Private Function CreateArabicPattern(text As String) As String
+    Dim tempend As String
+    Dim i As Integer
+    Dim currentChar As String
+    
+    tempend = ""
+    
+    For i = 1 To Len(text)
+        currentChar = Mid(text, i, 1)
+        
+        Select Case currentChar
+            Case "أ", "إ", "آ", "ا"
+                tempend = tempend & "[أإآا]"
+            Case "ة", "ه"
+                tempend = tempend & "[ةه]"  ' التاء المربوطة والهاء
+            Case "ى", "ئ", "ي"
+                tempend = tempend & "[ىئي]"  ' كل أنواع الياء
+            Case "ؤ", "و"
+                tempend = tempend & "[ؤو]"   ' الواو مع الهمزة والواو العادية
+            Case Else
+                tempend = tempend & currentChar
+        End Select
+    Next i
+    
+    CreateArabicPattern = tempend
+End Function
+
+'Private Sub Command61_Click()
+'
+'    Dim nid As Long
+'    Dim targetForm As String
+'    Dim relID As Long
+'
+'    nid = Nz(Me!NotificationID, 0)
+'    If nid = 0 Then Exit Sub
+'
+'    ' علم الاشعار كمقروء
+'    MarkNotificationRead nid   ' استخدم دالتك الموجودة (مع dbSeeChanges)
+'
+'    ' افتح الفورم المرتبط إن وُجد
+'    targetForm = Nz(Me!formName, "")
+'    relID = Nz(Me!RelatedID, 0)
+'
+'    If targetForm <> "" Then
+'        OpenFormFromNotification targetForm, relID
+'    Else
+'        ' لو مفيش فورم مرتبط، افتح سجل الاشعار بالتفصيل
+'        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nid
+'    End If
+'    Me.Requery
+'    ' حدث البادج في الفورم الرئيسي (Parent)
+'    On Error Resume Next
+'    Me.Parent.UpdateUnreadBadge
+'    DoCmd.Close acForm, "frm_Notifications"
+'    On Error GoTo 0
+'End Sub
+Private Sub Command61_Click()
+    Dim nID As Long
+    Dim targetForm As String
+    Dim relID As Long
+    Dim reminderChoice As VbMsgBoxResult
+    Dim reminderDays As Integer
+    Dim reminderIntervalHours As Integer
+    Dim ReminderEndAt As Date
+    Dim ReminderNextAt As Date
+    Dim sql As String
+
+    nID = Nz(Me!NotificationID, 0)
+    If nID = 0 Then Exit Sub
+
+'    ' ? سؤال المستخدم إذا كان يريد التذكير
+'    reminderChoice = MsgBox("هل تريد تفعيل التذكير لهذا الإشعار؟", vbYesNo + vbQuestion, "تفعيل التذكير")
+'    If reminderChoice = vbYes Then
+'        ' إدخال عدد الأيام للتذكير (المدة الكلية)
+'        reminderDays = Val(InputBox("أدخل عدد الأيام التي ترغب في تفعيل التذكير خلالها:", "مدة التذكير", "2"))
+'        If reminderDays <= 0 Then reminderDays = 1   ' قيمة افتراضية
+'
+'        ' إدخال عدد الساعات بين كل تذكير
+'        reminderIntervalHours = Val(InputBox("كل كم ساعة تريد تكرار التذكير؟", "فاصل التذكير", "2"))
+'        If reminderIntervalHours <= 0 Then reminderIntervalHours = 2   ' قيمة افتراضية
+'
+'        ' حساب التواريخ
+'        ReminderNextAt = DateAdd("h", reminderIntervalHours, Now)
+'        ReminderEndAt = DateAdd("d", reminderDays, Now)
+'
+'        ' ? تحديث بيانات التذكير في الجدول
+'        sql = "UPDATE dbo_Notifications SET " & _
+'              "ReminderEnabled = 1, " & _
+'              "ReminderIntervalMinutes = " & (reminderIntervalHours * 60) & ", " & _
+'              "ReminderNextAt = #" & Format(ReminderNextAt, "yyyy\/mm\/dd hh:nn:ss") & "#, " & _
+'              "ReminderEndAt = #" & Format(ReminderEndAt, "yyyy\/mm\/dd hh:nn:ss") & "# " & _
+'              "WHERE NotificationID = " & nid
+'
+'        CurrentDb.Execute sql, dbSeeChanges
+'    End If
+'
+'    ' ? علم الإشعار كمقروء
+'    MarkNotificationRead nid
+'
+    ' ? افتح الفورم المرتبط
+    targetForm = Nz(Me!FormName, "")
+  
+   relID = Nz(Me!RelatedID, 0)
+   
+'
+    If targetForm <> "" Then
+      If targetForm = "frm_SalesInvoiveNew" Then
+      
+ DoCmd.OpenForm "frm_SalesInvoiveNew", , , , , , OpenArgs:="EDIT|" & relID
+ Else
+                OpenFormFromNotification targetForm, relID
+        End If
+    Else
+        DoCmd.OpenForm "frm_Notifications", , , "NotificationID=" & nID
+    End If
+
+    Me.Requery
+
+    ' ? تحديث البادج في الفورم الرئيسي
+    On Error Resume Next
+    Me.Parent.UpdateUnreadBadge
+    DoCmd.Close acForm, "frm_NotificationsAll"
+    On Error GoTo 0
+End Sub
+
+Private Sub Form_Load()
+DoCmd.Maximize
+    Dim sql As String
+    Dim currentUserName As String
+
+    ' جلب اسم المستخدم الحالي
+    currentUserName = currentUser.UserName  ' أو Environ$("USERNAME") لو CurrentUser مش موجود
+
+    ' تكوين الاستعلام للداتا الخاصة بالمستخدم الحالي
+    sql = "SELECT * FROM dbo_Notifications " & _
+          "WHERE IsRead = 1 " & _
+          "AND RecipientUser = '" & Replace(currentUserName, "'", "''") & "'"
+Me.Text81 = "  الاشعارات الخاصة بـ :  " & currentUser.FullName
+    ' تعيين الاستعلام كمصدر للفورم
+    Me.RecordSource = sql
+    Me.Requery  ' إعادة تحميل البيانات في الفورم
+End Sub

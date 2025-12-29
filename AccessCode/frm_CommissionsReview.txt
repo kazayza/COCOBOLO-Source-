@@ -1,0 +1,198 @@
+﻿Option Compare Database
+
+Private Sub btnAddEmployee_Click()
+ Dim db As DAO.Database
+Dim sqlInsert As String
+Dim sqlCheck As String
+Dim rs As DAO.Recordset
+Dim TransactionID As Long
+Dim EmployeeID As Long
+Dim EmployeeName As String
+Dim TransactionAmount As Double
+Dim CustomerName As String
+
+' التحقق من اختيار الفاتورة والموظف
+If IsNull(Me.cboInvoice) Then
+    MsgBox "اختر الفاتورة أولاً.", vbExclamation
+    Exit Sub
+End If
+
+If IsNull(Me.cboEmployee) Then
+    MsgBox "اختر الموظف.", vbExclamation
+    Exit Sub
+End If
+
+' قراءة القيم من الكومبو بوكسات
+TransactionID = Me.cboInvoice.value
+TransactionAmount = Me.cboInvoice.Column(1) ' TotalAmount
+CustomerName = Me.cboInvoice.Column(2)      ' CustomerName (عمود رقم 3)
+EmployeeID = Me.cboEmployee.value
+EmployeeName = Me.cboEmployee.Column(1)
+
+Set db = CurrentDb
+
+' التحقق من وجود الموظف بالفعل لنفس الفاتورة
+sqlCheck = "SELECT 1 FROM TempCommissionAssignments " & _
+           "WHERE TransactionID = " & TransactionID & " AND EmployeeID = " & EmployeeID
+
+Set rs = db.OpenRecordset(sqlCheck)
+If Not rs.EOF Then
+    MsgBox "الموظف مضاف بالفعل لهذه الفاتورة!", vbInformation
+    rs.Close
+    Exit Sub
+End If
+rs.Close
+
+' إضافة السجل في الجدول المؤقت
+sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+            "(TransactionID, EmployeeID, EmployeeName, TransactionAmount, CommissionRate, CommissionAmount, CustomerName) " & _
+            "VALUES (" & TransactionID & ", " & EmployeeID & ", '" & EmployeeName & "', " & TransactionAmount & ", 0, 0, '" & CustomerName & "');"
+
+db.Execute sqlInsert, dbFailOnError
+
+' تحديث الفورم لعرض السجل الجديد
+Me.Requery
+
+MsgBox "تمت إضافة الموظف بنجاح.", vbInformation
+
+End Sub
+
+Private Sub btnApprove_Click()
+
+    On Error GoTo ErrHandler
+    
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim curMonth As Long, curYear As Long
+    Dim sqlWhere As String, sqlUpdate As String, sqlInsert As String
+    Dim safeUser As String
+    
+    Set db = CurrentDb
+    curMonth = Month(Date)
+    curYear = Year(Date)
+    safeUser = Replace(currentUser.UserName, "'", "''") ' عشان لو فيه '
+    
+    ' نجيب كل السجلات من الجدول المؤقت
+    Set rs = db.OpenRecordset("SELECT * FROM TempCommissionAssignments", dbOpenSnapshot)
+    If rs.EOF Then
+        MsgBox "لا توجد بيانات للحفظ.", vbExclamation
+        GoTo CleanUp
+    End If
+    
+    Do While Not rs.EOF
+        sqlWhere = "TransactionID=" & Nz(rs!TransactionID, 0) & _
+                   " AND EmployeeID=" & Nz(rs!EmployeeID, 0) & _
+                   " AND CommissionMonth=" & curMonth & _
+                   " AND CommissionYear=" & curYear
+        
+        If DCount("*", "dbo_CommissionAssignments", sqlWhere) > 0 Then
+            ' تحديث لو السجل موجود
+            sqlUpdate = "UPDATE dbo_CommissionAssignments SET " & _
+                        "TransactionAmount=" & Nz(rs!TransactionAmount, 0) & ", " & _
+                        "CommissionRate=" & Nz(rs!CommissionRate, 0) & ", " & _
+                        "CommissionAmount=" & Nz(rs!CommissionAmount, 0) & ", " & _
+                        "ApprovedBy='" & safeUser & "', ApprovedAt=Now() " & _
+                        "WHERE " & sqlWhere
+            db.Execute sqlUpdate, dbFailOnError
+        Else
+            ' إدراج لو السجل مش موجود
+            sqlInsert = "INSERT INTO dbo_CommissionAssignments " & _
+                        "(TransactionID, EmployeeID, TransactionAmount, CommissionRate, CommissionAmount, CommissionMonth, CommissionYear, CreatedBy, CreatedAt,ApprovedBy,ApprovedAt) " & _
+                        "VALUES(" & Nz(rs!TransactionID, 0) & ", " & Nz(rs!EmployeeID, 0) & ", " & _
+                        Nz(rs!TransactionAmount, 0) & ", " & Nz(rs!CommissionRate, 0) & ", " & _
+                        Nz(rs!CommissionAmount, 0) & ", " & curMonth & ", " & curYear & ", '" & safeUser & "', Now(), '" & safeUser & "', Now())"
+            db.Execute sqlInsert, dbFailOnError
+        End If
+        rs.MoveNext
+    Loop
+    
+    ' مسح الجدول المؤقت بعد الحفظ
+    db.Execute "DELETE FROM TempCommissionAssignments;", dbFailOnError
+    
+    Me.Requery
+    MsgBox "تم حفظ/تحديث بيانات العمولات بنجاح.", vbInformation
+    
+CleanUp:
+    If Not rs Is Nothing Then rs.Close: Set rs = Nothing
+    Set db = Nothing
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "خطأ أثناء الحفظ: " & Err.Number & " - " & Err.Description, vbCritical
+    Resume CleanUp
+End Sub
+
+
+
+Private Sub Form_Load()
+    Dim db As DAO.Database
+    Dim sqlClear As String
+    Dim sqlInsert As String
+Dim curMonth As Long, curYear As Long
+    Set db = CurrentDb
+curMonth = Month(Date)
+curYear = Year(Date)
+    ' 1. تفريغ الجدول المؤقت
+    sqlClear = "DELETE FROM TempCommissionAssignments;"
+    db.Execute sqlClear, dbFailOnError
+
+    ' 2. إدخال البيانات من الجدول الأساسي مع أسماء العميل والموظف
+
+sqlInsert = "INSERT INTO TempCommissionAssignments " & _
+            "(TransactionID, EmployeeID, EmployeeName, CustomerName, TransactionAmount, CommissionRate, CommissionAmount) " & _
+            "SELECT c.TransactionID, c.EmployeeID, e.FullName AS EmployeeName, p.PartyName AS CustomerName, " & _
+            "t.netTotalAmount, c.CommissionRate, c.CommissionAmount " & _
+            "FROM ((dbo_CommissionAssignments AS c INNER JOIN dbo_Transactions AS t ON c.TransactionID = t.TransactionID) " & _
+            "LEFT JOIN dbo_Employees AS e ON c.EmployeeID = e.EmployeeID) " & _
+            "LEFT JOIN dbo_Parties AS p ON t.PartyID = p.PartyID " & _
+            "WHERE c.CommissionMonth = " & curMonth & " AND c.CommissionYear = " & curYear & ";"
+
+'Debug.Print sqlInsert   ' افحص النص النهائي في Immediate window لو احتجت
+db.Execute sqlInsert, dbFailOnError
+
+    ' 3. إعادة تحميل مصدر النموذج
+    Me.Requery
+End Sub
+Private Sub txtCommissionRate_AfterUpdate()
+    Dim totalRate As Double
+    Dim TransactionID As Long
+    Dim rs As DAO.Recordset
+    Dim EmployeeID As Long
+    Dim newRate As Double
+    
+    ' قراءة البيانات من الفورم
+    TransactionID = Nz(Me.txtTransactionID.value, 0)
+    EmployeeID = Nz(Me.txtEmployeeID.value, 0)
+    newRate = Nz(Me.txtCommissionRate.value, 0)
+    
+    ' المدير يتم استثناؤه
+    If EmployeeID = 1 Then
+        ' المدير ثابت 1%، يتم حساب العمولة مباشرة
+        Me.txtCommissionRate.value = 0.01
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * 0.01, 2)
+        Exit Sub
+    End If
+    
+    ' فتح الجدول المؤقت للتحقق من مجموع نسب باقي الموظفين (باستثناء المدير)
+    Set rs = CurrentDb.OpenRecordset( _
+        "SELECT SUM(CommissionRate) AS TotalRate FROM TempCommissionAssignments " & _
+        "WHERE TransactionID = " & TransactionID & " AND EmployeeID <> 1")
+    
+    totalRate = Nz(rs!totalRate, 0)
+    rs.Close
+    
+    ' التحقق من الحد الأقصى لمجموع الموظفين (1%)
+    If totalRate + newRate > 0.01 Then
+        MsgBox "مجموع نسب الموظفين لهذه الفاتورة لا يمكن أن يزيد عن 1%!", vbExclamation
+        Me.txtCommissionRate.value = 0
+        Me.txtCommissionAmount.value = 0
+    Else
+        ' حساب مبلغ العمولة تلقائيًا
+        Me.txtCommissionAmount.value = Round(Nz(Me.txtTotalAmount.value, 0) * newRate, 2)
+    End If
+End Sub
+
+
+
+
+

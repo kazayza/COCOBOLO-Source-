@@ -1,0 +1,278 @@
+﻿Option Compare Database
+Option Explicit
+
+' ------------------
+' Form_Load: تهيئة
+' ------------------
+Private Sub Form_Load()
+    Me.cboTranType.RowSourceType = "Value List"
+    Me.cboTranType.rowSource = "قبض;صرف;تحويل"
+    Me.txtDate = Date
+    Me.txtCreatedBy = currentUser.UserName
+    
+    Me.cboCashBoxTo.Visible = False
+    Me.txtBalance = ""
+    
+    Call PopulateCashBoxes
+End Sub
+
+' ------------------
+' ملء قوائم الخزن
+' ------------------
+Private Sub PopulateCashBoxes()
+    Dim db As DAO.Database
+    Dim sql As String
+    
+    Set db = CurrentDb
+    sql = "SELECT CashBoxID, CashBoxName FROM dbo_CashBoxes ORDER BY CashBoxName;"
+    
+    ' نستخدم RowSource مباشر (أفضل للأداء)
+    Me.cboCashBoxFrom.RowSourceType = "Table/Query"
+    Me.cboCashBoxFrom.rowSource = sql
+    Me.cboCashBoxFrom.ColumnCount = 2
+    Me.cboCashBoxFrom.ColumnWidths = "0cm;6cm"
+    Me.cboCashBoxFrom.BoundColumn = 1
+    
+    Me.cboCashBoxTo.RowSourceType = "Table/Query"
+    Me.cboCashBoxTo.rowSource = sql
+    Me.cboCashBoxTo.ColumnCount = 2
+    Me.cboCashBoxTo.ColumnWidths = "0cm;6cm"
+    Me.cboCashBoxTo.BoundColumn = 1
+    
+    Set db = Nothing
+End Sub
+
+' ------------------
+' عند تغيير نوع المعاملة: إظهار/إخفاء الحقول المناسبة
+' ------------------
+Private Sub cboTranType_AfterUpdate()
+    Dim t As String
+    t = Nz(Me.cboTranType.value, "")
+    Select Case t
+        Case "تحويل"
+            Me.cboCashBoxTo.Visible = True
+            Me.Label8.Visible = True
+            Me.Box9.Visible = True
+            Me.cboCashBoxFrom.Left = Me.cboCashBoxFrom.Left ' (no-op)
+            Me.txtBalance = ""
+        Case "قبض", "صرف"
+            Me.cboCashBoxTo.Visible = False
+            Me.Label8.Visible = False
+            Me.Box9.Visible = False
+            ' تحديث الرصيد للخزنة المختارة (من)
+            If Not IsNull(Me.cboCashBoxFrom) Then Call UpdateBalance(Me.cboCashBoxFrom.value)
+        Case Else
+            Me.cboCashBoxTo.Visible = False
+            Me.Label8.Visible = False
+            Me.Box9.Visible = False
+            Me.txtBalance = ""
+    End Select
+End Sub
+
+' ------------------
+' عند اختيار خزنة المصدر: عرض الرصيد
+' ------------------
+Private Sub cboCashBoxFrom_AfterUpdate()
+    If Not IsNull(Me.cboCashBoxFrom) Then
+        Call UpdateBalance(Me.cboCashBoxFrom.value)
+    Else
+        Me.txtBalance = ""
+    End If
+End Sub
+
+' ------------------
+' عند اختيار خزنة الوجهة (لو تحويل) نقدر نعرض رصيدها أيضًا لو حبيت
+' ------------------
+Private Sub cboCashBoxTo_AfterUpdate()
+    ' ممكن تعرض رصيد الخزنة المستقبلة إن حبيت، مثال:
+    ' If Not IsNull(Me.cboCashBoxTo) Then Call UpdateBalance(Me.cboCashBoxTo.Value)
+End Sub
+
+' ------------------
+' دالة حساب الرصيد الحالي لخزنة (Sum IIf) — آمنة في Access
+' ------------------
+Private Sub UpdateBalance(CashBoxID As Long)
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim curBal As Currency
+    
+    Set db = CurrentDb
+    sql = "SELECT Nz(Sum(IIf([TransactionType]='قبض',[Amount],0)),0) - Nz(Sum(IIf([TransactionType]='صرف',[Amount],0)),0) AS CurrentBalance " & _
+          "FROM dbo_CashboxTransactions WHERE CashBoxID = " & CashBoxID & ";"
+    Debug.Print "Balance SQL: " & sql
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+    If Not rs.EOF Then
+        curBal = Nz(rs!currentBalance, 0)
+    Else
+        curBal = 0
+    End If
+    rs.Close
+    Me.txtBalance = Format(curBal, "Standard")
+    
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+
+' ------------------
+' زر الحفظ - تسجيل العملية/التحويل
+' ------------------
+Private Sub btnSave_Click()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim tranType As String
+    Dim cashFrom As Variant
+    Dim cashTo As Variant
+    Dim Amount As Currency
+    Dim tranDate As Date
+    Dim CreatedBy As String
+    Dim Notes As String
+    
+    tranType = Nz(Me.cboTranType.value, "")
+    If tranType = "" Then
+        MsgBox "اختر نوع المعاملة (قبض / صرف / تحويل).", vbExclamation
+        Exit Sub
+    End If
+    
+    If IsNull(Me.cboCashBoxFrom) Then
+        MsgBox "اختر الخزنة (من).", vbExclamation
+        Exit Sub
+    End If
+    cashFrom = Me.cboCashBoxFrom.value
+    If tranType = "تحويل" Then
+        If IsNull(Me.cboCashBoxTo) Then
+            MsgBox "اختر الخزنة المستقبلة (إلى) عند التحويل.", vbExclamation
+            Exit Sub
+        End If
+        cashTo = Me.cboCashBoxTo.value
+        If cashFrom = cashTo Then
+            MsgBox "الخزنة المصدر والمستقبلة يجب أن تكونا مختلفتين.", vbExclamation
+            Exit Sub
+        End If
+    End If
+    
+    If Nz(Me.txtAmount, 0) <= 0 Then
+        MsgBox "أدخل مبلغًا صحيحًا أكبر من صفر.", vbExclamation
+        Exit Sub
+    End If
+    Amount = Nz(Me.txtAmount, 0)
+    tranDate = Nz(Me.txtDate, Date)
+    CreatedBy = currentUser.UserName 'Trim(Nz(Me.txtCreatedBy, "System"))
+    Notes = Trim(Nz(Me.txtNotes, ""))
+    
+    Set db = CurrentDb
+    
+    ' بداية TRANSACTION للتأكد من التزام معاملتي التحويل معًا
+    DBEngine.BeginTrans
+    
+    Set rs = db.OpenRecordset("dbo_CashboxTransactions", dbOpenDynaset, dbSeeChanges)
+    
+    If tranType = "تحويل" Then
+        ' سجل الصرف من الخزنة الأولى
+        rs.AddNew
+        rs!CashBoxID = cashFrom
+        rs!PaymentID = Null
+        rs!ReferenceID = Null
+        rs!ReferenceType = "Transfer"
+        rs!TransactionType = "صرف"
+        rs!Amount = Amount
+        rs!TransactionDate = tranDate
+        rs!Notes = Notes & " (تحويل إلى خزنة: " & Me.cboCashBoxTo.Column(1) & ")"
+        rs!CreatedBy = currentUser.UserName
+        rs!CreatedAt = Now()
+        rs.Update
+        
+        ' سجل القبض للخزنة الثانية
+        rs.AddNew
+        rs!CashBoxID = cashTo
+        rs!PaymentID = Null
+        rs!ReferenceID = Null
+        rs!ReferenceType = "Transfer"
+        rs!TransactionType = "قبض"
+        rs!Amount = Amount
+        rs!TransactionDate = tranDate
+        rs!Notes = Notes & " (تحويل من خزنة: " & Me.cboCashBoxFrom.Column(1) & ")"
+        rs!CreatedBy = currentUser.UserName
+        rs!CreatedAt = Now()
+        rs.Update
+    Else
+        ' إيداع أو سحب واحد
+        rs.AddNew
+        rs!CashBoxID = cashFrom
+        rs!PaymentID = Null
+        rs!ReferenceID = Null
+        rs!ReferenceType = "Manual"
+        rs!TransactionType = IIf(tranType = "قبض", "قبض", "صرف")
+        rs!Amount = Amount
+        rs!TransactionDate = tranDate
+        rs!Notes = Notes
+        rs!CreatedBy = currentUser.UserName
+        rs!CreatedAt = Now()
+        rs.Update
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+    
+    DBEngine.CommitTrans   ' التزام التغييرات
+    
+    MsgBox "تم تسجيل الحركة بنجاح.", vbInformation
+    
+    ' تحديث عرض الرصيد
+   If tranType = "تحويل" Then
+    If Not IsNull(cashFrom) And Nz(cashFrom, "") <> "" Then
+        On Error Resume Next
+        UpdateBalance CLng(cashFrom)
+        On Error GoTo ErrHandler
+    End If
+    If Not IsNull(cashTo) And Nz(cashTo, "") <> "" Then
+        On Error Resume Next
+        UpdateBalance CLng(cashTo)
+        On Error GoTo ErrHandler
+    End If
+Else
+    If Not IsNull(cashFrom) And Nz(cashFrom, "") <> "" Then
+        On Error Resume Next
+        UpdateBalance CLng(cashFrom)
+        On Error GoTo ErrHandler
+    End If
+End If
+    
+    ' نظف الحقول لعملية جديدة
+    Me.txtAmount = Null
+    Me.txtNotes = Null
+    Me.cboCashBoxTo = Null
+    Me.cboTranType = Null
+    Me.txtDate = Date
+    
+    Exit Sub
+
+ErrHandler:
+'    If DBEngine.HasFailedTransactions Then
+'        On Error Resume Next
+'        DBEngine.Rollback
+'    End If
+    MsgBox "حدث خطأ: " & Err.Number & " - " & Err.Description, vbCritical
+    Debug.Print "Error#: " & Err.Number & " - " & Err.Description
+    ' إذا حبيت نطبع أخطاء ODBC:
+    Dim i As Integer
+    For i = 0 To DBEngine.Errors.count - 1
+        Debug.Print "ODBC Error " & i & ": " & DBEngine.Errors(i).Number & " - " & DBEngine.Errors(i).Description
+    Next i
+    If Not rs Is Nothing Then
+        On Error Resume Next
+        rs.Close
+        Set rs = Nothing
+    End If
+    If Not db Is Nothing Then Set db = Nothing
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+     If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        Cancel = True
+        Exit Sub
+    End If
+End Sub

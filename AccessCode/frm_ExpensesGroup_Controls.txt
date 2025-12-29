@@ -1,0 +1,16 @@
+﻿Form: frm_ExpensesGroup
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Box7		Rectangle		
+Label4		Label		اضافة مصروف لمجموعات المصروفات
+Line5		Line		
+Box3		Rectangle		
+cboParentGroup		ComboBox		SELECT dbo_ExpenseGroups.ExpenseGroupID, dbo_ExpenseGroups.ExpenseGroupName FROM dbo_ExpenseGroups WHERE (((dbo_ExpenseGroups.ParentGroupID) Is Null)); 
+Label2		Label		المجموعه الاساسية
+ExpenseGroupName		TextBox		
+Label3		Label		المصروف / المجموعه
+btnSve		Button		Save
+btnCancel		Button		Cancel
+Line6		Line		

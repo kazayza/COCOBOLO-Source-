@@ -1,0 +1,22 @@
+﻿Option Compare Database
+
+Private Sub btnDetalis_Click()
+  Dim uID As Long
+    uID = Me.UserId  ' معرف المستخدم الحالي
+
+    If uID = 0 Then
+        MsgBox "اختر مستخدم أولاً.", vbExclamation
+        Exit Sub
+    End If
+
+    ' افتح الفورم الغير مربوط، ومرر UserID باستخدام OpenArgs
+    DoCmd.OpenForm "frm_AddUser", , , , , , uID
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub

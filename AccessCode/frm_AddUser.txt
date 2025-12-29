@@ -1,0 +1,131 @@
+﻿Option Compare Database
+
+
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrorHandler
+
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim uID As Long
+    Dim whereCondition As String
+    
+    ' تحديد إذا كان في وضع التعديل أو الإضافة
+    If IsNull(Me.OpenArgs) Then
+        uID = 0
+    Else
+        uID = CLng(Me.OpenArgs)
+    End If
+    
+    ' التحقق من البيانات المطلوبة (نفس الكود السابق)
+    ' ... [الكود السابق للتحقق من البيانات]
+    
+    ' التحقق من عدم التكرار (نفس الكود السابق)
+    ' ... [الكود السابق للتحقق من التكرار]
+
+    Set db = CurrentDb
+    
+    If uID = 0 Then
+        ' الإضافة
+        Set rs = db.OpenRecordset("dbo_Users", dbOpenDynaset, dbSeeChanges)
+        rs.AddNew
+        rs!UserName = Me.txtUsername
+        rs!Password = Me.txtPassword
+        rs!FullName = Me.txtFullName
+        rs!Email = Nz(Me.txtEmail, Null)
+        rs!EmployeeID = Nz(Me.txtempolyeeID, Null)
+        rs!IsActive = Me.chkIsActive
+        rs!CreatedBy = currentUser.UserName
+        ' استخدم فقط الحقول الأساسية المؤكدة وجودها
+        rs.Update
+        rs.Close
+        
+        MsgBox "تم تسجيل المستخدم الجديد بنجاح", vbInformation
+        ' إعادة تعيين الحقول
+    Else
+        ' التعديل - استخدم UPDATE query مباشرة لتجنب مشاكل الحقول
+        Dim sql As String
+        sql = "UPDATE dbo_Users SET " & _
+              "FullName = '" & Replace(Me.txtFullName, "'", "''") & "', " & _
+              "Password = '" & Replace(Me.txtPassword, "'", "''") & "', " & _
+              "Email = " & IIf(IsNull(Me.txtEmail), "Null", "'" & Replace(Me.txtEmail, "'", "''") & "'") & ", " & _
+              "EmployeeID = " & IIf(IsNull(Me.txtempolyeeID), "Null", "'" & Replace(Me.txtempolyeeID, "'", "''") & "'") & ", " & _
+              "IsActive = " & Me.chkIsActive & " " & _
+              "WHERE UserID = " & uID
+        '""UserName = '" & Replace(Me.txtUsername, "'", "''") & "', " & _"
+        db.Execute sql, dbSeeChanges
+        MsgBox "تم تعديل بيانات المستخدم بنجاح", vbInformation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    Set db = Nothing
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء حفظ بيانات المستخدم: " & Err.Description & vbCrLf & _
+           "رقم الخطأ: " & Err.Number, vbCritical
+          
+End Sub
+
+
+Private Sub cmdCancel_Click()
+    DoCmd.Close
+End Sub
+Private Sub Form_Load()
+    Dim uID As Long
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    If IsNull(Me.OpenArgs) Then
+        'MsgBox "لم يتم تحديد موظف للعرض.", vbExclamation
+'        Me.txtPassword.Visible = True
+'        Me.F.Visible = True
+       
+        Me.Label17.Caption = "إضافة مستخدم جديد"
+        Exit Sub
+        Else
+'        Me.txtPassword.Visible = False
+'        Me.F.Visible = False
+        
+        Me.Label17.Caption = "تعديل بيانات المستخدم الحالى"
+    End If
+
+    uID = CLng(Me.OpenArgs)
+    Set db = CurrentDb
+
+    sql = "SELECT * FROM dbo_Users WHERE UserID = " & uID
+    Set rs = db.OpenRecordset(sql, dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        Me.txtUsername = Nz(rs!UserName, "")
+        Me.txtPassword = Nz(rs!Password, "")
+        Me.txtFullName = Nz(rs!FullName, "")
+        Me.chkIsActive = Nz(rs!IsActive, "")
+        Me.txtempolyeeID = Nz(rs!EmployeeID, "")
+        Me.txtEmail = Nz(rs!Email, "")
+        ' ... املأ باقي الحقول بنفس الطريقة
+    Else
+        MsgBox "المسخدم غير موجود.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+    
+    
+'    If Not CurrentUser.HasPermission(Me.Name, "View") Then
+'        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+'        Cancel = True
+'        Exit Sub
+'    End If
+End Sub
