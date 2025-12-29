@@ -1,0 +1,2170 @@
+USE [master]
+GO
+/****** Object:  Database [db24804]    Script Date: 15/12/2025 11:18:51 م ******/
+CREATE DATABASE [db24804]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'db24804', FILENAME = N'D:\Services\MSSQL\Data\db24804.mdf' , SIZE = 28608KB , MAXSIZE = 1048576KB , FILEGROWTH = 65536KB )
+ LOG ON 
+( NAME = N'db24804_log', FILENAME = N'D:\Services\MSSQL\Data\db24804_log.ldf' , SIZE = 8192KB , MAXSIZE = 5242880KB , FILEGROWTH = 65536KB )
+ WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
+GO
+ALTER DATABASE [db24804] SET COMPATIBILITY_LEVEL = 160
+GO
+IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))
+begin
+EXEC [db24804].[dbo].[sp_fulltext_database] @action = 'enable'
+end
+GO
+ALTER DATABASE [db24804] SET ANSI_NULL_DEFAULT OFF 
+GO
+ALTER DATABASE [db24804] SET ANSI_NULLS OFF 
+GO
+ALTER DATABASE [db24804] SET ANSI_PADDING OFF 
+GO
+ALTER DATABASE [db24804] SET ANSI_WARNINGS OFF 
+GO
+ALTER DATABASE [db24804] SET ARITHABORT OFF 
+GO
+ALTER DATABASE [db24804] SET AUTO_CLOSE OFF 
+GO
+ALTER DATABASE [db24804] SET AUTO_SHRINK OFF 
+GO
+ALTER DATABASE [db24804] SET AUTO_UPDATE_STATISTICS ON 
+GO
+ALTER DATABASE [db24804] SET CURSOR_CLOSE_ON_COMMIT OFF 
+GO
+ALTER DATABASE [db24804] SET CURSOR_DEFAULT  GLOBAL 
+GO
+ALTER DATABASE [db24804] SET CONCAT_NULL_YIELDS_NULL OFF 
+GO
+ALTER DATABASE [db24804] SET NUMERIC_ROUNDABORT OFF 
+GO
+ALTER DATABASE [db24804] SET QUOTED_IDENTIFIER OFF 
+GO
+ALTER DATABASE [db24804] SET RECURSIVE_TRIGGERS OFF 
+GO
+ALTER DATABASE [db24804] SET  ENABLE_BROKER 
+GO
+ALTER DATABASE [db24804] SET AUTO_UPDATE_STATISTICS_ASYNC OFF 
+GO
+ALTER DATABASE [db24804] SET DATE_CORRELATION_OPTIMIZATION OFF 
+GO
+ALTER DATABASE [db24804] SET TRUSTWORTHY OFF 
+GO
+ALTER DATABASE [db24804] SET ALLOW_SNAPSHOT_ISOLATION OFF 
+GO
+ALTER DATABASE [db24804] SET PARAMETERIZATION SIMPLE 
+GO
+ALTER DATABASE [db24804] SET READ_COMMITTED_SNAPSHOT OFF 
+GO
+ALTER DATABASE [db24804] SET HONOR_BROKER_PRIORITY OFF 
+GO
+ALTER DATABASE [db24804] SET RECOVERY SIMPLE 
+GO
+ALTER DATABASE [db24804] SET  MULTI_USER 
+GO
+ALTER DATABASE [db24804] SET PAGE_VERIFY CHECKSUM  
+GO
+ALTER DATABASE [db24804] SET DB_CHAINING OFF 
+GO
+ALTER DATABASE [db24804] SET FILESTREAM( NON_TRANSACTED_ACCESS = OFF ) 
+GO
+ALTER DATABASE [db24804] SET TARGET_RECOVERY_TIME = 60 SECONDS 
+GO
+ALTER DATABASE [db24804] SET DELAYED_DURABILITY = DISABLED 
+GO
+ALTER DATABASE [db24804] SET ACCELERATED_DATABASE_RECOVERY = OFF  
+GO
+ALTER DATABASE [db24804] SET QUERY_STORE = ON
+GO
+ALTER DATABASE [db24804] SET QUERY_STORE (OPERATION_MODE = READ_WRITE, CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 30), DATA_FLUSH_INTERVAL_SECONDS = 900, INTERVAL_LENGTH_MINUTES = 60, MAX_STORAGE_SIZE_MB = 1000, QUERY_CAPTURE_MODE = AUTO, SIZE_BASED_CLEANUP_MODE = AUTO, MAX_PLANS_PER_QUERY = 200, WAIT_STATS_CAPTURE_MODE = ON)
+GO
+USE [db24804]
+GO
+/****** Object:  FullTextCatalog [db24804]    Script Date: 15/12/2025 11:18:55 م ******/
+CREATE FULLTEXT CATALOG [db24804] WITH ACCENT_SENSITIVITY = OFF
+AS DEFAULT
+GO
+/****** Object:  UserDefinedFunction [dbo].[CleanArabicText]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE FUNCTION [dbo].[CleanArabicText](@input NVARCHAR(MAX))
+RETURNS NVARCHAR(MAX)
+AS
+BEGIN
+    DECLARE @result NVARCHAR(MAX)
+    SET @result = @input
+    
+    -- استبدال الحروف المختلفة
+    SET @result = REPLACE(@result, N'أ', N'ا')
+    SET @result = REPLACE(@result, N'إ', N'ا')
+    SET @result = REPLACE(@result, N'آ', N'ا')
+    SET @result = REPLACE(@result, N'ؤ', N'و')
+    SET @result = REPLACE(@result, N'ئ', N'ي')
+    SET @result = REPLACE(@result, N'ء', N'')
+    SET @result = REPLACE(@result, N'ة', N'ه')
+    SET @result = REPLACE(@result, N'ى', N'ي')
+    SET @result = REPLACE(@result, N'ٱ', N'ا')
+    SET @result = REPLACE(@result, N'ٰ', N'')
+    
+    RETURN @result
+END
+GO
+/****** Object:  Table [dbo].[Parties]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Parties](
+	[PartyID] [int] IDENTITY(1,1) NOT NULL,
+	[PartyName] [nvarchar](200) NOT NULL,
+	[PartyType] [int] NOT NULL,
+	[ContactPerson] [nvarchar](100) NULL,
+	[Phone] [nvarchar](50) NULL,
+	[Phone2] [nvarchar](50) NULL,
+	[Email] [nvarchar](100) NULL,
+	[Address] [nvarchar](250) NULL,
+	[TaxNumber] [nvarchar](50) NULL,
+	[OpeningBalance] [decimal](18, 2) NULL,
+	[BalanceType] [char](1) NULL,
+	[Notes] [nvarchar](255) NULL,
+	[IsActive] [bit] NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+	[ReferralSourceID] [int] NULL,
+	[ReferralSourceClient] [int] NULL,
+	[NationalID] [nvarchar](14) NULL,
+	[FloorNumber] [nvarchar](50) NULL,
+	[dataDone] [nvarchar](50) NULL,
+ CONSTRAINT [PK__dbo_Part__1640CD13CB7FCA23] PRIMARY KEY CLUSTERED 
+(
+	[PartyID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SalesStages]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SalesStages](
+	[StageID] [int] IDENTITY(1,1) NOT NULL,
+	[StageName] [nvarchar](50) NOT NULL,
+	[StageNameAr] [nvarchar](50) NULL,
+	[StageOrder] [int] NOT NULL,
+	[StageColor] [nvarchar](20) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_SalesStages] PRIMARY KEY CLUSTERED 
+(
+	[StageID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ContactStatus]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ContactStatus](
+	[StatusID] [int] IDENTITY(1,1) NOT NULL,
+	[StatusName] [nvarchar](50) NOT NULL,
+	[StatusNameAr] [nvarchar](50) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_ContactStatus] PRIMARY KEY CLUSTERED 
+(
+	[StatusID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Employees]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Employees](
+	[EmployeeID] [int] IDENTITY(1,1) NOT NULL,
+	[FullName] [nvarchar](150) NOT NULL,
+	[JobTitle] [nvarchar](100) NULL,
+	[Department] [nvarchar](100) NULL,
+	[NationalID] [nvarchar](14) NOT NULL,
+	[Gender] [nvarchar](5) NULL,
+	[BirthDate] [datetime] NULL,
+	[qualification] [nvarchar](100) NULL,
+	[yearqualification] [nvarchar](4) NULL,
+	[Address] [nvarchar](150) NULL,
+	[MobilePhone] [nvarchar](20) NULL,
+	[MobilePhone2] [nvarchar](20) NULL,
+	[EmailAddress] [nvarchar](50) NULL,
+	[HireDate] [datetime] NULL,
+	[EndDate] [datetime] NULL,
+	[BioEmployeeID] [int] NULL,
+	[IsPermanentlyExempt] [bit] NULL,
+	[CurrentSalaryBase] [decimal](18, 2) NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[Notes] [nvarchar](150) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__Employee__7AD04FF149689B9D] PRIMARY KEY CLUSTERED 
+(
+	[EmployeeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[AdTypes]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AdTypes](
+	[AdTypeID] [int] IDENTITY(1,1) NOT NULL,
+	[AdTypeName] [nvarchar](100) NOT NULL,
+	[AdTypeNameAr] [nvarchar](100) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_AdTypes] PRIMARY KEY CLUSTERED 
+(
+	[AdTypeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ContactSources]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ContactSources](
+	[SourceID] [int] IDENTITY(1,1) NOT NULL,
+	[SourceName] [nvarchar](50) NOT NULL,
+	[SourceNameAr] [nvarchar](50) NULL,
+	[SourceIcon] [nvarchar](10) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_ContactSources] PRIMARY KEY CLUSTERED 
+(
+	[SourceID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[LostReasons]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[LostReasons](
+	[LostReasonID] [int] IDENTITY(1,1) NOT NULL,
+	[ReasonName] [nvarchar](100) NOT NULL,
+	[ReasonNameAr] [nvarchar](100) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_LostReasons] PRIMARY KEY CLUSTERED 
+(
+	[LostReasonID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[InterestCategories]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[InterestCategories](
+	[CategoryID] [int] IDENTITY(1,1) NOT NULL,
+	[CategoryName] [nvarchar](100) NOT NULL,
+	[CategoryNameAr] [nvarchar](100) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_InterestCategories] PRIMARY KEY CLUSTERED 
+(
+	[CategoryID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SalesOpportunities]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SalesOpportunities](
+	[OpportunityID] [int] IDENTITY(1,1) NOT NULL,
+	[PartyID] [int] NOT NULL,
+	[EmployeeID] [int] NULL,
+	[SourceID] [int] NULL,
+	[AdTypeID] [int] NULL,
+	[StageID] [int] NOT NULL,
+	[StatusID] [int] NULL,
+	[CategoryID] [int] NULL,
+	[InterestedProduct] [nvarchar](200) NULL,
+	[ExpectedValue] [decimal](18, 2) NULL,
+	[Location] [nvarchar](200) NULL,
+	[FirstContactDate] [datetime] NOT NULL,
+	[NextFollowUpDate] [datetime] NULL,
+	[LastContactDate] [datetime] NULL,
+	[LostReasonID] [int] NULL,
+	[LostNotes] [nvarchar](500) NULL,
+	[Notes] [nvarchar](500) NULL,
+	[Guidance] [nvarchar](500) NULL,
+	[QuotationID] [int] NULL,
+	[TransactionID] [int] NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[LastUpdatedBy] [nvarchar](50) NULL,
+	[LastUpdatedAt] [datetime] NULL,
+ CONSTRAINT [PK_SalesOpportunities] PRIMARY KEY CLUSTERED 
+(
+	[OpportunityID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Users]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Users](
+	[UserID] [int] IDENTITY(1,1) NOT NULL,
+	[Username] [nvarchar](50) NOT NULL,
+	[Password] [nvarchar](100) NOT NULL,
+	[FullName] [nvarchar](100) NOT NULL,
+	[Email] [nvarchar](100) NULL,
+	[IsActive] [bit] NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+	[LastLogin] [datetime] NULL,
+	[employeeID] [int] NULL,
+	[FCMToken] [nvarchar](255) NULL,
+ CONSTRAINT [PK__Users__1788CCAC0E51360C] PRIMARY KEY CLUSTERED 
+(
+	[UserID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Users__536C85E4986300E5] UNIQUE NONCLUSTERED 
+(
+	[Username] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  View [dbo].[vw_SalesOpportunities]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- =============================================
+-- 11. View لعرض فرص البيع (vw_SalesOpportunities)
+-- =============================================
+CREATE VIEW [dbo].[vw_SalesOpportunities] AS
+SELECT 
+    so.OpportunityID,
+    so.PartyID,
+    p.PartyName AS ClientName,
+    p.Phone AS Phone1,
+    p.Phone2,
+    p.Address,
+    so.EmployeeID,
+    e.FullName AS EmployeeName,
+    u.Username,
+    so.SourceID,
+    cs.SourceName,
+    cs.SourceNameAr,
+    cs.SourceIcon,
+    so.AdTypeID,
+    at.AdTypeName,
+    at.AdTypeNameAr,
+    so.StageID,
+    ss.StageName,
+    ss.StageNameAr,
+    ss.StageColor,
+    ss.StageOrder,
+    so.StatusID,
+    cst.StatusName,
+    cst.StatusNameAr,
+    so.CategoryID,
+    ic.CategoryName,
+    ic.CategoryNameAr,
+    so.InterestedProduct,
+    so.ExpectedValue,
+    so.Location,
+    so.FirstContactDate,
+    so.NextFollowUpDate,
+    so.LastContactDate,
+    so.LostReasonID,
+    lr.ReasonName AS LostReasonName,
+    lr.ReasonNameAr AS LostReasonNameAr,
+    so.LostNotes,
+    so.Notes,
+    so.Guidance,
+    so.QuotationID,
+    so.TransactionID,
+    so.IsActive,
+    so.CreatedBy,
+    so.CreatedAt,
+    so.LastUpdatedBy,
+    so.LastUpdatedAt,
+    DATEDIFF(DAY, so.FirstContactDate, GETDATE()) AS DaysSinceFirstContact,
+    CASE 
+        WHEN so.NextFollowUpDate IS NULL THEN N'Not Set'
+        WHEN CAST(so.NextFollowUpDate AS DATE) < CAST(GETDATE() AS DATE) THEN N'Overdue'
+        WHEN CAST(so.NextFollowUpDate AS DATE) = CAST(GETDATE() AS DATE) THEN N'Today'
+        WHEN CAST(so.NextFollowUpDate AS DATE) = DATEADD(DAY, 1, CAST(GETDATE() AS DATE)) THEN N'Tomorrow'
+        ELSE N'Upcoming'
+    END AS FollowUpStatus
+FROM [dbo].[SalesOpportunities] so
+LEFT JOIN [dbo].[Parties] p ON so.PartyID = p.PartyID
+LEFT JOIN [dbo].[Employees] e ON so.EmployeeID = e.EmployeeID
+LEFT JOIN [dbo].[Users] u ON e.EmployeeID = u.employeeID
+LEFT JOIN [dbo].[ContactSources] cs ON so.SourceID = cs.SourceID
+LEFT JOIN [dbo].[AdTypes] at ON so.AdTypeID = at.AdTypeID
+LEFT JOIN [dbo].[SalesStages] ss ON so.StageID = ss.StageID
+LEFT JOIN [dbo].[ContactStatus] cst ON so.StatusID = cst.StatusID
+LEFT JOIN [dbo].[InterestCategories] ic ON so.CategoryID = ic.CategoryID
+LEFT JOIN [dbo].[LostReasons] lr ON so.LostReasonID = lr.LostReasonID
+GO
+/****** Object:  Table [dbo].[CustomerInteractions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CustomerInteractions](
+	[InteractionID] [int] IDENTITY(1,1) NOT NULL,
+	[OpportunityID] [int] NOT NULL,
+	[PartyID] [int] NOT NULL,
+	[EmployeeID] [int] NULL,
+	[SourceID] [int] NULL,
+	[StatusID] [int] NULL,
+	[InteractionDate] [datetime] NOT NULL,
+	[InteractionTime] [time](0) NULL,
+	[Summary] [nvarchar](1000) NULL,
+	[StageBeforeID] [int] NULL,
+	[StageAfterID] [int] NULL,
+	[NextFollowUpDate] [datetime] NULL,
+	[Notes] [nvarchar](500) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK_CustomerInteractions] PRIMARY KEY CLUSTERED 
+(
+	[InteractionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  View [dbo].[vw_CustomerInteractions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- =============================================
+-- 12. View لعرض سجل التواصل (vw_CustomerInteractions)
+-- =============================================
+CREATE VIEW [dbo].[vw_CustomerInteractions] AS
+SELECT 
+    ci.InteractionID,
+    ci.OpportunityID,
+    ci.PartyID,
+    p.PartyName AS ClientName,
+    p.Phone,
+    ci.EmployeeID,
+    e.FullName AS EmployeeName,
+    ci.SourceID,
+    cs.SourceName,
+    cs.SourceIcon,
+    ci.StatusID,
+    cst.StatusName,
+    cst.StatusNameAr,
+    ci.InteractionDate,
+    ci.InteractionTime,
+    ci.Summary,
+    ci.StageBeforeID,
+    sb.StageName AS StageBeforeName,
+    ci.StageAfterID,
+    sa.StageName AS StageAfterName,
+    ci.NextFollowUpDate,
+    ci.Notes,
+    ci.CreatedBy,
+    ci.CreatedAt
+FROM [dbo].[CustomerInteractions] ci
+LEFT JOIN [dbo].[Parties] p ON ci.PartyID = p.PartyID
+LEFT JOIN [dbo].[Employees] e ON ci.EmployeeID = e.EmployeeID
+LEFT JOIN [dbo].[ContactSources] cs ON ci.SourceID = cs.SourceID
+LEFT JOIN [dbo].[ContactStatus] cst ON ci.StatusID = cst.StatusID
+LEFT JOIN [dbo].[SalesStages] sb ON ci.StageBeforeID = sb.StageID
+LEFT JOIN [dbo].[SalesStages] sa ON ci.StageAfterID = sa.StageID
+GO
+/****** Object:  Table [dbo].[TaskTypes]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[TaskTypes](
+	[TaskTypeID] [int] IDENTITY(1,1) NOT NULL,
+	[TaskTypeName] [nvarchar](50) NOT NULL,
+	[TaskTypeNameAr] [nvarchar](50) NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_TaskTypes] PRIMARY KEY CLUSTERED 
+(
+	[TaskTypeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[CRM_Tasks]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CRM_Tasks](
+	[TaskID] [int] IDENTITY(1,1) NOT NULL,
+	[OpportunityID] [int] NULL,
+	[PartyID] [int] NULL,
+	[AssignedTo] [int] NOT NULL,
+	[TaskTypeID] [int] NULL,
+	[TaskDescription] [nvarchar](500) NULL,
+	[DueDate] [datetime] NOT NULL,
+	[DueTime] [time](0) NULL,
+	[Priority] [nvarchar](20) NOT NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[CompletedDate] [datetime] NULL,
+	[CompletedBy] [nvarchar](50) NULL,
+	[CompletionNotes] [nvarchar](500) NULL,
+	[ReminderEnabled] [bit] NOT NULL,
+	[ReminderMinutes] [int] NULL,
+	[IsActive] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK_CRM_Tasks] PRIMARY KEY CLUSTERED 
+(
+	[TaskID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  View [dbo].[vw_CRM_Tasks]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- =============================================
+-- 13. View لعرض المهام (vw_CRM_Tasks)
+-- =============================================
+CREATE VIEW [dbo].[vw_CRM_Tasks] AS
+SELECT 
+    t.TaskID,
+    t.OpportunityID,
+    t.PartyID,
+    p.PartyName AS ClientName,
+    p.Phone,
+    t.AssignedTo,
+    e.FullName AS AssignedToName,
+    t.TaskTypeID,
+    tt.TaskTypeName,
+    tt.TaskTypeNameAr,
+    t.TaskDescription,
+    t.DueDate,
+    t.DueTime,
+    t.Priority,
+    t.Status,
+    t.CompletedDate,
+    t.CompletedBy,
+    t.CompletionNotes,
+    t.ReminderEnabled,
+    t.ReminderMinutes,
+    t.IsActive,
+    t.CreatedBy,
+    t.CreatedAt,
+    CASE 
+        WHEN t.Status = N'Completed' THEN N'Completed'
+        WHEN t.Status = N'Cancelled' THEN N'Cancelled'
+        WHEN CAST(t.DueDate AS DATE) < CAST(GETDATE() AS DATE) THEN N'Overdue'
+        WHEN CAST(t.DueDate AS DATE) = CAST(GETDATE() AS DATE) THEN N'Today'
+        WHEN CAST(t.DueDate AS DATE) = DATEADD(DAY, 1, CAST(GETDATE() AS DATE)) THEN N'Tomorrow'
+        ELSE N'Upcoming'
+    END AS TaskDueStatus,
+    DATEDIFF(DAY, CAST(GETDATE() AS DATE), CAST(t.DueDate AS DATE)) AS DaysUntilDue
+FROM [dbo].[CRM_Tasks] t
+LEFT JOIN [dbo].[Parties] p ON t.PartyID = p.PartyID
+LEFT JOIN [dbo].[Employees] e ON t.AssignedTo = e.EmployeeID
+LEFT JOIN [dbo].[TaskTypes] tt ON t.TaskTypeID = tt.TaskTypeID
+GO
+/****** Object:  Table [dbo].[AdditionalCharges]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[AdditionalCharges](
+	[ChargeID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionID] [int] NULL,
+	[QuotationID] [int] NULL,
+	[ChargeDescription] [nvarchar](255) NULL,
+	[ChargeAmount] [decimal](18, 2) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__dbo_Addi__17FC363B25389447] PRIMARY KEY CLUSTERED 
+(
+	[ChargeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Attendance]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Attendance](
+	[AttendanceID] [int] IDENTITY(1,1) NOT NULL,
+	[BiometricCode] [int] NOT NULL,
+	[LogDate] [datetime] NOT NULL,
+	[TimeIn] [time](0) NULL,
+	[TimeOut] [time](0) NULL,
+	[Status] [nvarchar](30) NULL,
+	[TotalHours] [decimal](5, 2) NULL,
+	[LateMinutes] [int] NULL,
+	[EarlyLeaveMinutes] [int] NULL,
+	[PenaltyHours] [decimal](5, 2) NULL,
+ CONSTRAINT [PK__Attendan__8B69263CAD35BB88] PRIMARY KEY CLUSTERED 
+(
+	[AttendanceID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[BiometricLog]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[BiometricLog](
+	[BiometricLogID] [int] IDENTITY(1,1) NOT NULL,
+	[BiometricCode] [int] NOT NULL,
+	[LogDate] [datetime] NOT NULL,
+	[LogTime] [time](0) NOT NULL,
+ CONSTRAINT [PK__Biometri__8C1B86E269619508] PRIMARY KEY CLUSTERED 
+(
+	[BiometricLogID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Calendar]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Calendar](
+	[CalendarDate] [datetime] NOT NULL,
+	[DayOfWeek] [tinyint] NULL,
+	[DayName] [nvarchar](20) NULL,
+	[IsWeekend] [bit] NULL,
+	[IsHoliday] [bit] NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__Calendar__BEFC44DA3BEBDA7A] PRIMARY KEY CLUSTERED 
+(
+	[CalendarDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[CashBoxes]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CashBoxes](
+	[CashBoxID] [int] IDENTITY(1,1) NOT NULL,
+	[CashBoxName] [nvarchar](100) NOT NULL,
+	[Description] [nvarchar](255) NULL,
+	[CreatedBy] [nvarchar](50) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[LastUpdatedBy] [nvarchar](50) NULL,
+	[LastUpdatedAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[CashBoxID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[CashboxTransactions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CashboxTransactions](
+	[CashboxTransactionID] [int] IDENTITY(1,1) NOT NULL,
+	[CashBoxID] [int] NOT NULL,
+	[PaymentID] [int] NULL,
+	[ReferenceID] [int] NULL,
+	[ReferenceType] [nvarchar](20) NULL,
+	[TransactionType] [nvarchar](20) NOT NULL,
+	[Amount] [decimal](18, 2) NOT NULL,
+	[TransactionDate] [datetime] NOT NULL,
+	[Notes] [nvarchar](max) NULL,
+	[CreatedBy] [nvarchar](50) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK__CashboxT__56AB615878878691] PRIMARY KEY CLUSTERED 
+(
+	[CashboxTransactionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[CommissionAssignments]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CommissionAssignments](
+	[AssignmentID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionID] [int] NOT NULL,
+	[EmployeeID] [int] NOT NULL,
+	[CommissionMonth] [int] NOT NULL,
+	[CommissionYear] [int] NOT NULL,
+	[TransactionAmount] [decimal](18, 2) NULL,
+	[CommissionRate] [decimal](8, 4) NOT NULL,
+	[CommissionAmount] [decimal](18, 2) NULL,
+	[ApprovedBy] [nvarchar](50) NULL,
+	[ApprovedAt] [datetime] NULL,
+	[CreatedBy] [nvarchar](50) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK__Commissi__32499E57D185D43D] PRIMARY KEY CLUSTERED 
+(
+	[AssignmentID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[CompanyInfo]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CompanyInfo](
+	[CompanyID] [int] IDENTITY(1,1) NOT NULL,
+	[CompanyName] [nvarchar](100) NOT NULL,
+	[Logo] [varbinary](max) NULL,
+	[LogoPath] [nvarchar](255) NULL,
+	[Address] [nvarchar](255) NOT NULL,
+	[Phone1] [nvarchar](20) NOT NULL,
+	[Phone2] [nvarchar](20) NULL,
+	[SalesEmail] [nvarchar](100) NOT NULL,
+	[InfoEmail] [nvarchar](100) NOT NULL,
+	[Website] [nvarchar](100) NOT NULL,
+	[tocDropBox] [nvarchar](max) NULL,
+	[CurrentVersion] [nvarchar](20) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[CompanyID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[DailyExemptions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[DailyExemptions](
+	[ExemptionID] [int] IDENTITY(1,1) NOT NULL,
+	[BioEmployeeID] [int] NOT NULL,
+	[ExemptionDate] [datetime] NOT NULL,
+	[ReasonCode] [varchar](20) NOT NULL,
+	[Description] [text] NULL,
+	[ApprovedBy] [varchar](100) NOT NULL,
+	[CreatedDate] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ExemptionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[EmployeeShifts]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[EmployeeShifts](
+	[EmployeeShiftID] [int] IDENTITY(1,1) NOT NULL,
+	[EmployeeID] [int] NOT NULL,
+	[BiometricCode] [int] NULL,
+	[ShiftType] [varchar](20) NOT NULL,
+	[StartTime] [time](0) NOT NULL,
+	[EndTime] [time](0) NOT NULL,
+	[EffectiveFrom] [datetime] NOT NULL,
+	[EffectiveTo] [datetime] NULL,
+	[CreatedAt] [datetime] NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+ CONSTRAINT [PK__Employee__2FBBBA134CFF27A8] PRIMARY KEY CLUSTERED 
+(
+	[EmployeeShiftID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ExpenseGroups]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ExpenseGroups](
+	[ExpenseGroupID] [int] IDENTITY(1,1) NOT NULL,
+	[ExpenseGroupName] [nvarchar](100) NOT NULL,
+	[ParentGroupID] [int] NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__ExpenseG__0ECF0A51DE2B8C61] PRIMARY KEY CLUSTERED 
+(
+	[ExpenseGroupID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Expenses]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Expenses](
+	[ExpenseID] [int] IDENTITY(1,1) NOT NULL,
+	[ExpenseGroupID] [int] NOT NULL,
+	[ExpenseName] [nvarchar](100) NOT NULL,
+	[ExpenseDate] [datetime] NOT NULL,
+	[IsAdvance] [bit] NULL,
+	[AdvanceMonths] [int] NULL,
+	[CashBoxID] [int] NOT NULL,
+	[Amount] [decimal](18, 2) NOT NULL,
+	[Notes] [nvarchar](255) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+	[Torecipient] [nvarchar](100) NULL,
+ CONSTRAINT [PK__Expenses__1445CFF356C3F1DC] PRIMARY KEY CLUSTERED 
+(
+	[ExpenseID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Notifications]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Notifications](
+	[NotificationID] [int] IDENTITY(1,1) NOT NULL,
+	[Title] [nvarchar](200) NOT NULL,
+	[Message] [nvarchar](max) NOT NULL,
+	[RelatedTable] [nvarchar](100) NULL,
+	[RelatedID] [int] NULL,
+	[RecipientUser] [nvarchar](100) NULL,
+	[IsRead] [bit] NOT NULL,
+	[CreatedBy] [nvarchar](100) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[ReadAt] [datetime] NULL,
+	[FormName] [nvarchar](100) NULL,
+	[ReminderEnabled] [bit] NOT NULL,
+	[ReminderIntervalMinutes] [int] NULL,
+	[ReminderNextAt] [datetime] NULL,
+	[ReminderEndAt] [datetime] NULL,
+	[LastReminderAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[NotificationID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PartyTypes]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PartyTypes](
+	[PartyTypeID] [int] IDENTITY(1,1) NOT NULL,
+	[PartyTypeName] [nvarchar](50) NOT NULL,
+ CONSTRAINT [PK_PartyTypes] PRIMARY KEY CLUSTERED 
+(
+	[PartyTypeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Payments]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Payments](
+	[PaymentID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionID] [int] NOT NULL,
+	[PaymentDate] [datetime] NOT NULL,
+	[CashboxTransactionID] [int] NULL,
+	[Amount] [decimal](18, 2) NOT NULL,
+	[PaymentMethod] [nvarchar](50) NULL,
+	[Notes] [nvarchar](max) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK__Payments__9B556A58E7B2E147] PRIMARY KEY CLUSTERED 
+(
+	[PaymentID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Payroll]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Payroll](
+	[PayrollID] [int] IDENTITY(1,1) NOT NULL,
+	[EmployeeID] [int] NOT NULL,
+	[PayrollMonth] [char](7) NOT NULL,
+	[BasicSalary] [decimal](18, 2) NOT NULL,
+	[Allowances] [decimal](18, 2) NULL,
+	[Deductions] [decimal](18, 2) NULL,
+	[NetSalary]  AS (([BasicSalary]+[Allowances])-[Deductions]) PERSISTED,
+	[PaymentStatus] [nvarchar](20) NULL,
+	[PaymentDate] [datetime] NULL,
+	[CashboxTransactionID] [int] NULL,
+	[Notes] [nvarchar](255) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_Payroll] PRIMARY KEY CLUSTERED 
+(
+	[PayrollID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PayrollDetails]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PayrollDetails](
+	[PayrollDetailID] [int] IDENTITY(1,1) NOT NULL,
+	[PayrollID] [int] NOT NULL,
+	[DetailType] [nvarchar](50) NOT NULL,
+	[DetailDescription] [nvarchar](255) NULL,
+	[Amount] [decimal](18, 2) NOT NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK_PayrollDetails] PRIMARY KEY CLUSTERED 
+(
+	[PayrollDetailID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Permissions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Permissions](
+	[PermissionID] [int] IDENTITY(1,1) NOT NULL,
+	[PermissionName] [nvarchar](50) NOT NULL,
+	[Description] [nvarchar](255) NULL,
+	[Category] [nvarchar](50) NULL,
+	[FormName] [nvarchar](50) NULL,
+	[CreatedBy] [nvarchar](50) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+ CONSTRAINT [PK__Permissi__EFA6FB0F2F9E0245] PRIMARY KEY CLUSTERED 
+(
+	[PermissionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Permissi__0FFDA357B4BCDBA6] UNIQUE NONCLUSTERED 
+(
+	[PermissionName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[PriceHistory]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PriceHistory](
+	[HistoryID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[PriceType] [nvarchar](10) NOT NULL,
+	[OldPrice] [decimal](18, 2) NULL,
+	[NewPrice] [decimal](18, 2) NOT NULL,
+	[ChangedBy] [nvarchar](100) NOT NULL,
+	[ChangedAt] [datetime] NOT NULL,
+	[ChangeReason] [nvarchar](255) NULL,
+	[CustomerID] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[HistoryID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ProductComponents]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ProductComponents](
+	[ComponentID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[ComponentName] [nvarchar](100) NOT NULL,
+	[Quantity] [int] NOT NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__ProductC__D79CF02EB6358415] PRIMARY KEY CLUSTERED 
+(
+	[ComponentID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ProductGroups]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ProductGroups](
+	[ProductGroupID] [int] IDENTITY(1,1) NOT NULL,
+	[GroupName] [nvarchar](100) NOT NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ProductGroupID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ProductImages]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ProductImages](
+	[ProductImagesID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[ImagePath] [nvarchar](500) NOT NULL,
+	[ImageProduct] [varbinary](max) NULL,
+	[ImageNote] [nvarchar](255) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__ProductI__5DEF22CAC0A52D8E] PRIMARY KEY CLUSTERED 
+(
+	[ProductImagesID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Products]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Products](
+	[ProductID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductName] [nvarchar](100) NOT NULL,
+	[ProductDescription] [nvarchar](150) NOT NULL,
+	[ManufacturingDescription] [nvarchar](max) NULL,
+	[Customer] [int] NULL,
+	[ProductGroupID] [int] NOT NULL,
+	[PurchasePrice] [decimal](18, 2) NULL,
+	[SuggestedSalePrice] [decimal](18, 2) NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+	[PurchasePriceElite] [decimal](18, 2) NULL,
+	[SuggestedSalePriceElite] [decimal](18, 2) NULL,
+	[PricingType] [nvarchar](50) NULL,
+	[QTY] [int] NULL,
+	[Period] [int] NULL,
+	[PDFFile] [varbinary](max) NULL,
+	[IsSelected] [bit] NULL,
+ CONSTRAINT [PK__Products__B40CC6ED028E1B45] PRIMARY KEY CLUSTERED 
+(
+	[ProductID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[QuotationDetails]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[QuotationDetails](
+	[QuotationDetailID] [int] IDENTITY(1,1) NOT NULL,
+	[QuotationID] [int] NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[Quantity] [decimal](18, 2) NOT NULL,
+	[UnitPrice] [decimal](18, 2) NOT NULL,
+	[TotalAmount]  AS ([Quantity]*[UnitPrice]) PERSISTED,
+PRIMARY KEY CLUSTERED 
+(
+	[QuotationDetailID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Quotations]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Quotations](
+	[QuotationID] [int] IDENTITY(1,1) NOT NULL,
+	[QuotationDate] [datetime] NOT NULL,
+	[PartyID] [int] NOT NULL,
+	[WarehouseID] [int] NULL,
+	[TotalAmount] [decimal](18, 2) NOT NULL,
+	[GrandTotal] [decimal](18, 2) NULL,
+	[InvoiceID] [int] NULL,
+	[Notes] [nvarchar](500) NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[QuotationID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[ReferralSources]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ReferralSources](
+	[ReferralSourceID] [int] IDENTITY(1,1) NOT NULL,
+	[SourceName] [nvarchar](100) NOT NULL,
+	[IsActive] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[ReferralSourceID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[SourceName] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SalaryHistory]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SalaryHistory](
+	[SalaryHistoryID] [int] IDENTITY(1,1) NOT NULL,
+	[EmployeeID] [int] NOT NULL,
+	[OldSalary] [decimal](18, 2) NULL,
+	[NewSalary] [decimal](18, 2) NOT NULL,
+	[ChangeDate] [date] NOT NULL,
+	[Reason] [nvarchar](255) NULL,
+	[CreatedBy] [nvarchar](50) NULL,
+	[CreatedAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[SalaryHistoryID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[StockLevels]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[StockLevels](
+	[StockLevelID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[WarehouseID] [int] NOT NULL,
+	[Quantity] [int] NOT NULL,
+	[LastUpdatedAt] [datetime] NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__StockLev__573D8053DCB218F4] PRIMARY KEY CLUSTERED 
+(
+	[StockLevelID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[StockTransactions]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[StockTransactions](
+	[TransactionID] [int] IDENTITY(1,1) NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[WarehouseID] [int] NOT NULL,
+	[TransactionType] [nvarchar](50) NULL,
+	[Quantity] [int] NOT NULL,
+	[TransactionDate] [datetime] NULL,
+	[ReferenceID] [int] NULL,
+	[ReferenceType] [nvarchar](50) NULL,
+	[UnitPrice] [decimal](18, 2) NULL,
+	[TotalAmount] [decimal](18, 2) NULL,
+	[Notes] [nvarchar](500) NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__StockTra__55433A4B3C9B820C] PRIMARY KEY CLUSTERED 
+(
+	[TransactionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Temp_InvoicePrintDetails]    Script Date: 15/12/2025 11:18:55 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Temp_InvoicePrintDetails](
+	[TempID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionID] [int] NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[ProductName] [nvarchar](200) NOT NULL,
+	[ItemType] [nvarchar](20) NOT NULL,
+	[DisplayName] [nvarchar](250) NOT NULL,
+	[Quantity] [decimal](18, 2) NOT NULL,
+	[UnitPrice] [decimal](18, 2) NOT NULL,
+	[LineTotal]  AS ([Quantity]*[UnitPrice]) PERSISTED,
+	[Notes] [nvarchar](200) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[TempID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[TransactionDetails]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[TransactionDetails](
+	[DetailID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionID] [int] NOT NULL,
+	[ProductID] [int] NOT NULL,
+	[Quantity] [decimal](18, 3) NOT NULL,
+	[UnitPrice] [decimal](18, 2) NOT NULL,
+	[TotalAmount]  AS ([Quantity]*[UnitPrice]) PERSISTED,
+	[Notes] [nvarchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[DetailID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Transactions]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Transactions](
+	[TransactionID] [int] IDENTITY(1,1) NOT NULL,
+	[TransactionDate] [datetime] NOT NULL,
+	[PartyID] [int] NOT NULL,
+	[TransactionType] [varchar](20) NOT NULL,
+	[WarehouseID] [int] NOT NULL,
+	[ReferenceNumber] [nvarchar](50) NULL,
+	[ReferenceType] [nvarchar](20) NULL,
+	[EmpId] [int] NULL,
+	[DueDate] [datetime] NULL,
+	[TotalAmount] [decimal](18, 2) NOT NULL,
+	[DiscountPercentage] [decimal](5, 2) NULL,
+	[DiscountAmount] [decimal](18, 2) NULL,
+	[NetTotalAmount] [decimal](18, 2) NULL,
+	[PaidAmount] [decimal](18, 2) NOT NULL,
+	[TotalChargesAmount] [decimal](18, 2) NOT NULL,
+	[GrandTotal] [decimal](18, 2) NOT NULL,
+	[PaymentMethod] [nvarchar](20) NULL,
+	[Notes] [nvarchar](255) NULL,
+	[EditStatus] [int] NULL,
+	[EditReason] [nvarchar](500) NULL,
+	[EditRequestDate] [datetime] NULL,
+	[CreatedBy] [nvarchar](50) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[EditDone] [nvarchar](50) NULL,
+ CONSTRAINT [PK__Transact__55433A4B548B617A] PRIMARY KEY CLUSTERED 
+(
+	[TransactionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[UserPermissions]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[UserPermissions](
+	[UserPermissionID] [int] IDENTITY(1,1) NOT NULL,
+	[UserID] [int] NOT NULL,
+	[PermissionID] [int] NOT NULL,
+	[CanView] [bit] NOT NULL,
+	[CanAdd] [bit] NOT NULL,
+	[CanEdit] [bit] NOT NULL,
+	[CanDelete] [bit] NOT NULL,
+	[AssignedBy] [nvarchar](50) NULL,
+	[AssignedDate] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[UserPermissionID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Warehouses]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Warehouses](
+	[WarehouseID] [int] IDENTITY(1,1) NOT NULL,
+	[WarehouseName] [nvarchar](100) NOT NULL,
+	[Location] [nvarchar](200) NULL,
+	[IsActive] [bit] NULL,
+	[Notes] [nvarchar](150) NULL,
+	[CreatedBy] [nvarchar](100) NULL,
+	[CreatedAt] [datetime] NULL,
+ CONSTRAINT [PK__Warehous__2608AFD96528B9B3] PRIMARY KEY CLUSTERED 
+(
+	[WarehouseID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_attendance_biometric]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_attendance_biometric] ON [dbo].[Attendance]
+(
+	[BiometricCode] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_attendance_date]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_attendance_date] ON [dbo].[Attendance]
+(
+	[LogDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_attendance_status]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_attendance_status] ON [dbo].[Attendance]
+(
+	[Status] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_commission_date]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_commission_date] ON [dbo].[CommissionAssignments]
+(
+	[CommissionYear] ASC,
+	[CommissionMonth] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_commission_emp]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_commission_emp] ON [dbo].[CommissionAssignments]
+(
+	[EmployeeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CRM_Tasks_AssignedTo]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CRM_Tasks_AssignedTo] ON [dbo].[CRM_Tasks]
+(
+	[AssignedTo] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CRM_Tasks_DueDate]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CRM_Tasks_DueDate] ON [dbo].[CRM_Tasks]
+(
+	[DueDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CRM_Tasks_OpportunityID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CRM_Tasks_OpportunityID] ON [dbo].[CRM_Tasks]
+(
+	[OpportunityID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_CRM_Tasks_Status]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CRM_Tasks_Status] ON [dbo].[CRM_Tasks]
+(
+	[Status] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CustomerInteractions_EmployeeID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CustomerInteractions_EmployeeID] ON [dbo].[CustomerInteractions]
+(
+	[EmployeeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CustomerInteractions_InteractionDate]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CustomerInteractions_InteractionDate] ON [dbo].[CustomerInteractions]
+(
+	[InteractionDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CustomerInteractions_OpportunityID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CustomerInteractions_OpportunityID] ON [dbo].[CustomerInteractions]
+(
+	[OpportunityID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_CustomerInteractions_PartyID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_CustomerInteractions_PartyID] ON [dbo].[CustomerInteractions]
+(
+	[PartyID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_exemptions_biometric]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_exemptions_biometric] ON [dbo].[DailyExemptions]
+(
+	[BioEmployeeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_exemptions_date]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [idx_exemptions_date] ON [dbo].[DailyExemptions]
+(
+	[ExemptionDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_SalesOpportunities_EmployeeID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_SalesOpportunities_EmployeeID] ON [dbo].[SalesOpportunities]
+(
+	[EmployeeID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_SalesOpportunities_FirstContactDate]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_SalesOpportunities_FirstContactDate] ON [dbo].[SalesOpportunities]
+(
+	[FirstContactDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_SalesOpportunities_NextFollowUp]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_SalesOpportunities_NextFollowUp] ON [dbo].[SalesOpportunities]
+(
+	[NextFollowUpDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_SalesOpportunities_PartyID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_SalesOpportunities_PartyID] ON [dbo].[SalesOpportunities]
+(
+	[PartyID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_SalesOpportunities_StageID]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_SalesOpportunities_StageID] ON [dbo].[SalesOpportunities]
+(
+	[StageID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_Users_Username_IsActive]    Script Date: 15/12/2025 11:18:56 م ******/
+CREATE NONCLUSTERED INDEX [IX_Users_Username_IsActive] ON [dbo].[Users]
+(
+	[Username] ASC,
+	[IsActive] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[AdditionalCharges] ADD  CONSTRAINT [DF__dbo_Addit__Creat__6DCC4D03]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[AdTypes] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[AdTypes] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Attendance] ADD  CONSTRAINT [DF__Attendanc__LateM__740F363E]  DEFAULT ((0)) FOR [LateMinutes]
+GO
+ALTER TABLE [dbo].[Attendance] ADD  CONSTRAINT [DF__Attendanc__Early__75035A77]  DEFAULT ((0)) FOR [EarlyLeaveMinutes]
+GO
+ALTER TABLE [dbo].[Attendance] ADD  CONSTRAINT [DF__Attendanc__Penal__75F77EB0]  DEFAULT ((0)) FOR [PenaltyHours]
+GO
+ALTER TABLE [dbo].[Calendar] ADD  CONSTRAINT [DF__Calendar__IsHoli__703EA55A]  DEFAULT ((0)) FOR [IsHoliday]
+GO
+ALTER TABLE [dbo].[Calendar] ADD  CONSTRAINT [DF__Calendar__Create__7132C993]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CashBoxes] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CashboxTransactions] ADD  CONSTRAINT [DF__CashboxTr__Trans__02C769E9]  DEFAULT (getdate()) FOR [TransactionDate]
+GO
+ALTER TABLE [dbo].[CashboxTransactions] ADD  CONSTRAINT [DF__CashboxTr__Creat__03BB8E22]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CommissionAssignments] ADD  CONSTRAINT [DF__Commissio__Commi__52AE4273]  DEFAULT ((0)) FOR [CommissionRate]
+GO
+ALTER TABLE [dbo].[CommissionAssignments] ADD  CONSTRAINT [DF__Commissio__Creat__53A266AC]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ContactSources] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[ContactSources] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ContactStatus] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[ContactStatus] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT (N'Normal') FOR [Priority]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT (N'Pending') FOR [Status]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT ((1)) FOR [ReminderEnabled]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT ((30)) FOR [ReminderMinutes]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[CRM_Tasks] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CustomerInteractions] ADD  DEFAULT (getdate()) FOR [InteractionDate]
+GO
+ALTER TABLE [dbo].[CustomerInteractions] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[DailyExemptions] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+ALTER TABLE [dbo].[Employees] ADD  CONSTRAINT [DF__Employees__IsPer__2A6B46EF]  DEFAULT ((0)) FOR [IsPermanentlyExempt]
+GO
+ALTER TABLE [dbo].[Employees] ADD  CONSTRAINT [DF__Employees__Statu__251C81ED]  DEFAULT (N'نشط') FOR [Status]
+GO
+ALTER TABLE [dbo].[Employees] ADD  CONSTRAINT [DF__Employees__Creat__2610A626]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[EmployeeShifts] ADD  CONSTRAINT [DF__EmployeeS__Effec__689D8392]  DEFAULT (getdate()) FOR [EffectiveFrom]
+GO
+ALTER TABLE [dbo].[EmployeeShifts] ADD  CONSTRAINT [DF__EmployeeS__Creat__6991A7CB]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ExpenseGroups] ADD  CONSTRAINT [DF__ExpenseGr__Creat__0880433F]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Expenses] ADD  CONSTRAINT [DF__Expenses__Expens__0C50D423]  DEFAULT (getdate()) FOR [ExpenseDate]
+GO
+ALTER TABLE [dbo].[Expenses] ADD  CONSTRAINT [DF_Expenses_IsAdvance]  DEFAULT ((0)) FOR [IsAdvance]
+GO
+ALTER TABLE [dbo].[Expenses] ADD  CONSTRAINT [DF__Expenses__Create__0D44F85C]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[InterestCategories] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[InterestCategories] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[LostReasons] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[LostReasons] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Notifications] ADD  DEFAULT ((0)) FOR [IsRead]
+GO
+ALTER TABLE [dbo].[Notifications] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Notifications] ADD  CONSTRAINT [DF_Notifications_ReminderEnabled]  DEFAULT ((0)) FOR [ReminderEnabled]
+GO
+ALTER TABLE [dbo].[Parties] ADD  CONSTRAINT [DF__dbo_Parti__Openi__2DE6D218]  DEFAULT ((0)) FOR [OpeningBalance]
+GO
+ALTER TABLE [dbo].[Parties] ADD  CONSTRAINT [DF__dbo_Parti__Balan__2FCF1A8A]  DEFAULT ('D') FOR [BalanceType]
+GO
+ALTER TABLE [dbo].[Parties] ADD  CONSTRAINT [DF__dbo_Parti__IsAct__30C33EC3]  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Parties] ADD  CONSTRAINT [DF__dbo_Parti__Creat__31B762FC]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Payments] ADD  CONSTRAINT [DF__Payments__Create__7849DB76]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Payroll] ADD  DEFAULT ((0)) FOR [Allowances]
+GO
+ALTER TABLE [dbo].[Payroll] ADD  DEFAULT ((0)) FOR [Deductions]
+GO
+ALTER TABLE [dbo].[Payroll] ADD  DEFAULT (N'غير مدفوع') FOR [PaymentStatus]
+GO
+ALTER TABLE [dbo].[Payroll] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[PayrollDetails] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Permissions] ADD  CONSTRAINT [DF__Permissio__Creat__67DE6983]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[PriceHistory] ADD  DEFAULT (getdate()) FOR [ChangedAt]
+GO
+ALTER TABLE [dbo].[ProductComponents] ADD  CONSTRAINT [DF__ProductCo__Creat__06CD04F7]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ProductGroups] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ProductImages] ADD  CONSTRAINT [DF__ProductIm__Creat__29221CFB]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Products] ADD  CONSTRAINT [DF__Products__Create__75A278F5]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Products] ADD  DEFAULT ((0)) FOR [PurchasePriceElite]
+GO
+ALTER TABLE [dbo].[Products] ADD  DEFAULT ((0)) FOR [SuggestedSalePriceElite]
+GO
+ALTER TABLE [dbo].[Products] ADD  DEFAULT ((1)) FOR [QTY]
+GO
+ALTER TABLE [dbo].[Products] ADD  DEFAULT ((0)) FOR [Period]
+GO
+ALTER TABLE [dbo].[Products] ADD  CONSTRAINT [DF_Products_IsSelected]  DEFAULT ((0)) FOR [IsSelected]
+GO
+ALTER TABLE [dbo].[Quotations] ADD  DEFAULT (getdate()) FOR [QuotationDate]
+GO
+ALTER TABLE [dbo].[Quotations] ADD  DEFAULT ((0)) FOR [TotalAmount]
+GO
+ALTER TABLE [dbo].[Quotations] ADD  DEFAULT ((0)) FOR [GrandTotal]
+GO
+ALTER TABLE [dbo].[Quotations] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[ReferralSources] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[SalaryHistory] ADD  DEFAULT (getdate()) FOR [ChangeDate]
+GO
+ALTER TABLE [dbo].[SalaryHistory] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[SalesOpportunities] ADD  DEFAULT ((1)) FOR [StageID]
+GO
+ALTER TABLE [dbo].[SalesOpportunities] ADD  DEFAULT (getdate()) FOR [FirstContactDate]
+GO
+ALTER TABLE [dbo].[SalesOpportunities] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[SalesOpportunities] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[SalesStages] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[SalesStages] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[StockLevels] ADD  CONSTRAINT [DF_StockLevels_LastUpdatedAt]  DEFAULT (getdate()) FOR [LastUpdatedAt]
+GO
+ALTER TABLE [dbo].[StockLevels] ADD  CONSTRAINT [DF__StockLeve__Creat__7C4F7684]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[StockTransactions] ADD  CONSTRAINT [DF__StockTran__Trans__01142BA1]  DEFAULT (getdate()) FOR [TransactionDate]
+GO
+ALTER TABLE [dbo].[StockTransactions] ADD  CONSTRAINT [DF__StockTran__Creat__02084FDA]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[TaskTypes] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[TaskTypes] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__Trans__607251E5]  DEFAULT (getdate()) FOR [TransactionDate]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__Total__6166761E]  DEFAULT ((0)) FOR [TotalAmount]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__Disco__71F1E3A2]  DEFAULT ((0)) FOR [DiscountPercentage]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__Disco__70FDBF69]  DEFAULT ((0)) FOR [DiscountAmount]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__NetTo__72E607DB]  DEFAULT ((0)) FOR [NetTotalAmount]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__PaidA__625A9A57]  DEFAULT ((0)) FOR [PaidAmount]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF_Transactions_TotalChargesAmount]  DEFAULT ((0)) FOR [TotalChargesAmount]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF_Transactions_GrandTotal]  DEFAULT ((0)) FOR [GrandTotal]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF_Transactions_EditStatus]  DEFAULT ((0)) FOR [EditStatus]
+GO
+ALTER TABLE [dbo].[Transactions] ADD  CONSTRAINT [DF__Transacti__Creat__634EBE90]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[UserPermissions] ADD  DEFAULT ((0)) FOR [CanView]
+GO
+ALTER TABLE [dbo].[UserPermissions] ADD  DEFAULT ((0)) FOR [CanAdd]
+GO
+ALTER TABLE [dbo].[UserPermissions] ADD  DEFAULT ((0)) FOR [CanEdit]
+GO
+ALTER TABLE [dbo].[UserPermissions] ADD  DEFAULT ((0)) FOR [CanDelete]
+GO
+ALTER TABLE [dbo].[UserPermissions] ADD  DEFAULT (getdate()) FOR [AssignedDate]
+GO
+ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [DF__Users__IsActive__5E54FF49]  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Users] ADD  CONSTRAINT [DF__Users__CreatedDa__5F492382]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Warehouses] ADD  CONSTRAINT [DF_Warehouses_IsActive]  DEFAULT ((1)) FOR [IsActive]
+GO
+ALTER TABLE [dbo].[Warehouses] ADD  CONSTRAINT [DF__Warehouse__Creat__797309D9]  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[CashboxTransactions]  WITH CHECK ADD  CONSTRAINT [FK_CashboxTransactions_CashBoxes] FOREIGN KEY([CashBoxID])
+REFERENCES [dbo].[CashBoxes] ([CashBoxID])
+GO
+ALTER TABLE [dbo].[CashboxTransactions] CHECK CONSTRAINT [FK_CashboxTransactions_CashBoxes]
+GO
+ALTER TABLE [dbo].[CashboxTransactions]  WITH CHECK ADD  CONSTRAINT [FK_CashboxTransactions_Payments] FOREIGN KEY([PaymentID])
+REFERENCES [dbo].[Payments] ([PaymentID])
+ON DELETE SET NULL
+GO
+ALTER TABLE [dbo].[CashboxTransactions] CHECK CONSTRAINT [FK_CashboxTransactions_Payments]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [FK_Tasks_Employees] FOREIGN KEY([AssignedTo])
+REFERENCES [dbo].[Employees] ([EmployeeID])
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [FK_Tasks_Employees]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [FK_Tasks_Opportunities] FOREIGN KEY([OpportunityID])
+REFERENCES [dbo].[SalesOpportunities] ([OpportunityID])
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [FK_Tasks_Opportunities]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [FK_Tasks_Parties] FOREIGN KEY([PartyID])
+REFERENCES [dbo].[Parties] ([PartyID])
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [FK_Tasks_Parties]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [FK_Tasks_TaskTypes] FOREIGN KEY([TaskTypeID])
+REFERENCES [dbo].[TaskTypes] ([TaskTypeID])
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [FK_Tasks_TaskTypes]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_Employees] FOREIGN KEY([EmployeeID])
+REFERENCES [dbo].[Employees] ([EmployeeID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_Employees]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_Opportunities] FOREIGN KEY([OpportunityID])
+REFERENCES [dbo].[SalesOpportunities] ([OpportunityID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_Opportunities]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_Parties] FOREIGN KEY([PartyID])
+REFERENCES [dbo].[Parties] ([PartyID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_Parties]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_Sources] FOREIGN KEY([SourceID])
+REFERENCES [dbo].[ContactSources] ([SourceID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_Sources]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_StageAfter] FOREIGN KEY([StageAfterID])
+REFERENCES [dbo].[SalesStages] ([StageID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_StageAfter]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_StageBefore] FOREIGN KEY([StageBeforeID])
+REFERENCES [dbo].[SalesStages] ([StageID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_StageBefore]
+GO
+ALTER TABLE [dbo].[CustomerInteractions]  WITH CHECK ADD  CONSTRAINT [FK_Interactions_Status] FOREIGN KEY([StatusID])
+REFERENCES [dbo].[ContactStatus] ([StatusID])
+GO
+ALTER TABLE [dbo].[CustomerInteractions] CHECK CONSTRAINT [FK_Interactions_Status]
+GO
+ALTER TABLE [dbo].[ExpenseGroups]  WITH CHECK ADD  CONSTRAINT [FK_ExpenseGroups_Parent] FOREIGN KEY([ParentGroupID])
+REFERENCES [dbo].[ExpenseGroups] ([ExpenseGroupID])
+GO
+ALTER TABLE [dbo].[ExpenseGroups] CHECK CONSTRAINT [FK_ExpenseGroups_Parent]
+GO
+ALTER TABLE [dbo].[Expenses]  WITH CHECK ADD  CONSTRAINT [FK__Expenses__Expens__0B5CAFEA] FOREIGN KEY([ExpenseGroupID])
+REFERENCES [dbo].[ExpenseGroups] ([ExpenseGroupID])
+GO
+ALTER TABLE [dbo].[Expenses] CHECK CONSTRAINT [FK__Expenses__Expens__0B5CAFEA]
+GO
+ALTER TABLE [dbo].[Parties]  WITH CHECK ADD  CONSTRAINT [FK_Parties_PartyTypes] FOREIGN KEY([PartyType])
+REFERENCES [dbo].[PartyTypes] ([PartyTypeID])
+GO
+ALTER TABLE [dbo].[Parties] CHECK CONSTRAINT [FK_Parties_PartyTypes]
+GO
+ALTER TABLE [dbo].[Parties]  WITH CHECK ADD  CONSTRAINT [FK_Parties_ReferralSource] FOREIGN KEY([ReferralSourceID])
+REFERENCES [dbo].[ReferralSources] ([ReferralSourceID])
+GO
+ALTER TABLE [dbo].[Parties] CHECK CONSTRAINT [FK_Parties_ReferralSource]
+GO
+ALTER TABLE [dbo].[Payments]  WITH CHECK ADD  CONSTRAINT [FK_Payments_Transactions] FOREIGN KEY([TransactionID])
+REFERENCES [dbo].[Transactions] ([TransactionID])
+GO
+ALTER TABLE [dbo].[Payments] CHECK CONSTRAINT [FK_Payments_Transactions]
+GO
+ALTER TABLE [dbo].[Payroll]  WITH CHECK ADD  CONSTRAINT [FK_Payroll_CashboxTransactions] FOREIGN KEY([CashboxTransactionID])
+REFERENCES [dbo].[CashboxTransactions] ([CashboxTransactionID])
+ON DELETE SET NULL
+GO
+ALTER TABLE [dbo].[Payroll] CHECK CONSTRAINT [FK_Payroll_CashboxTransactions]
+GO
+ALTER TABLE [dbo].[Payroll]  WITH CHECK ADD  CONSTRAINT [FK_Payroll_Employees] FOREIGN KEY([EmployeeID])
+REFERENCES [dbo].[Employees] ([EmployeeID])
+GO
+ALTER TABLE [dbo].[Payroll] CHECK CONSTRAINT [FK_Payroll_Employees]
+GO
+ALTER TABLE [dbo].[PayrollDetails]  WITH CHECK ADD  CONSTRAINT [FK_PayrollDetails_Payroll] FOREIGN KEY([PayrollID])
+REFERENCES [dbo].[Payroll] ([PayrollID])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PayrollDetails] CHECK CONSTRAINT [FK_PayrollDetails_Payroll]
+GO
+ALTER TABLE [dbo].[PriceHistory]  WITH CHECK ADD FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+GO
+ALTER TABLE [dbo].[ProductComponents]  WITH CHECK ADD  CONSTRAINT [FK__ProductCo__Produ__07C12930] FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+GO
+ALTER TABLE [dbo].[ProductComponents] CHECK CONSTRAINT [FK__ProductCo__Produ__07C12930]
+GO
+ALTER TABLE [dbo].[ProductImages]  WITH CHECK ADD  CONSTRAINT [FK_ProductImages_Products] FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ProductImages] CHECK CONSTRAINT [FK_ProductImages_Products]
+GO
+ALTER TABLE [dbo].[Products]  WITH CHECK ADD  CONSTRAINT [FK__Products__Produc__76969D2E] FOREIGN KEY([ProductGroupID])
+REFERENCES [dbo].[ProductGroups] ([ProductGroupID])
+GO
+ALTER TABLE [dbo].[Products] CHECK CONSTRAINT [FK__Products__Produc__76969D2E]
+GO
+ALTER TABLE [dbo].[QuotationDetails]  WITH CHECK ADD FOREIGN KEY([QuotationID])
+REFERENCES [dbo].[Quotations] ([QuotationID])
+GO
+ALTER TABLE [dbo].[SalaryHistory]  WITH CHECK ADD  CONSTRAINT [FK__SalaryHis__Emplo__2BC97F7C] FOREIGN KEY([EmployeeID])
+REFERENCES [dbo].[Employees] ([EmployeeID])
+GO
+ALTER TABLE [dbo].[SalaryHistory] CHECK CONSTRAINT [FK__SalaryHis__Emplo__2BC97F7C]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_AdTypes] FOREIGN KEY([AdTypeID])
+REFERENCES [dbo].[AdTypes] ([AdTypeID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_AdTypes]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Categories] FOREIGN KEY([CategoryID])
+REFERENCES [dbo].[InterestCategories] ([CategoryID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Categories]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Employees] FOREIGN KEY([EmployeeID])
+REFERENCES [dbo].[Employees] ([EmployeeID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Employees]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_LostReasons] FOREIGN KEY([LostReasonID])
+REFERENCES [dbo].[LostReasons] ([LostReasonID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_LostReasons]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Parties] FOREIGN KEY([PartyID])
+REFERENCES [dbo].[Parties] ([PartyID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Parties]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Quotations] FOREIGN KEY([QuotationID])
+REFERENCES [dbo].[Quotations] ([QuotationID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Quotations]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Sources] FOREIGN KEY([SourceID])
+REFERENCES [dbo].[ContactSources] ([SourceID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Sources]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Stages] FOREIGN KEY([StageID])
+REFERENCES [dbo].[SalesStages] ([StageID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Stages]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Status] FOREIGN KEY([StatusID])
+REFERENCES [dbo].[ContactStatus] ([StatusID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Status]
+GO
+ALTER TABLE [dbo].[SalesOpportunities]  WITH CHECK ADD  CONSTRAINT [FK_SalesOpportunities_Transactions] FOREIGN KEY([TransactionID])
+REFERENCES [dbo].[Transactions] ([TransactionID])
+GO
+ALTER TABLE [dbo].[SalesOpportunities] CHECK CONSTRAINT [FK_SalesOpportunities_Transactions]
+GO
+ALTER TABLE [dbo].[StockLevels]  WITH CHECK ADD  CONSTRAINT [FK__StockLeve__Produ__7D439ABD] FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+GO
+ALTER TABLE [dbo].[StockLevels] CHECK CONSTRAINT [FK__StockLeve__Produ__7D439ABD]
+GO
+ALTER TABLE [dbo].[StockLevels]  WITH CHECK ADD  CONSTRAINT [FK__StockLeve__Wareh__7E37BEF6] FOREIGN KEY([WarehouseID])
+REFERENCES [dbo].[Warehouses] ([WarehouseID])
+GO
+ALTER TABLE [dbo].[StockLevels] CHECK CONSTRAINT [FK__StockLeve__Wareh__7E37BEF6]
+GO
+ALTER TABLE [dbo].[StockTransactions]  WITH CHECK ADD  CONSTRAINT [FK__StockTran__Produ__02FC7413] FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+GO
+ALTER TABLE [dbo].[StockTransactions] CHECK CONSTRAINT [FK__StockTran__Produ__02FC7413]
+GO
+ALTER TABLE [dbo].[StockTransactions]  WITH CHECK ADD  CONSTRAINT [FK__StockTran__Wareh__03F0984C] FOREIGN KEY([WarehouseID])
+REFERENCES [dbo].[Warehouses] ([WarehouseID])
+GO
+ALTER TABLE [dbo].[StockTransactions] CHECK CONSTRAINT [FK__StockTran__Wareh__03F0984C]
+GO
+ALTER TABLE [dbo].[TransactionDetails]  WITH CHECK ADD  CONSTRAINT [FK_TransactionDetails_Products] FOREIGN KEY([ProductID])
+REFERENCES [dbo].[Products] ([ProductID])
+GO
+ALTER TABLE [dbo].[TransactionDetails] CHECK CONSTRAINT [FK_TransactionDetails_Products]
+GO
+ALTER TABLE [dbo].[TransactionDetails]  WITH CHECK ADD  CONSTRAINT [FK_TransactionDetails_Transactions] FOREIGN KEY([TransactionID])
+REFERENCES [dbo].[Transactions] ([TransactionID])
+GO
+ALTER TABLE [dbo].[TransactionDetails] CHECK CONSTRAINT [FK_TransactionDetails_Transactions]
+GO
+ALTER TABLE [dbo].[UserPermissions]  WITH CHECK ADD  CONSTRAINT [FK_UserPermissions_Permissions] FOREIGN KEY([PermissionID])
+REFERENCES [dbo].[Permissions] ([PermissionID])
+GO
+ALTER TABLE [dbo].[UserPermissions] CHECK CONSTRAINT [FK_UserPermissions_Permissions]
+GO
+ALTER TABLE [dbo].[UserPermissions]  WITH CHECK ADD  CONSTRAINT [FK_UserPermissions_Users] FOREIGN KEY([UserID])
+REFERENCES [dbo].[Users] ([UserID])
+GO
+ALTER TABLE [dbo].[UserPermissions] CHECK CONSTRAINT [FK_UserPermissions_Users]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [CHK_Tasks_Priority] CHECK  (([Priority]=N'Low' OR [Priority]=N'Normal' OR [Priority]=N'High'))
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [CHK_Tasks_Priority]
+GO
+ALTER TABLE [dbo].[CRM_Tasks]  WITH CHECK ADD  CONSTRAINT [CHK_Tasks_Status] CHECK  (([Status]=N'Overdue' OR [Status]=N'Cancelled' OR [Status]=N'Completed' OR [Status]=N'In Progress' OR [Status]=N'Pending'))
+GO
+ALTER TABLE [dbo].[CRM_Tasks] CHECK CONSTRAINT [CHK_Tasks_Status]
+GO
+ALTER TABLE [dbo].[Parties]  WITH CHECK ADD  CONSTRAINT [CHK_NationalID_Length] CHECK  ((len([NationalID])<=(14)))
+GO
+ALTER TABLE [dbo].[Parties] CHECK CONSTRAINT [CHK_NationalID_Length]
+GO
+ALTER TABLE [dbo].[Parties]  WITH CHECK ADD  CONSTRAINT [CK__dbo_Parti__Balan__2EDAF651] CHECK  (([BalanceType]='C' OR [BalanceType]='D'))
+GO
+ALTER TABLE [dbo].[Parties] CHECK CONSTRAINT [CK__dbo_Parti__Balan__2EDAF651]
+GO
+/****** Object:  StoredProcedure [dbo].[GetCustomerProductsWithDetails]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[GetCustomerProductsWithDetails]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT
+        p.PartyName,
+        prod.ProductID,
+        prod.ProductName,
+        prod.ProductDescription,
+	prod.QTY AS Quantity1,
+        pg.GroupName,
+        prod.ProductName + ' صنع خصيصا للعميل : ' + p.PartyName AS UnicName,
+        prod.Customer,
+        1 AS Quantity,
+        CAST(0 AS BIT) AS Selected,
+        prod.PurchasePrice,
+        prod.SuggestedSalePrice,
+        t.TransactionID,
+        prod.PricingType
+    FROM
+        dbo.Products prod
+        INNER JOIN dbo.Parties p ON prod.Customer = p.PartyID
+        INNER JOIN dbo.ProductGroups pg ON prod.ProductGroupID = pg.ProductGroupID
+        LEFT JOIN dbo.Transactions t ON p.PartyID = t.PartyID;
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetDashboardData]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE PROCEDURE [dbo].[sp_GetDashboardData]
+    @FromDate DATE = NULL,
+    @ToDate DATE = NULL,
+    @EmployeeID INT = 0,
+    @SourceID INT = 0,
+    @AdTypeID INT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- تحديد التواريخ الافتراضية
+    IF @FromDate IS NULL SET @FromDate = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
+    IF @ToDate IS NULL SET @ToDate = GETDATE()
+    
+    -- 1. الإحصائيات الرئيسية
+    SELECT 
+        (SELECT COUNT(*) FROM SalesOpportunities o 
+         WHERE o.IsActive = 1 
+         AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+         AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+         AND (@SourceID = 0 OR o.SourceID = @SourceID)
+         AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+        ) AS NewOpportunities,
+        
+        (SELECT COUNT(*) FROM CRM_Tasks t
+         WHERE t.IsActive = 1 AND t.Status <> 'Completed' 
+         AND CAST(t.DueDate AS DATE) = CAST(GETDATE() AS DATE)
+         AND (@EmployeeID = 0 OR t.AssignedTo = @EmployeeID)
+        ) AS TodayTasks,
+        
+        (SELECT COUNT(*) FROM CRM_Tasks t
+         WHERE t.IsActive = 1 AND t.Status <> 'Completed' 
+         AND CAST(t.DueDate AS DATE) < CAST(GETDATE() AS DATE)
+         AND (@EmployeeID = 0 OR t.AssignedTo = @EmployeeID)
+        ) AS OverdueTasks,
+        
+        (SELECT COUNT(*) FROM SalesOpportunities o 
+         WHERE o.IsActive = 1 AND o.StageID = 3
+         AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+         AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+         AND (@SourceID = 0 OR o.SourceID = @SourceID)
+         AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+        ) AS ClosedOpps,
+        
+        -- Funnel Data
+        (SELECT COUNT(*) FROM SalesOpportunities o 
+         WHERE o.IsActive = 1 AND o.StageID = 1
+         AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+         AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+         AND (@SourceID = 0 OR o.SourceID = @SourceID)
+         AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+        ) AS LeadCount,
+        
+        (SELECT COUNT(*) FROM SalesOpportunities o 
+         WHERE o.IsActive = 1 AND o.StageID = 2
+         AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+         AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+         AND (@SourceID = 0 OR o.SourceID = @SourceID)
+         AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+        ) AS PotentialCount,
+        
+        (SELECT COUNT(*) FROM SalesOpportunities o 
+         WHERE o.IsActive = 1 AND o.StageID IN (4, 5)
+         AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+         AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+         AND (@SourceID = 0 OR o.SourceID = @SourceID)
+         AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+        ) AS LostCount;
+    
+    -- 2. أداء الموظفين (Top 3)
+    SELECT TOP 3
+        e.FullName,
+        COUNT(o.OpportunityID) AS TotalOpps,
+        SUM(CASE WHEN o.StageID = 3 THEN 1 ELSE 0 END) AS ClosedDeals
+    FROM Employees e
+    LEFT JOIN SalesOpportunities o ON e.EmployeeID = o.EmployeeID 
+        AND o.IsActive = 1
+        AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+        AND (@SourceID = 0 OR o.SourceID = @SourceID)
+        AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+    WHERE e.Status = 'نشط' AND e.Department ='المبيعات'
+    GROUP BY e.FullName
+    ORDER BY COUNT(o.OpportunityID) DESC;
+    
+    -- 3. مصادر العملاء (Top 3)
+    SELECT TOP 3
+        cs.SourceNameAr,
+        COUNT(o.OpportunityID) AS TotalOpps
+    FROM ContactSources cs
+    LEFT JOIN SalesOpportunities o ON cs.SourceID = o.SourceID 
+        AND o.IsActive = 1
+        AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+        AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+        AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+    WHERE cs.IsActive = 1
+    GROUP BY cs.SourceNameAr
+    ORDER BY COUNT(o.OpportunityID) DESC;
+    
+    -- 4. أنواع الإعلانات (Top 3)
+    SELECT TOP 3
+        at.AdTypeNameAr,
+        COUNT(o.OpportunityID) AS TotalOpps
+    FROM AdTypes at
+    LEFT JOIN SalesOpportunities o ON at.AdTypeID = o.AdTypeID 
+        AND o.IsActive = 1
+        AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+        AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+        AND (@SourceID = 0 OR o.SourceID = @SourceID)
+    WHERE at.IsActive = 1
+    GROUP BY at.AdTypeNameAr
+    ORDER BY COUNT(o.OpportunityID) DESC;
+    
+    -- 5. أسباب الخسارة (Top 3)
+    SELECT TOP 3
+        lr.ReasonNameAr,
+        COUNT(o.OpportunityID) AS TotalLost
+    FROM LostReasons lr
+    LEFT JOIN SalesOpportunities o ON lr.LostReasonID = o.LostReasonID 
+        AND o.StageID IN (4, 5) AND o.IsActive = 1
+        AND o.FirstContactDate >= @FromDate AND o.FirstContactDate <= @ToDate
+        AND (@EmployeeID = 0 OR o.EmployeeID = @EmployeeID)
+        AND (@SourceID = 0 OR o.SourceID = @SourceID)
+        AND (@AdTypeID = 0 OR o.AdTypeID = @AdTypeID)
+    WHERE lr.IsActive = 1
+    GROUP BY lr.ReasonNameAr
+    ORDER BY COUNT(o.OpportunityID) DESC;
+    
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetFeeTransactions]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Stored Procedure للرسوم
+CREATE PROCEDURE [dbo].[sp_GetFeeTransactions]
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+     SELECT TOP 100 
+        T.TransactionID,
+        P.PartyName,
+        SUM(A.ChargeAmount) AS ChargesTotal
+    FROM dbo.Transactions T
+    INNER JOIN dbo.Parties P ON T.PartyID = P.PartyID
+    INNER JOIN dbo.AdditionalCharges A ON T.TransactionID = A.TransactionID
+    WHERE T.GrandTotal > T.PaidAmount  -- ⬅️ الرسوم غير المسددة فقط
+    GROUP BY T.TransactionID, P.PartyName
+    ORDER BY T.TransactionID DESC;
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetInvoicePayments]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- Stored Procedure للفواتير (مبيعات ومشتريات)
+CREATE PROCEDURE [dbo].[sp_GetInvoicePayments]
+    @TransactionType VARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+
+    
+    SELECT TOP 100 
+        T.TransactionID,
+        P.PartyName,
+        T.NetTotalAmount,
+        ISNULL((
+            SELECT SUM(Amount) 
+            FROM dbo.Payments 
+            WHERE TransactionID = T.TransactionID
+        ), 0) AS PaidTotal,
+        T.NetTotalAmount - ISNULL((
+            SELECT SUM(Amount) 
+            FROM dbo.Payments 
+            WHERE TransactionID = T.TransactionID
+        ), 0) AS Remaining,
+        T.TransactionDate
+    FROM dbo.Transactions T
+    INNER JOIN dbo.Parties P ON T.PartyID = P.PartyID
+    WHERE T.TransactionType = @TransactionType
+    AND T.NetTotalAmount > ISNULL((
+        SELECT SUM(Amount) 
+        FROM dbo.Payments 
+        WHERE TransactionID = T.TransactionID
+    ), 0)  -- ⬅️ الشرط الجديد: المتبقي أكبر من صفر
+    ORDER BY T.TransactionDate DESC;
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetPurchaseInvoices]    Script Date: 15/12/2025 11:18:56 م ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Stored Procedure جديدة خاصة بفواتير المشتريات مع بيانات الموظف
+CREATE PROCEDURE [dbo].[sp_GetPurchaseInvoices]
+    -- ما محتاجينش parameter لأنها للمشتريات فقط
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+   SELECT TOP 100 
+        T.TransactionID,
+        P.PartyName AS SupplierName,       -- اسم المورد
+        T.TotalAmount,
+        ISNULL((
+            SELECT SUM(Amount) 
+            FROM dbo.Payments 
+            WHERE TransactionID = T.TransactionID
+        ), 0) AS PaidTotal,
+        T.TotalAmount - ISNULL((
+            SELECT SUM(Amount) 
+            FROM dbo.Payments 
+            WHERE TransactionID = T.TransactionID
+        ), 0) AS Remaining,
+        T.TransactionDate,
+		P1.PartyName AS CustomerName      -- اسم الموظف (العمود الجديد)
+    FROM dbo.Transactions T
+    INNER JOIN dbo.Parties P ON T.PartyID = P.PartyID           -- المورد
+    INNER JOIN dbo.Parties P1 ON T.EmpId = P1.PartyID          -- الموظف (الزيادة)
+    WHERE T.TransactionType = 'Purchase'  -- ⬅️ ثابت للمشتريات فقط
+    AND T.TotalAmount > ISNULL((
+        SELECT SUM(Amount) 
+        FROM dbo.Payments 
+        WHERE TransactionID = T.TransactionID
+    ), 0)
+    ORDER BY T.TransactionDate DESC;
+END
+GO
+USE [master]
+GO
+ALTER DATABASE [db24804] SET  READ_WRITE 
+GO
