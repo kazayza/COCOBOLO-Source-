@@ -1,0 +1,21 @@
+﻿Form: frmDailyTasksSub
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtTaskID		TextBox		TaskID
+lbltaskID		Label		Text0
+txtPartyID		TextBox		PartyID
+lblPartyID		Label		Text2
+txtDueDate		TextBox		DueDate
+Label5		Label		التاريخ
+txtPhone		TextBox		Phone
+Label9		Label		التليفون
+txtStatus		TextBox		TaskStatus
+Label13		Label		الحاله
+txtEmployee		TextBox		EmployeeName
+Label15		Label		الموظف
+txtClientName		TextBox		ClientName
+Label16		Label		العميل
+txtTaskType		TextBox		TaskTypeName
+Label18		Label		نوع المتابعه

@@ -1,0 +1,724 @@
+﻿Option Compare Database
+Option Explicit
+
+' ==========================================
+' Form: frmNewInteraction
+' شاشة تسجيل تواصل جديد
+' ==========================================
+
+Private mPartyID As Long
+Private mOpportunityID As Long
+Private mIsNewClient As Boolean
+Private mStageBefore As Long  ' جديد
+
+' ==========================================
+' عند تغيير المرحلة
+' ==========================================
+Private Sub cmbStage_AfterUpdate()
+    On Error Resume Next
+    
+    If Me.cmbStage = 4 Or Me.cmbStage = 5 Then
+        ' إظهار سبب الخسارة وتفاصيله
+        Me.lblLostReason.Visible = True
+        Me.cmbLostReason.Visible = True
+        Me.lblLostNotes.Visible = True
+        Me.txtLostNotes.Visible = True
+        
+        ' إخفاء المتابعة
+        Me.txtFollowUpDate = Null
+        Me.lblFollowUpDate.Visible = False
+        Me.txtFollowUpDate.Visible = False
+        Me.lblTaskType.Visible = False
+        Me.cmbTaskType.Visible = False
+        Me.txtSummary.Visible = False
+        Me.lblSummary.Visible = False
+    Else
+        ' إخفاء سبب الخسارة
+        Me.lblLostReason.Visible = False
+        Me.cmbLostReason.Visible = False
+        Me.cmbLostReason = Null
+        Me.lblLostNotes.Visible = False
+        Me.txtLostNotes.Visible = False
+        Me.txtLostNotes = ""
+        
+        ' إظهار المتابعة
+        Me.lblFollowUpDate.Visible = True
+        Me.txtFollowUpDate.Visible = True
+        Me.lblTaskType.Visible = True
+        Me.cmbTaskType.Visible = True
+        Me.txtSummary.Visible = True
+        Me.lblSummary.Visible = True
+    End If
+End Sub
+
+' ==========================================
+' Form Load
+' ==========================================
+Private Sub Form_Load()
+    On Error GoTo ErrorHandler
+    
+    Call LoadAllCombos
+    Call InitializeForm
+    
+    ' استقبال PartyID من OpenArgs
+    If Nz(Me.OpenArgs, "") <> "" Then
+        Dim passedPartyID As Long
+        passedPartyID = val(Me.OpenArgs)
+        
+        If passedPartyID > 0 Then
+            Me.optClientType = 2  ' عميل موجود
+            Call optClientType_AfterUpdate
+            Me.cmbClient = passedPartyID
+            Call cmbClient_AfterUpdate
+        End If
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تحميل النموذج: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' تحميل Combo Box
+' ==========================================
+Private Sub FillCombo(ByRef cmb As ComboBox, ByVal sql As String)
+    On Error GoTo ErrorHandler
+    
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = ""
+    Do While Not rs.EOF
+        If strList <> "" Then strList = strList & ";"
+        strList = strList & rs.Fields(0).value & ";" & Nz(rs.Fields(1).value, "") & ";" & Nz(rs.Fields(2).value, "")
+        rs.MoveNext
+    Loop
+    
+    rs.Close
+    Set rs = Nothing
+    
+    With cmb
+        .RowSourceType = "Value List"
+        .rowSource = strList
+    End With
+    
+    Exit Sub
+    
+ErrorHandler:
+    ' Debug.Print "FillCombo Error: " & Err.Description
+End Sub
+
+' ==========================================
+' تحميل كل القوائم
+' ==========================================
+Private Sub LoadAllCombos()
+    On Error GoTo ErrorHandler
+    
+    ' الموظفين
+    FillCombo Me.cmbEmployee, "SELECT EmployeeID, FullName, Department FROM dbo_Employees WHERE Status = 'نشط' ORDER BY FullName"
+    
+    ' مصادر التواصل
+    FillCombo Me.cmbSource, "SELECT SourceID, SourceName, SourceNameAr FROM dbo_ContactSources WHERE IsActive = 1"
+    
+    ' أنواع الإعلانات
+    FillCombo Me.cmbAdType, "SELECT AdTypeID, AdTypeName, AdTypeNameAr FROM dbo_AdTypes WHERE IsActive = 1"
+    
+    ' حالات التواصل
+    FillCombo Me.cmbStatus, "SELECT StatusID, StatusName, StatusNameAr FROM dbo_ContactStatus WHERE IsActive = 1"
+    
+    ' المراحل
+    FillCombo Me.cmbStage, "SELECT StageID, StageName, StageNameAr FROM dbo_SalesStages WHERE IsActive = 1 ORDER BY StageOrder"
+    
+    ' فئات المنتجات
+    FillCombo Me.cmbCategory, "SELECT CategoryID, CategoryName, CategoryNameAr FROM dbo_InterestCategories WHERE IsActive = 1"
+    
+    ' أنواع المهام
+    FillCombo Me.cmbTaskType, "SELECT TaskTypeID, TaskTypeName, TaskTypeNameAr FROM dbo_TaskTypes WHERE IsActive = 1"
+    
+    ' العملاء
+    FillCombo Me.cmbClient, "SELECT TOP 100 PartyID, PartyName, Phone FROM dbo_Parties WHERE IsActive = 1 ORDER BY PartyName"
+    
+    ' أسباب الخسارة
+    FillCombo Me.cmbLostReason, "SELECT LostReasonID, ReasonName, ReasonNameAr FROM dbo_LostReasons WHERE IsActive = 1"
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تحميل القوائم: " & Err.Description, vbExclamation, "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' تهيئة النموذج
+' ==========================================
+Private Sub InitializeForm()
+    On Error Resume Next
+    
+    mPartyID = 0
+    mOpportunityID = 0
+    mIsNewClient = False
+    mStageBefore = 0  ' ? جديد
+    
+    Me.optClientType = 2
+    Call optClientType_AfterUpdate
+    
+    Me.txtFollowUpDate = Date + 1
+    Me.txtFirstContactDate = Date
+    Me.cmbStage = 1
+    Me.cmbStatus = 1
+    
+    Me.cmbClient = Null
+    Me.txtClientName = ""
+    Me.txtPhone = ""
+    Me.txtClientAddress = ""
+    Me.cmbSource = Null
+    Me.cmbAdType = Null
+    Me.cmbCategory = Null
+    Me.cmbEmployee = Null
+    Me.cmbTaskType = Null
+    Me.txtInterestedProduct = ""
+    Me.txtSummary = ""
+    Me.txtGuidance = ""
+    Me.txtLostNotes = ""
+    
+    ' إخفاء أيقونات السوشيال ميديا
+    Me.facebook.Visible = False
+    Me.instagram.Visible = False
+    Me.tiktok_png.Visible = False
+    Me.phonelogo.Visible = False
+    Me.whatsapp.Visible = False
+    Me.lblClientPhone.Caption = ""
+    
+    ' إخفاء سبب الخسارة
+    Me.lblLostReason.Visible = False
+    Me.cmbLostReason.Visible = False
+    Me.cmbLostReason = Null
+    Me.lblLostNotes.Visible = False
+    Me.txtLostNotes.Visible = False
+    
+    Me.cmbClient.SetFocus
+End Sub
+
+' ==========================================
+' عند تغيير نوع العميل
+' ==========================================
+Private Sub optClientType_AfterUpdate()
+    On Error Resume Next
+    
+    If Me.optClientType = 1 Then
+        mIsNewClient = True
+        Me.lblSelectClient.Visible = False
+        Me.cmbClient.Visible = False
+        Me.lblClientName.Visible = True
+        Me.txtClientName.Visible = True
+        Me.lblPhone.Visible = True
+        Me.txtPhone.Visible = True
+        Me.txtClientAddress.Visible = True
+        Me.lblClientAddress.Visible = True
+        Me.txtClientName.SetFocus
+    Else
+        mIsNewClient = False
+        Me.lblSelectClient.Visible = True
+        Me.cmbClient.Visible = True
+        Me.lblClientName.Visible = False
+        Me.txtClientName.Visible = False
+        Me.lblPhone.Visible = False
+        Me.txtPhone.Visible = False
+        Me.txtClientAddress.Visible = False
+        Me.lblClientAddress.Visible = False
+        Me.cmbClient.SetFocus
+    End If
+End Sub
+
+' ==========================================
+' البحث في العملاء
+' ==========================================
+Private Sub cmbClient_Change()
+    On Error Resume Next
+    
+    Dim searchText As String
+    searchText = Nz(Me.cmbClient.text, "")
+    
+    If Len(searchText) < 2 Then Exit Sub
+    
+    Call SearchClients(searchText)
+    Me.cmbClient.Dropdown
+End Sub
+
+' ==========================================
+' البحث - يعرض الاسم فقط
+' ==========================================
+Private Sub SearchClients(ByVal searchText As String)
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    sql = "SELECT TOP 20 PartyID, PartyName,Phone FROM dbo_Parties " & _
+          "WHERE IsActive = 1 AND (PartyName LIKE '*" & Replace(searchText, "'", "''") & "*' " & _
+          "OR Phone LIKE '*" & Replace(searchText, "'", "''") & "*') ORDER BY PartyName"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = ""
+    Do While Not rs.EOF
+        If strList <> "" Then strList = strList & ";"
+        strList = strList & rs!PartyID & ";" & Nz(rs!PartyName, "")
+        rs.MoveNext
+    Loop
+    
+    rs.Close
+    Set rs = Nothing
+    
+    Me.cmbClient.rowSource = strList
+    
+    Exit Sub
+    
+ErrorHandler:
+    Debug.Print "SearchClients Error: " & Err.Description
+End Sub
+
+' ==========================================
+' عند اختيار عميل - يعرض التليفون في Label
+' ==========================================
+Private Sub cmbClient_AfterUpdate()
+    On Error Resume Next
+    
+    If Not IsNull(Me.cmbClient) Then
+        mPartyID = Me.cmbClient
+        
+        ' جلب التليفون وعرضه
+        Dim Phone As String
+        Phone = Nz(DLookup("Phone", "dbo_Parties", "PartyID = " & mPartyID), "")
+        Me.lblClientPhone.Caption = "رقم الهاتف " & Phone
+        
+        Call CheckExistingOpportunity
+    Else
+        Me.lblClientPhone.Caption = ""
+    End If
+End Sub
+
+' ==========================================
+' السماح بالبحث
+' ==========================================
+Private Sub cmbClient_NotInList(NewData As String, Response As Integer)
+    Response = acDataErrContinue
+End Sub
+
+' ==========================================
+' التحقق من فرصة بيع مفتوحة
+' ==========================================
+Private Sub CheckExistingOpportunity()
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    sql = "SELECT TOP 1 OpportunityID FROM dbo_SalesOpportunities " & _
+          "WHERE PartyID = " & mPartyID & " AND IsActive = 1 " & _
+          "AND StageID NOT IN (4, 5, 6) ORDER BY CreatedAt DESC"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rs.EOF Then
+        mOpportunityID = rs!OpportunityID
+        rs.Close
+        MsgBox "يوجد فرصة بيع مفتوحة لهذا العميل." & vbCrLf & _
+               "سيتم إضافة التواصل لنفس الفرصة.", vbInformation, "COCOBOLO SYSTEM"
+        Call LoadOpportunityData
+    Else
+        mOpportunityID = 0
+        rs.Close
+    End If
+    
+    Set rs = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    mOpportunityID = 0
+End Sub
+
+' ==========================================
+' تحميل بيانات فرصة البيع
+' ==========================================
+Private Sub LoadOpportunityData()
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    sql = "SELECT * FROM dbo_SalesOpportunities WHERE OpportunityID = " & mOpportunityID
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rs.EOF Then
+          mStageBefore = Nz(rs!stageID, 0)  ' ? حفظ المرحلة القديمة
+          
+          
+        Me.cmbEmployee = rs!EmployeeID
+        Me.cmbSource = rs!sourceID
+        Me.cmbAdType = rs!adTypeID
+        Me.cmbStage = rs!stageID
+        Me.cmbCategory = rs!CategoryID
+        Me.txtInterestedProduct = Nz(rs!InterestedProduct, "")
+        Me.txtFirstContactDate = rs!FirstContactDate
+        Me.cmbLostReason = rs!LostReasonID
+        Me.txtLostNotes = Nz(rs!LostNotes, "")
+        
+        ' تحديث ظهور/إخفاء الكنترولات
+        Call cmbStage_AfterUpdate
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في تحميل بيانات الفرصة: " & Err.Description, vbExclamation, "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' عند تغيير مصدر التواصل
+' ==========================================
+Private Sub cmbSource_AfterUpdate()
+    On Error Resume Next
+    
+    Me.lblAdType.Visible = True
+    Me.cmbAdType.Visible = True
+    
+    ' إخفاء كل الأيقونات أولاً
+    Me.whatsapp.Visible = False
+    Me.tiktok_png.Visible = False
+    Me.phonelogo.Visible = False
+    Me.facebook.Visible = False
+    Me.instagram.Visible = False
+    
+    ' إظهار الأيقونة المناسبة
+    Select Case Me.cmbSource
+        Case 1: Me.whatsapp.Visible = True
+        Case 2: Me.facebook.Visible = True
+        Case 3: Me.phonelogo.Visible = True
+        Case 8: Me.tiktok_png.Visible = True
+        Case 5: Me.instagram.Visible = True
+    End Select
+End Sub
+
+' ==========================================
+' زر الحفظ
+' ==========================================
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+    
+    If Not ValidateForm() Then Exit Sub
+    
+    If SaveData() Then
+        MsgBox "تم الحفظ بنجاح!", vbInformation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الحفظ: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' زر حفظ وجديد
+' ==========================================
+Private Sub btnSaveNew_Click()
+    On Error GoTo ErrorHandler
+    
+    If Not ValidateForm() Then Exit Sub
+    
+    If SaveData() Then
+        MsgBox "تم الحفظ بنجاح!", vbInformation, "COCOBOLO SYSTEM"
+        Call InitializeForm
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الحفظ: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' زر الإلغاء
+' ==========================================
+Private Sub btnCancel_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+' ==========================================
+' التحقق من صحة البيانات
+' ==========================================
+Private Function ValidateForm() As Boolean
+    On Error Resume Next
+    
+    ValidateForm = False
+    
+    ' التحقق من العميل
+    If mIsNewClient Then
+        If Trim(Me.txtClientName & "") = "" Then
+            MsgBox "برجاء إدخال اسم العميل", vbExclamation, "COCOBOLO SYSTEM"
+            Me.txtClientName.SetFocus
+            Exit Function
+        End If
+        If Trim(Me.txtPhone & "") = "" Then
+            MsgBox "برجاء إدخال رقم التليفون", vbExclamation, "COCOBOLO SYSTEM"
+            Me.txtPhone.SetFocus
+            Exit Function
+        End If
+    Else
+        If IsNull(Me.cmbClient) Then
+            MsgBox "برجاء اختيار العميل", vbExclamation, "COCOBOLO SYSTEM"
+            Me.cmbClient.SetFocus
+            Exit Function
+        End If
+    End If
+    
+    ' التحقق من تاريخ أول تواصل
+    If IsNull(Me.txtFirstContactDate) Or Me.txtFirstContactDate = "" Then
+        MsgBox "برجاء إدخال تاريخ أول تواصل", vbExclamation, "COCOBOLO SYSTEM"
+        Me.txtFirstContactDate.SetFocus
+        Exit Function
+    End If
+    
+    ' التحقق من مصدر التواصل
+    If IsNull(Me.cmbSource) Then
+        MsgBox "برجاء اختيار مصدر التواصل", vbExclamation, "COCOBOLO SYSTEM"
+        Me.cmbSource.SetFocus
+        Exit Function
+    End If
+    
+    ' التحقق من المرحلة
+    If IsNull(Me.cmbStage) Then
+        MsgBox "برجاء اختيار المرحلة", vbExclamation, "COCOBOLO SYSTEM"
+        Me.cmbStage.SetFocus
+        Exit Function
+    End If
+    
+    ' التحقق من سبب الخسارة لو المرحلة Lost أو Not Interested
+    If Me.cmbStage = 4 Or Me.cmbStage = 5 Then
+        If IsNull(Me.cmbLostReason) Then
+            MsgBox "برجاء اختيار سبب الخسارة", vbExclamation, "COCOBOLO SYSTEM"
+            Me.cmbLostReason.SetFocus
+            Exit Function
+        End If
+    End If
+    
+    ValidateForm = True
+End Function
+
+' ==========================================
+' حفظ البيانات
+' ==========================================
+Private Function SaveData() As Boolean
+    On Error GoTo ErrorHandler
+    
+    SaveData = False
+    Dim sql As String
+    Dim sqlTasks As String
+    Dim rs As DAO.Recordset
+    Dim currentDate As String
+    
+    ' التاريخ الحالي بتنسيق SQL
+    currentDate = "'" & Format(Now(), "yyyy-mm-dd hh:nn:ss") & "'"
+    
+    ' ??????????????????????????????????????????
+    ' 1. حفظ العميل الجديد
+    ' ??????????????????????????????????????????
+    If mIsNewClient Then
+        sql = "INSERT INTO dbo_Parties (PartyName, Phone, PartyType, IsActive, ReferralSourceID,Address, CreatedBy, CreatedAt) " & _
+              "VALUES ('" & Replace(Me.txtClientName, "'", "''") & "', " & _
+              "'" & Replace(Me.txtPhone, "'", "''") & "', 1, 1, 2," & _
+              "'" & Replace(Me.txtClientAddress, "'", "''") & "', " & _
+              "'" & currentUser.UserName & "', " & currentDate & ")"
+        
+        CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+        
+        ' جلب ID العميل الجديد
+        Set rs = CurrentDb.OpenRecordset("SELECT @@IDENTITY", dbOpenSnapshot, dbSeeChanges)
+        If Not rs.EOF Then mPartyID = Nz(rs.Fields(0).value, 0)
+        rs.Close
+        Set rs = Nothing
+        
+        If mPartyID = 0 Then
+            Set rs = CurrentDb.OpenRecordset("SELECT MAX(PartyID) FROM dbo_Parties", dbOpenSnapshot, dbSeeChanges)
+            If Not rs.EOF Then mPartyID = Nz(rs.Fields(0).value, 0)
+            rs.Close
+            Set rs = Nothing
+        End If
+    End If
+    
+    ' ??????????????????????????????????????????
+    ' 2. إنشاء أو تحديث فرصة البيع
+    ' ??????????????????????????????????????????
+    If mOpportunityID = 0 Then
+        ' إنشاء فرصة جديدة
+        sql = "INSERT INTO dbo_SalesOpportunities (" & _
+              "PartyID, EmployeeID, SourceID, AdTypeID, StageID, StatusID, " & _
+              "CategoryID, InterestedProduct, FirstContactDate, " & _
+              "NextFollowUpDate, LostReasonID, LostNotes, Notes, Guidance, " & _
+              "IsActive, CreatedBy, CreatedAt) VALUES (" & _
+              mPartyID & ", " & _
+              IIf(IsNull(Me.cmbEmployee), "NULL", Me.cmbEmployee) & ", " & _
+              IIf(IsNull(Me.cmbSource), "NULL", Me.cmbSource) & ", " & _
+              IIf(IsNull(Me.cmbAdType), "NULL", Me.cmbAdType) & ", " & _
+              IIf(IsNull(Me.cmbStage), "NULL", Me.cmbStage) & ", " & _
+              IIf(IsNull(Me.cmbStatus), "NULL", Me.cmbStatus) & ", " & _
+              IIf(IsNull(Me.cmbCategory), "NULL", Me.cmbCategory) & ", " & _
+              "'" & Replace(Nz(Me.txtInterestedProduct, ""), "'", "''") & "', " & _
+              "'" & Format(Me.txtFirstContactDate, "yyyy-mm-dd") & "', " & _
+              IIf(IsNull(Me.txtFollowUpDate), "NULL", "'" & Format(Me.txtFollowUpDate, "yyyy-mm-dd") & "'") & ", " & _
+              IIf(IsNull(Me.cmbLostReason), "NULL", Me.cmbLostReason) & ", " & _
+              "'" & Replace(Nz(Me.txtLostNotes, ""), "'", "''") & "', " & _
+              "'" & Replace(Nz(Me.txtSummary, ""), "'", "''") & "', " & _
+              "'" & Replace(Nz(Me.txtGuidance, ""), "'", "''") & "', " & _
+              "1, '" & currentUser.UserName & "', " & currentDate & ")"
+        
+        CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+        
+        ' جلب ID الفرصة الجديدة
+        Set rs = CurrentDb.OpenRecordset("SELECT @@IDENTITY", dbOpenSnapshot, dbSeeChanges)
+        If Not rs.EOF Then mOpportunityID = Nz(rs.Fields(0).value, 0)
+        rs.Close
+        Set rs = Nothing
+        
+        If mOpportunityID = 0 Then
+            Set rs = CurrentDb.OpenRecordset("SELECT MAX(OpportunityID) FROM dbo_SalesOpportunities", dbOpenSnapshot, dbSeeChanges)
+            If Not rs.EOF Then mOpportunityID = Nz(rs.Fields(0).value, 0)
+            rs.Close
+            Set rs = Nothing
+        End If
+    Else
+        ' تحديث فرصة موجودة
+        sql = "UPDATE dbo_SalesOpportunities SET " & _
+              "EmployeeID = " & IIf(IsNull(Me.cmbEmployee), "NULL", Me.cmbEmployee) & ", " & _
+              "StageID = " & IIf(IsNull(Me.cmbStage), "NULL", Me.cmbStage) & ", " & _
+              "StatusID = " & IIf(IsNull(Me.cmbStatus), "NULL", Me.cmbStatus) & ", " & _
+              "LostReasonID = " & IIf(IsNull(Me.cmbLostReason), "NULL", Me.cmbLostReason) & ", " & _
+              "LostNotes = '" & Replace(Nz(Me.txtLostNotes, ""), "'", "''") & "', " & _
+              "CategoryID = " & IIf(IsNull(Me.cmbCategory), "NULL", Me.cmbCategory) & ", " & _
+              "InterestedProduct = '" & Replace(Nz(Me.txtInterestedProduct, ""), "'", "''") & "', " & _
+              "NextFollowUpDate = " & IIf(IsNull(Me.txtFollowUpDate), "NULL", "'" & Format(Me.txtFollowUpDate, "yyyy-mm-dd") & "'") & ", " & _
+              "LastContactDate = " & currentDate & ", " & _
+              "Notes = '" & Replace(Nz(Me.txtSummary, ""), "'", "''") & "', " & _
+              "Guidance = '" & Replace(Nz(Me.txtGuidance, ""), "'", "''") & "', " & _
+              "LastUpdatedBy = '" & currentUser.UserName & "', " & _
+              "LastUpdatedAt = " & currentDate & " " & _
+              "WHERE OpportunityID = " & mOpportunityID
+        
+        CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+    End If
+    
+    ' ??????????????????????????????????????????
+    ' 3. إضافة سجل التواصل
+    ' ??????????????????????????????????????????
+   ' 3. إضافة سجل التواصل
+sql = "INSERT INTO dbo_CustomerInteractions (" & _
+      "OpportunityID, PartyID, EmployeeID, SourceID, StatusID, " & _
+      "InteractionDate, Summary, StageBeforeID, StageAfterID, " & _
+      "NextFollowUpDate, Notes, CreatedBy, CreatedAt) VALUES (" & _
+      mOpportunityID & ", " & mPartyID & ", " & _
+      IIf(IsNull(Me.cmbEmployee), "NULL", Me.cmbEmployee) & ", " & _
+      IIf(IsNull(Me.cmbSource), "NULL", Me.cmbSource) & ", " & _
+      IIf(IsNull(Me.cmbStatus), "NULL", Me.cmbStatus) & ", " & _
+      currentDate & ", " & _
+      "'" & Replace(Nz(Me.txtSummary, ""), "'", "''") & "', " & _
+      IIf(mStageBefore = 0, "NULL", mStageBefore) & ", " & _
+      IIf(IsNull(Me.cmbStage), "NULL", Me.cmbStage) & ", " & _
+      IIf(IsNull(Me.txtFollowUpDate), "NULL", "'" & Format(Me.txtFollowUpDate, "yyyy-mm-dd") & "'") & ", " & _
+      "'" & Replace(Nz(Me.txtGuidance, ""), "'", "''") & "', " & _
+      "'" & currentUser.UserName & "', " & currentDate & ")"
+
+CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+    
+    ' ??????????????????????????????????????????
+    ' 4. إدارة المهام
+    ' ??????????????????????????????????????????
+    If Me.cmbStage = 4 Or Me.cmbStage = 5 Then
+        ' ?????????????????????????????????????
+        ' Lost أو Not Interested ? إلغاء كل المهام
+        ' ?????????????????????????????????????
+        sqlTasks = "UPDATE dbo_CRM_Tasks SET " & _
+                   "Status = 'Cancelled', " & _
+                   "CompletedDate = " & currentDate & ", " & _
+                   "CompletedBy = '" & currentUser.UserName & "', " & _
+                   "CompletionNotes = 'تم الإلغاء تلقائياً - العميل " & _
+                   IIf(Me.cmbStage = 4, "Lost", "Not Interested") & "' " & _
+                   "WHERE OpportunityID = " & mOpportunityID & " " & _
+                   "AND Status IN ('Pending', 'In Progress')"
+        
+        On Error Resume Next
+        CurrentDb.Execute sqlTasks, dbFailOnError + dbSeeChanges
+        On Error GoTo ErrorHandler
+        
+    ElseIf Me.cmbStage = 6 Then
+        ' ?????????????????????????????????????
+        ' Won ? إغلاق كل المهام كـ Completed
+        ' ?????????????????????????????????????
+        sqlTasks = "UPDATE dbo_CRM_Tasks SET " & _
+                   "Status = 'Completed', " & _
+                   "CompletedDate = " & currentDate & ", " & _
+                   "CompletedBy = '" & currentUser.UserName & "', " & _
+                   "CompletionNotes = 'تم الإغلاق تلقائياً - تم البيع بنجاح' " & _
+                   "WHERE OpportunityID = " & mOpportunityID & " " & _
+                   "AND Status IN ('Pending', 'In Progress')"
+        
+        On Error Resume Next
+        CurrentDb.Execute sqlTasks, dbFailOnError + dbSeeChanges
+        On Error GoTo ErrorHandler
+        
+    ElseIf Not IsNull(Me.txtFollowUpDate) Then
+        ' ?????????????????????????????????????
+        ' مرحلة عادية + فيه متابعة جديدة
+        ' ?????????????????????????????????????
+        
+        ' أولاً: إغلاق المهام القديمة كـ Completed
+        sqlTasks = "UPDATE dbo_CRM_Tasks SET " & _
+                   "Status = 'Completed', " & _
+                   "CompletedDate = " & currentDate & ", " & _
+                   "CompletedBy = '" & currentUser.UserName & "', " & _
+                   "CompletionNotes = 'تم المتابعة وجدولة موعد جديد' " & _
+                   "WHERE OpportunityID = " & mOpportunityID & " " & _
+                   "AND Status IN ('Pending', 'In Progress')"
+        
+        On Error Resume Next
+        CurrentDb.Execute sqlTasks, dbFailOnError + dbSeeChanges
+        On Error GoTo ErrorHandler
+        
+        ' ثانياً: إنشاء مهمة جديدة
+        sql = "INSERT INTO dbo_CRM_Tasks (" & _
+              "OpportunityID, PartyID, AssignedTo, TaskTypeID, " & _
+              "TaskDescription, DueDate, Priority, Status, " & _
+              "ReminderEnabled, IsActive, CreatedBy, CreatedAt) VALUES (" & _
+              mOpportunityID & ", " & mPartyID & ", " & _
+              IIf(IsNull(Me.cmbEmployee), "NULL", Me.cmbEmployee) & ", " & _
+              IIf(IsNull(Me.cmbTaskType), "NULL", Me.cmbTaskType) & ", " & _
+              "'" & Replace(Nz(Me.txtGuidance, ""), "'", "''") & "', " & _
+              "'" & Format(Me.txtFollowUpDate, "yyyy-mm-dd") & "', " & _
+              "'Normal', 'Pending', 1, 1, " & _
+              "'" & currentUser.UserName & "', " & currentDate & ")"
+        
+        On Error Resume Next
+        CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+        On Error GoTo ErrorHandler
+        
+    End If
+    
+    SaveData = True
+    Exit Function
+    
+ErrorHandler:
+    MsgBox "خطأ في حفظ البيانات: " & Err.Description, vbCritical, "COCOBOLO SYSTEM"
+    SaveData = False
+End Function
+
+' ==========================================
+' نسخ ملاحظات الخسارة للملخص
+' ==========================================
+Private Sub txtLostNotes_Exit(Cancel As Integer)
+    Me.txtSummary = Me.txtLostNotes
+End Sub

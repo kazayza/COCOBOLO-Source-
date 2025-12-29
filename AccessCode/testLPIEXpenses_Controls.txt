@@ -1,0 +1,6 @@
+﻿Form: testLPIEXpenses
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Chart0		Other (133)		qryTestKPIExpense

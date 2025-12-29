@@ -1,0 +1,14 @@
+﻿Form: frmManagePermissions
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboUsers		ComboBox		SELECT dbo_Users.UserID, dbo_Users.Username FROM dbo_Users WHERE (((dbo_Users.IsActive)=True)); 
+Label1		Label		المستخدم
+subfrmPermissions		Subform		
+cmdSave		Button		حفظ
+Box5		Rectangle		
+Command6		Button		اغلاق
+btnCheckAll		Button		اختيار الكل
+btnUncheckAll		Button		الغاء الكل
+Label9		Label		إضافة صلاحيات المستخدمين على البرنامج

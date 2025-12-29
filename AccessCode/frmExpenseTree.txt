@@ -1,0 +1,575 @@
+﻿
+Option Compare Database
+Option Explicit
+
+Private Sub Command10_Click()
+If Not currentUser.HasPermission("frm_ExpensesGroup") Then
+        
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+'        DoCmd.Close acForm, Me.Name
+       
+        Exit Sub
+        End If
+DoCmd.OpenForm "frm_ExpensesGroup"
+End Sub
+
+' عناصر النموذج المطلوبة:
+' - tvExpenseGroups (TreeView Control)
+' - txtFromDate (تاريخ من)
+' - txtToDate (تاريخ إلى)
+' - cmdFilter (زر تطبيق)
+' - cmdReset (زر إعادة)
+' - lblTotalAmount (تسمية للإجمالي الكلي)
+' - lblMainGroupsTotal (تسمية لإجمالي المجموعات الرئيسية)
+
+'Private Sub Form_Load()
+'    ' تعيين التواريخ الافتراضية (من أول السنة إلى اليوم)
+'    Me.txtFromDate = DateSerial(Year(Date), 1, 1)
+'    Me.txtToDate = Date
+'    BuildExpenseTree
+'End Sub
+Private Sub Form_Open(Cancel As Integer)
+If Not currentUser.HasPermission(Me.Name, "View") Then
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation, "COCOBOLO SYSTEM"
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+Private Sub Form_Load()
+    ' إنشاء كائن Font جديد
+    Dim fnt As New StdFont
+
+    ' تحديد خصائص الخط
+    With fnt
+'        .Name = "Tahoma"      ' أو "Tahoma" لو عايز شكل تقليدي
+        .Size = 12             ' ? هنا تكبر أو تصغر الحجم حسب رغبتك
+
+        .Bold = True
+    End With
+
+    ' ربط الخط الجديد بـ TreeView
+    Set Me.tvExpenseGroups.Font = fnt
+
+    ' تحميل الشجرة
+        ' تعيين التواريخ الافتراضية (من أول السنة إلى اليوم)
+    Me.txtFromDate = DateSerial(Year(Date), Month(Date), 1)
+    Me.txtToDate = Date
+    BuildExpenseTree
+End Sub
+
+Private Sub cmdFilter_Click()
+    BuildExpenseTree
+End Sub
+
+Private Sub cmdReset_Click()
+    Me.txtFromDate = DateSerial(Year(Date), 1, 1)
+    Me.txtToDate = Date
+    BuildExpenseTree
+End Sub
+
+' ==============================================
+' الدالة الرئيسية: بناء الشجرة كاملة + المبالغ
+' ==============================================
+Private Sub BuildExpenseTree()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim qdf As DAO.QueryDef
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim parentNode As Object
+    Dim childNode As Object
+    Dim parentKey As String
+
+    Me.tvExpenseGroups.Nodes.Clear
+    Set db = CurrentDb
+
+    ' استعلام واحد يجيب كل المجموعات + المبلغ (لو مفيش مصروفات، يبقى صفر)
+    sql = "PARAMETERS [FromDate] DateTime, [ToDate] DateTime; " & _
+          "SELECT g.ExpenseGroupID, g.ExpenseGroupName, g.ParentGroupID, " & _
+          "IIf(IsNull(SUM(e.Amount)),0,SUM(e.Amount)) AS TotalAmount " & _
+          "FROM dbo_ExpenseGroups g " & _
+          "LEFT JOIN dbo_Expenses e ON g.ExpenseGroupID = e.ExpenseGroupID "
+
+    ' إضافة شرط التاريخ (لو موجود)
+    sql = sql & "WHERE 1=1 "
+    If Not IsNull(Me.txtFromDate) Then
+        sql = sql & "AND (e.ExpenseDate >= [FromDate] OR e.ExpenseDate IS NULL) "
+    End If
+    If Not IsNull(Me.txtToDate) Then
+        sql = sql & "AND (e.ExpenseDate <= [ToDate] OR e.ExpenseDate IS NULL) "
+    End If
+
+    sql = sql & "GROUP BY g.ExpenseGroupID, g.ExpenseGroupName, g.ParentGroupID " & _
+                "ORDER BY g.ParentGroupID, g.ExpenseGroupName"
+
+    Set qdf = db.CreateQueryDef("", sql)
+
+    ' تعيين المعلمات
+    If Not IsNull(Me.txtFromDate) Then
+        qdf.Parameters("[FromDate]").value = Me.txtFromDate
+    Else
+        qdf.Parameters("[FromDate]").value = Null
+    End If
+
+    If Not IsNull(Me.txtToDate) Then
+        qdf.Parameters("[ToDate]").value = Me.txtToDate
+    Else
+        qdf.Parameters("[ToDate]").value = Null
+    End If
+
+    Set rs = qdf.OpenRecordset(dbOpenSnapshot) ' Snapshot أسرع في القراءة
+
+    ' إضافة المجموعات للشجرة
+    Do While Not rs.EOF
+        Dim nodeKey As String
+        nodeKey = "G" & rs!ExpenseGroupID
+
+        Dim nodeText As String
+        nodeText = rs!ExpenseGroupName & " (" & Format(Nz(rs!TotalAmount, 0), "###,##0.00") & ")"
+
+        If IsNull(rs!ParentGroupID) Then
+            ' مجموعة رئيسية
+            Set parentNode = Me.tvExpenseGroups.Nodes.Add(, , nodeKey, nodeText)
+            parentNode.Tag = rs!ExpenseGroupID
+        Else
+            ' مجموعة فرعية
+            parentKey = "G" & rs!ParentGroupID
+            On Error Resume Next
+            Set parentNode = Me.tvExpenseGroups.Nodes(parentKey)
+            On Error GoTo ErrHandler
+            If Not parentNode Is Nothing Then
+                Set childNode = Me.tvExpenseGroups.Nodes.Add(parentNode, tvwChild, nodeKey, nodeText)
+                childNode.Tag = rs!ExpenseGroupID
+            End If
+        End If
+
+        rs.MoveNext
+    Loop
+
+    rs.Close
+    Set rs = Nothing
+    Set qdf = Nothing
+    Set db = Nothing
+
+    ' توسيع أول عقدة لو موجودة
+    If Me.tvExpenseGroups.Nodes.count > 0 Then
+        Me.tvExpenseGroups.Nodes(1).Expanded = True
+    End If
+
+    ' تحديث كل الإحصائيات
+    DisplayTotalAmount
+    DisplayMainGroupsTotal
+    DisplayGroupTotals
+    FormatTreeView
+
+    Exit Sub
+
+ErrHandler:
+    MsgBox "حدث خطأ أثناء بناء الشجرة: " & Err.Description, vbCritical
+End Sub
+
+' ==========================================
+' عرض الإجمالي الكلي حسب التواريخ المحددة
+' ==========================================
+Private Sub DisplayTotalAmount()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim qdf As DAO.QueryDef
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    Set db = CurrentDb
+
+    sql = "PARAMETERS [FromDate] DateTime, [ToDate] DateTime; " & _
+          "SELECT IIf(IsNull(SUM(Amount)),0,SUM(Amount)) AS TotalAll " & _
+          "FROM dbo_Expenses WHERE 1=1 "
+
+    If Not IsNull(Me.txtFromDate) Then
+        sql = sql & "AND ExpenseDate >= [FromDate] "
+    End If
+    If Not IsNull(Me.txtToDate) Then
+        sql = sql & "AND ExpenseDate <= [ToDate] "
+    End If
+
+    Set qdf = db.CreateQueryDef("", sql)
+
+    If Not IsNull(Me.txtFromDate) Then
+        qdf.Parameters("[FromDate]").value = Me.txtFromDate
+    Else
+        qdf.Parameters("[FromDate]").value = Null
+    End If
+
+    If Not IsNull(Me.txtToDate) Then
+        qdf.Parameters("[ToDate]").value = Me.txtToDate
+    Else
+        qdf.Parameters("[ToDate]").value = Null
+    End If
+
+    Set rs = qdf.OpenRecordset(dbOpenSnapshot)
+
+    Me.lblTotalAmount.Caption = "إجمالى المصروفات عن الفترة المحددة :" & vbCrLf & _
+                            Format(Nz(rs!TotalAll, 0), "###,##0.00")
+
+
+    rs.Close
+    Set rs = Nothing
+    Set qdf = Nothing
+    Set db = Nothing
+
+    Exit Sub
+
+ErrHandler:
+    Me.lblTotalAmount.Caption = "إجمالى المصروفات عن الفترة المحددة : 0.00"
+End Sub
+
+' ==========================================
+' عرض إجمالي المجموعات الرئيسية
+' ==========================================
+Private Sub DisplayMainGroupsTotal()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim qdf As DAO.QueryDef
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    Set db = CurrentDb
+
+    sql = "PARAMETERS [FromDate] DateTime, [ToDate] DateTime; " & _
+          "SELECT SUM(IIf(IsNull(e.Amount),0,e.Amount)) AS MainGroupsTotal " & _
+          "FROM dbo_ExpenseGroups g " & _
+          "LEFT JOIN dbo_Expenses e ON g.ExpenseGroupID = e.ExpenseGroupID " & _
+          "WHERE g.ParentGroupID IS NULL "
+
+    ' إضافة شرط التاريخ
+    If Not IsNull(Me.txtFromDate) Then
+        sql = sql & "AND (e.ExpenseDate >= [FromDate] OR e.ExpenseDate IS NULL) "
+    End If
+    If Not IsNull(Me.txtToDate) Then
+        sql = sql & "AND (e.ExpenseDate <= [ToDate] OR e.ExpenseDate IS NULL) "
+    End If
+
+    Set qdf = db.CreateQueryDef("", sql)
+
+    If Not IsNull(Me.txtFromDate) Then
+        qdf.Parameters("[FromDate]").value = Me.txtFromDate
+    Else
+        qdf.Parameters("[FromDate]").value = Null
+    End If
+
+    If Not IsNull(Me.txtToDate) Then
+        qdf.Parameters("[ToDate]").value = Me.txtToDate
+    Else
+        qdf.Parameters("[ToDate]").value = Null
+    End If
+
+    Set rs = qdf.OpenRecordset(dbOpenSnapshot)
+
+    Me.lblMainGroupsTotal.Caption = "المجموعات الرئيسية: " & Format(Nz(rs!MainGroupsTotal, 0), "###,##0.00")
+
+    rs.Close
+    Set rs = Nothing
+    Set qdf = Nothing
+    Set db = Nothing
+
+    Exit Sub
+
+ErrHandler:
+    Me.lblMainGroupsTotal.Caption = "المجموعات الرئيسية: 0.00"
+End Sub
+
+' ==========================================
+' حساب وعرض المجموع التراكمي للمجموعات الرئيسية
+' ==========================================
+'Private Sub DisplayGroupTotals()
+'    On Error GoTo ErrHandler
+'
+'    Dim db As DAO.Database
+'    Dim qdf As DAO.QueryDef
+'    Dim rs As DAO.Recordset
+'    Dim sql As String
+'    Dim Node As Object
+'
+'    Set db = CurrentDb
+'
+'    ' استعلام لحساب المجموع التراكمي لكل مجموعة رئيسية (مع فرعيها)
+'    sql = "PARAMETERS [FromDate] DateTime, [ToDate] DateTime; " & _
+'          "WITH GroupHierarchy AS ( " & _
+'          "    SELECT ExpenseGroupID, ExpenseGroupName, ParentGroupID, ExpenseGroupID AS RootGroupID " & _
+'          "    FROM dbo_ExpenseGroups " & _
+'          "    WHERE ParentGroupID IS NULL " & _
+'          "    UNION ALL " & _
+'          "    SELECT g.ExpenseGroupID, g.ExpenseGroupName, g.ParentGroupID, h.RootGroupID " & _
+'          "    FROM dbo_ExpenseGroups g " & _
+'          "    INNER JOIN GroupHierarchy h ON g.ParentGroupID = h.ExpenseGroupID " & _
+'          ") " & _
+'          "SELECT h.RootGroupID, SUM(IIf(IsNull(e.Amount),0,e.Amount)) AS CumulativeAmount " & _
+'          "FROM GroupHierarchy h " & _
+'          "LEFT JOIN dbo_Expenses e ON h.ExpenseGroupID = e.ExpenseGroupID "
+'
+'    ' إضافة شرط التاريخ
+'    sql = sql & "WHERE 1=1 "
+'    If Not IsNull(Me.txtFromDate) Then
+'        sql = sql & "AND (e.ExpenseDate >= [FromDate] OR e.ExpenseDate IS NULL) "
+'    End If
+'    If Not IsNull(Me.txtToDate) Then
+'        sql = sql & "AND (e.ExpenseDate <= [ToDate] OR e.ExpenseDate IS NULL) "
+'    End If
+'
+'    sql = sql & "GROUP BY h.RootGroupID"
+'
+'    Set qdf = db.CreateQueryDef("", sql)
+'
+'    ' تعيين المعلمات
+'    If Not IsNull(Me.txtFromDate) Then
+'        qdf.Parameters("[FromDate]").value = Me.txtFromDate
+'    Else
+'        qdf.Parameters("[FromDate]").value = Null
+'    End If
+'
+'    If Not IsNull(Me.txtToDate) Then
+'        qdf.Parameters("[ToDate]").value = Me.txtToDate
+'    Else
+'        qdf.Parameters("[ToDate]").value = Null
+'    End If
+'
+'    Set rs = qdf.OpenRecordset(dbOpenSnapshot)
+'
+'    ' تحديث العقد الرئيسية بالمجاميع التراكمية
+'    Do While Not rs.EOF
+'        Dim rootKey As String
+'        rootKey = "G" & rs!RootGroupID
+'
+'        ' البحث عن العقدة الرئيسية
+'        On Error Resume Next
+'        Set Node = Me.tvExpenseGroups.Nodes(rootKey)
+'        On Error GoTo ErrHandler
+'
+'        If Not Node Is Nothing Then
+'            ' تحديث النص لإضافة المجموع التراكمي
+'            Dim currentText As String
+'            Dim groupName As String
+'            Dim cumulativeAmount As Double
+'
+'            currentText = Node.text
+'            ' استخراج اسم المجموعة (إزالة المبلغ القديم)
+'            If InStr(currentText, "(") > 0 Then
+'                groupName = Trim(Left(currentText, InStr(currentText, "(") - 1))
+'            Else
+'                groupName = currentText
+'            End If
+'
+'            cumulativeAmount = Nz(rs!cumulativeAmount, 0)
+'
+'            ' تحديث النص مع إضافة المجموع التراكمي
+'            Node.text = groupName & " (" & Format(cumulativeAmount, "###,##0.00") & ")"
+'        End If
+'
+'        rs.MoveNext
+'    Loop
+'
+'    rs.Close
+'    Set qdf = Nothing
+'    Set db = Nothing
+'
+'    Exit Sub
+'
+'ErrHandler:
+'    ' تجاهل الخطأ في حالة عدم وجود العقدة
+'End Sub
+' ==========================================
+' تحديث مبالغ المجموعات الرئيسية داخل الشجرة
+' ==========================================
+Private Sub DisplayGroupTotals()
+    On Error Resume Next
+
+    Dim i As Integer
+    Dim parentNode As Object
+    Dim TotalAmount As Double
+
+    ' مر على كل العقد الرئيسية (ParentGroupID = Null)
+    For i = 1 To Me.tvExpenseGroups.Nodes.count
+        Set parentNode = Me.tvExpenseGroups.Nodes(i)
+
+        If parentNode.Children > 0 And parentNode.Parent Is Nothing Then
+            TotalAmount = GetNodeTotalRecursive(parentNode)
+
+            ' استخراج اسم المجموعة فقط من النص القديم
+            Dim GroupName As String
+            If InStr(parentNode.text, "(") > 0 Then
+                GroupName = Trim(Left(parentNode.text, InStr(parentNode.text, "(") - 1))
+            Else
+                GroupName = parentNode.text
+            End If
+
+            parentNode.text = GroupName & " (" & Format(TotalAmount, "###,##0.00") & ")"
+        End If
+    Next i
+End Sub
+
+' ==========================================
+' دالة مساعدة لحساب مجموع عقدة رئيسية + كل الفروع
+' ==========================================
+Private Function GetNodeTotalRecursive(ByVal node As Object) As Double
+    Dim Total As Double
+    Dim amountText As String
+    Dim Amount As Double
+    Dim childNode As Object
+
+    ' استخراج المبلغ من النص (بين القوسين)
+    If InStr(node.text, "(") > 0 And InStr(node.text, ")") > 0 Then
+        amountText = Split(Split(node.text, "(")(1), ")")(0)
+        Amount = CDbl(Replace(Replace(amountText, ",", ""), " ", ""))
+    Else
+        Amount = 0
+    End If
+
+    Total = Amount
+
+    ' نجمع كل الفروع التابعة
+    If node.Children > 0 Then
+        Set childNode = node.child
+        Do While Not childNode Is Nothing
+            Total = Total + GetNodeTotalRecursive(childNode)
+            Set childNode = childNode.Next
+        Loop
+    End If
+
+    GetNodeTotalRecursive = Total
+End Function
+
+' ==========================================
+' تنسيق متقدم للشجرة مع ألوان
+' ==========================================
+'Private Sub FormatTreeView()
+'    On Error Resume Next
+'
+'    Dim i As Integer
+'    For i = 1 To Me.tvExpenseGroups.Nodes.count
+'        Dim node As Object
+'        Set node = Me.tvExpenseGroups.Nodes(i)
+'
+'        ' تلوين المجموعات الرئيسية
+'        If InStr(node.key, "G") = 1 And node.Children > 0 Then
+'            node.Bold = True
+'            node.ForeColor = RGB(0, 0, 128) ' أزرق داكن للمجموعات الرئيسية
+'        End If
+'
+'        ' تلوين المجموعات حسب المبلغ
+'        Dim amountText As String
+'        If InStr(node.text, "(") > 0 And InStr(node.text, ")") > 0 Then
+'            amountText = Split(Split(node.text, "(")(1), ")")(0)
+'            Dim amount As Double
+'            amount = CDbl(Replace(Replace(amountText, ",", ""), " ", ""))
+'
+'            If amount > 10000 Then
+'                node.ForeColor = RGB(0, 128, 0) ' أخضر للمبالغ الكبيرة
+'            ElseIf amount = 0 Then
+'                node.ForeColor = RGB(128, 128, 128) ' رمادي للصفر
+'            ElseIf amount < 0 Then
+'                node.ForeColor = RGB(255, 0, 0) ' أحمر للقيم السالبة
+'            End If
+'        End If
+'    Next i
+'End Sub
+Private Sub FormatTreeView()
+    On Error GoTo CleanFail
+
+    Dim i As Long
+    Dim node As MSComctlLib.node
+    Dim amountText As String
+    Dim Amount As Double
+
+    For i = 1 To Me.tvExpenseGroups.Nodes.count
+        Set node = Me.tvExpenseGroups.Nodes(i)
+        node.Bold = False ' إعادة التهيئة أولًا
+
+        ' ===== تمييز المجموعات الرئيسية =====
+        If InStr(node.key, "G") = 1 And node.Children > 0 Then
+            ' إضافة رمز للمجموعة الرئيسية إن لم يكن مضافًا
+            If Left(node.text, 1) <> "" Then
+                node.text = "" & node.text
+            End If
+
+            node.Bold = True
+            node.ForeColor = RGB(0, 0, 128) ' أزرق غامق للمجموعات الرئيسية
+        End If
+
+        ' ===== استخراج المبلغ من النص إن وجد =====
+        If InStr(node.text, "(") > 0 And InStr(node.text, ")") > 0 Then
+            amountText = Split(Split(node.text, "(")(1), ")")(0)
+            amountText = Replace(amountText, ",", "")
+            amountText = Replace(amountText, " ", "")
+            
+            If IsNumeric(amountText) Then
+                Amount = CDbl(amountText)
+
+                ' ===== التلوين حسب القيمة =====
+                Select Case Amount
+                    Case Is > 50000
+node.ForeColor = RGB(255, 0, 0) ' أحمر للقيم الكبيرة جدًا                        node.Bold = True
+                    Case Is > 10000
+                        node.ForeColor = RGB(34, 139, 34) ' أخضر فاتح للقيم المرتفعة
+                    Case 0
+                        node.ForeColor = RGB(128, 128, 128) ' رمادي للقيم صفر
+                        node.Bold = False
+                    Case Is < 0
+                        node.ForeColor = RGB(220, 20, 60) ' أحمر قرمزي للقيم السالبة
+                        node.Bold = True
+                End Select
+            End If
+        End If
+    Next i
+
+    Exit Sub
+
+CleanFail:
+    Debug.Print "خطأ أثناء تنسيق الشجرة: " & Err.Description, , "COCOBOLO SYSTEM"
+End Sub
+
+' ==========================================
+' حدث عند النقر على عقدة في الشجرة
+' ==========================================
+Private Sub tvExpenseGroups_NodeClick(ByVal node As Object)
+    On Error Resume Next
+
+    If Not node Is Nothing Then
+        ' يمكنك إضافة وظائف إضافية هنا
+        ' مثل عرض تفاصيل المصروفات للمجموعة المحددة
+        Dim GroupID As Long
+        GroupID = CLng(node.Tag)
+
+        ' مثال: عرض رسالة بالمعلومات
+        ' MsgBox "المجموعة المحددة: " & Node.Text & vbCrLf & "ID: " & groupID
+    End If
+End Sub
+
+' ==========================================
+' حدث عند تغيير التواريخ
+' ==========================================
+Private Sub txtFromDate_AfterUpdate()
+    If Not IsNull(Me.txtFromDate) And Not IsNull(Me.txtToDate) Then
+        If Me.txtFromDate > Me.txtToDate Then
+            MsgBox "تاريخ البداية يجب أن يكون قبل تاريخ النهاية", vbExclamation, "COCOBOLO SYSTEM"
+            Me.txtFromDate.Undo
+        Else
+            BuildExpenseTree
+        End If
+    End If
+End Sub
+
+Private Sub txtToDate_AfterUpdate()
+    If Not IsNull(Me.txtFromDate) And Not IsNull(Me.txtToDate) Then
+        If Me.txtToDate < Me.txtFromDate Then
+            MsgBox "تاريخ النهاية يجب أن يكون بعد تاريخ البداية", vbExclamation, "COCOBOLO SYSTEM"
+            Me.txtToDate.Undo
+        Else
+            BuildExpenseTree
+        End If
+    End If
+End Sub
+'============================================================
+
+

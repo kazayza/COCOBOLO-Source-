@@ -1,0 +1,45 @@
+﻿Option Compare Database
+
+Private Sub btnShowReport_Click()
+
+    If IsNull(Me.txtFromDate) Or IsNull(Me.txtToDate) Then
+        MsgBox "من فضلك أدخل تاريخ البداية والنهاية.", vbExclamation
+        Exit Sub
+    End If
+    
+    DoCmd.OpenReport "rpt_ExpenseGroups", acViewPreview
+End Sub
+
+
+
+Private Sub btnExportExcel_Click()
+    Dim strReport As String
+    Dim strFile As String
+    Dim fd As fileDialog
+    
+    strReport = "rpt_ExpenseGroups"   ' اسم التقرير
+    
+    ' فتح نافذة Save As
+    Set fd = Application.fileDialog(msoFileDialogSaveAs)
+    With fd
+        .Title = "اختر مكان حفظ ملف Excel"
+        .InitialFileName = "Expenses_" & Format(Date, "yyyymmdd") & ".xlsx"
+        If .Show = -1 Then
+            strFile = .SelectedItems(1)
+            
+            ' إضافة الامتداد لو المستخدم مكتبهوش
+            If Right(strFile, 5) <> ".xlsx" Then
+                strFile = strFile & ".xlsx"
+            End If
+            
+            ' تصدير التقرير
+            DoCmd.OutputTo acOutputReport, strReport, acFormatXLSX, strFile, True
+        Else
+            MsgBox "تم إلغاء العملية", vbInformation
+        End If
+    End With
+End Sub
+
+Private Sub txtToDate_AfterUpdate()
+Me.Chart9.Requery
+End Sub

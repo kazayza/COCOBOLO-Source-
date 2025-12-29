@@ -1,0 +1,1069 @@
+﻿Option Compare Database
+Option Explicit
+
+
+
+Private Sub cmdExportPDF_Click()
+    On Error GoTo ErrorHandler
+    
+    If DCount("*", "tblTempPayrollResults") = 0 Then
+        MsgBox "لا توجد بيانات للتصدير", vbExclamation
+        Exit Sub
+    End If
+    
+    ' استخدام تقرير Access للتصدير PDF
+    DoCmd.OpenReport "rptPayrollTmp", acViewPreview
+    DoCmd.OutputTo acOutputReport, "", acFormatPDF, CurrentProject.Path & "\كشف_الرواتب.pdf"
+    DoCmd.Close acReport, "rptPayrollTmp"
+    
+    MsgBox "تم تصدير التقرير بنجاح كملف PDF", vbInformation
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical
+End Sub
+
+Private Sub cmdPreview_Click()
+
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود بيانات
+    If DCount("*", "tblTempPayrollResults") = 0 Then
+        MsgBox "لا توجد بيانات رواتب للمعاينة", vbExclamation
+        Exit Sub
+    End If
+    
+    ' إنشاء تقرير شامل
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim reportData As String
+    Dim totalNetSalary As Currency
+    Dim employeeCount As Integer
+    
+    sql = "SELECT * FROM tblTempPayrollResults ORDER BY EmployeeID"
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset(sql)
+    
+    reportData = "=== كشف رواتب جميع الموظفين ===" & vbCrLf & vbCrLf
+    
+    employeeCount = 0
+    totalNetSalary = 0
+    
+    Do While Not rs.EOF
+        reportData = reportData & "كود: " & rs!EmployeeID & " - " & rs!FullName & vbCrLf
+        reportData = reportData & "صافي الراتب: " & Format(rs!NetSalary, "Currency") & vbCrLf
+        reportData = reportData & "------------------------" & vbCrLf
+        
+        totalNetSalary = totalNetSalary + rs!NetSalary
+        employeeCount = employeeCount + 1
+        rs.MoveNext
+    Loop
+    
+    reportData = reportData & vbCrLf & "الإجمالي:" & vbCrLf
+    reportData = reportData & "عدد الموظفين: " & employeeCount & vbCrLf
+    reportData = reportData & "إجمالي صافي الرواتب: " & Format(totalNetSalary, "Currency")
+    
+    ' عرض التقرير
+    MsgBox reportData, vbInformation, "معاينة جميع الرواتب"
+    
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    
+    Exit Sub
+    
+ErrorHandler:
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    MsgBox "خطأ في معاينة البيانات: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub cmdsave_Click()
+    If Not ValidateInput() Then Exit Sub
+    
+    On Error GoTo ErrorHandler
+    
+    Dim Response As Integer
+    Response = MsgBox("هل تريد حفظ بيانات المرتبات في قاعدة البيانات؟", vbQuestion + vbYesNo)
+    
+    If Response = vbNo Then Exit Sub
+    
+    SaveToMainTable
+    
+    MsgBox "تم حفظ بيانات المرتبات بنجاح!", vbInformation
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الحفظ: " & Err.Description, vbCritical
+End Sub
+
+Private Sub SaveToMainTable()
+    On Error Resume Next ' تجاهل الأخطاء
+
+    Dim payrollPeriod As String
+    payrollPeriod = Me.cboYear.value & "-" & Format(Me.cboMonth.value, "00")
+
+    ' التحقق من وجود بيانات
+    If DCount("*", "tblTempPayrollResults") = 0 Then
+        MsgBox "لا توجد بيانات للحفظ", vbExclamation
+        Exit Sub
+    End If
+SetupProgressBar 4, "جاري بدء عملية الحفظ..."
+
+    DoCmd.SetWarnings False
+ ' الخطوة 1: حفظ البيانات الأساسية (25%)
+    UpdateProgress 1, 4, "جاري حفظ البيانات الأساسية..."
+
+    ' 1?? حفظ كل السجلات دفعة واحدة في dbo_Payroll
+    Dim sql As String
+    sql = "INSERT INTO dbo_Payroll (EmployeeID, PayrollMonth, BasicSalary, Allowances, Deductions,  PaymentStatus, CreatedBy, CreatedAt) " & _
+          "SELECT EmployeeID, '" & payrollPeriod & "', BasicSalary, Commission, " & _
+          "Deductions + Penalties,  'غير مدفوع', 'Admin', Now() " & _
+          "FROM tblTempPayrollResults"
+
+    DoCmd.RunSQL sql
+ ' الخطوة 2: حفظ العمولات (50%)
+    UpdateProgress 2, 4, "جاري حفظ العمولات..."
+    
+    ' 2?? حفظ تفاصيل العمولات
+    sql = "INSERT INTO dbo_PayrollDetails (PayrollID, DetailType, DetailDescription, Amount, CreatedBy, CreatedAt) " & _
+          "SELECT p.PayrollID, 'بدل', 'Commission', t.Commission, 'Admin', Now() " & _
+          "FROM tblTempPayrollResults t " & _
+          "INNER JOIN dbo_Payroll p ON t.EmployeeID = p.EmployeeID " & _
+          "WHERE p.PayrollMonth = '" & payrollPeriod & "' AND t.Commission > 0"
+
+    DoCmd.RunSQL sql
+ ' الخطوة 3: حفظ الخصومات (75%)
+    UpdateProgress 3, 4, "جاري حفظ الخصومات..."
+    
+    ' 3?? حفظ تفاصيل الخصومات
+    sql = "INSERT INTO dbo_PayrollDetails (PayrollID, DetailType, DetailDescription, Amount, CreatedBy, CreatedAt) " & _
+          "SELECT p.PayrollID, 'خصم', 'غياب', t.Deductions, 'Admin', Now() " & _
+          "FROM tblTempPayrollResults t " & _
+          "INNER JOIN dbo_Payroll p ON t.EmployeeID = p.EmployeeID " & _
+          "WHERE p.PayrollMonth = '" & payrollPeriod & "' AND t.Deductions > 0"
+
+    DoCmd.RunSQL sql
+  ' الخطوة 4: حفظ الجزاءات (100%)
+    UpdateProgress 4, 4, "جاري حفظ الجزاءات..."
+    
+    ' 4?? حفظ تفاصيل الجزاءات
+    sql = "INSERT INTO dbo_PayrollDetails (PayrollID, DetailType, DetailDescription, Amount, CreatedBy, CreatedAt) " & _
+          "SELECT p.PayrollID, 'خصم', 'تاخير وانصراف مبكر', t.Penalties, 'Admin', Now() " & _
+          "FROM tblTempPayrollResults t " & _
+          "INNER JOIN dbo_Payroll p ON t.EmployeeID = p.EmployeeID " & _
+          "WHERE p.PayrollMonth = '" & payrollPeriod & "' AND t.Penalties > 0"
+
+    DoCmd.RunSQL sql
+
+    DoCmd.SetWarnings False
+
+    ' مسح الجدول المؤقت
+    DoCmd.RunSQL "DELETE FROM tblTempPayrollResults"
+
+    ' تحديث الشاشة
+'    If Not IsNull(Me.lstResults) Then
+        Me.lstResults.rowSource = ""
+        Me.lstResults.Requery
+'    End If
+ ' إخفاء شريط التقدم
+    HideProgressBar
+    
+    MsgBox "تم حفظ المرتبات بنجاح!", vbInformation
+
+End Sub
+
+
+
+
+
+
+Private Function GetLastPayrollID(EmployeeID As Long, payrollPeriod As String) As Long
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    
+    ' استخدام DMax مباشرة (أكثر أماناً)
+    GetLastPayrollID = Nz(DMax("PayrollID", "dbo_Payroll", _
+        "EmployeeID = " & EmployeeID & " AND PayrollMonth = '" & payrollPeriod & "'"), 0)
+    
+    Exit Function
+    
+ErrorHandler:
+    GetLastPayrollID = 0
+    Debug.Print "Error in GetLastPayrollID: " & Err.Description
+End Function
+
+Private Function IsPayrollExists(EmployeeID As Long, payrollPeriod As String) As Boolean
+    IsPayrollExists = (DCount("*", "dbo_Payroll", _
+                         "EmployeeID = " & EmployeeID & _
+                         " AND PayrollMonth = '" & payrollPeriod & "'") > 0)
+End Function
+
+
+
+
+
+
+Private Sub cmdPreviewPayroll_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود عنصر محدد في الليست بوكس
+    If Me.lstResults.ListIndex = -1 Then
+        MsgBox "يرجى اختيار موظف من القائمة للمعاينة", vbExclamation
+        Exit Sub
+    End If
+    
+    ' جلب بيانات الموظف المحدد
+    Dim EmployeeID As Long
+    EmployeeID = Me.lstResults.Column(0, Me.lstResults.ListIndex)
+    
+    ' عرض تقرير المعاينة
+    PreviewEmployeePayroll EmployeeID
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في معاينة البيانات: " & Err.Description, vbCritical
+End Sub
+
+Private Sub PreviewEmployeePayroll(EmployeeID As Long)
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim reportData As String
+    Dim yearParam As Integer, monthParam As Integer
+    
+    ' جلب بيانات الراتب من الجدول المؤقت
+    sql = "SELECT * FROM tblTempPayrollResults WHERE EmployeeID = " & EmployeeID
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset(sql)
+    
+    If rs.EOF Then
+        MsgBox "لا توجد بيانات راتب لهذا الموظف", vbExclamation
+        Exit Sub
+    End If
+    
+    ' جلب السنة والشهر من البيانات
+    yearParam = rs!PayrollYear
+    monthParam = rs!PayrollMonth
+    
+    ' بناء نص التقرير
+    reportData = "=== كشف راتب موظف ===" & vbCrLf & vbCrLf
+    reportData = reportData & "كود الموظف: " & rs!EmployeeID & vbCrLf
+    reportData = reportData & "الاسم: " & rs!FullName & vbCrLf
+    reportData = reportData & "الشهر: " & monthParam & " / " & yearParam & vbCrLf & vbCrLf
+    
+    reportData = reportData & "الإيرادات:" & vbCrLf
+    reportData = reportData & "  - الراتب الأساسي: " & Format(rs!BasicSalary, "Currency") & vbCrLf
+    reportData = reportData & "  - العمولة: " & Format(rs!commission, "Currency") & vbCrLf
+    reportData = reportData & "  - الإجمالي: " & Format(rs!BasicSalary + rs!commission, "Currency") & vbCrLf & vbCrLf
+    
+    reportData = reportData & "الخصومات:" & vbCrLf
+    reportData = reportData & "  - خصومات الغياب: " & Format(rs!Deductions, "Currency") & vbCrLf
+    reportData = reportData & "  - جزاءات التأخير: " & Format(rs!penalties, "Currency") & vbCrLf
+    reportData = reportData & "  - إجمالي الخصومات: " & Format(rs!Deductions + rs!penalties, "Currency") & vbCrLf & vbCrLf
+    
+    reportData = reportData & "صافي الراتب: " & Format(rs!NetSalary, "Currency") & vbCrLf
+    reportData = reportData & "=========================="
+    
+    ' عرض التقرير في MessageBox
+    MsgBox reportData, vbInformation, "معاينة راتب الموظف"
+    
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    
+    Exit Sub
+    
+ErrorHandler:
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    MsgBox "خطأ في معاينة البيانات: " & Err.Description, vbCritical
+End Sub
+
+
+Private Sub Form_Load()
+    ' تعبئة الأشهر والسنوات
+    FillMonthsAndYears
+    ' تحميل قائمة الموظفين
+    LoadEmployeesList
+'CurrentDb.Execute "DELETE FROM ", tblTempPayrollResults, dbFailOnError
+ CurrentDb.Execute "DELETE FROM tblTempPayrollResults"
+Me.lstResults.Requery
+ Me.Requery
+ 
+End Sub
+Private Sub FillMonthsAndYears()
+    ' تعبئة السنوات
+    Me.cboYear.RowSourceType = "Value List"
+    Me.cboYear.rowSource = "2025;2026;2027"
+    Me.cboYear.value = Year(Date)
+    
+    ' إضافة الأشهر إذا لم يكن موجوداً
+    If Me.cboMonth.rowSource = "" Then
+        Me.cboMonth.RowSourceType = "Value List"
+        Me.cboMonth.rowSource = "1;2;3;4;5;6;7;8;9;10;11;12"
+        Me.cboMonth.value = Month(Date)
+    End If
+End Sub
+
+Private Sub LoadEmployeesList()
+    Me.lstEmployees.rowSource = _
+        "SELECT EmployeeID, FullName as [اسم الموظف], CurrentSalaryBase as [الاجر الاساسى], False AS Selected " & _
+        "FROM dbo_Employees " & _
+        "WHERE Status = 'نشط' " & _
+        "ORDER BY EmployeeID"
+    
+    Me.lstEmployees.ColumnCount = 4
+    Me.lstEmployees.ColumnWidths = "0;8cm;3cm;0cm" ' إخفاء الـ ID
+End Sub
+
+Private Sub cmdSelectAll_Click()
+    SelectAllEmployees True
+End Sub
+
+Private Sub cmdDeselectAll_Click()
+    SelectAllEmployees False
+End Sub
+
+Private Sub SelectAllEmployees(selectAll As Boolean)
+    On Error GoTo ErrorHandler
+    
+    Dim i As Integer
+    
+    ' محاولة التحديد المباشر
+    For i = 0 To Me.lstEmployees.ListCount - 1
+        Me.lstEmployees.Selected(i) = selectAll
+    Next i
+    
+    Exit Sub
+
+ErrorHandler:
+    ' إذا فشل التحديد، نستخدم طريقة بديلة
+    If Err.Number = 438 Then ' Object doesn't support this property
+        UseAlternativeSelectionMethod selectAll
+    Else
+        MsgBox "خطأ في التحديد: " & Err.Description, vbCritical
+    End If
+End Sub
+
+Private Sub UseAlternativeSelectionMethod(selectAll As Boolean)
+    ' طريقة بديلة باستخدام عمود التحديد في الاستعلام
+    Dim currentSource As String
+    currentSource = Me.lstEmployees.rowSource
+    
+    If selectAll Then
+        currentSource = Replace(currentSource, "False AS Selected", "True AS Selected")
+    Else
+        currentSource = Replace(currentSource, "True AS Selected", "False AS Selected")
+    End If
+    
+    Me.lstEmployees.rowSource = currentSource
+    Me.lstEmployees.Requery
+End Sub
+
+Private Sub cmdCalculate_Click()
+    If Not ValidateInput() Then Exit Sub
+    
+    ' جمع الموظفين المحددين
+    Dim selectedEmployees As Collection
+    Set selectedEmployees = GetSelectedEmployees()
+    
+    If selectedEmployees.count = 0 Then
+        MsgBox "لم يتم اختيار أي موظفين", vbExclamation
+        Exit Sub
+    End If
+    
+    ' حساب المرتب لكل موظف
+    CalculatePayrollForEmployees selectedEmployees
+    
+    ' عرض النتائج في ListBox أو SubForm
+    DisplayPayrollResults
+    
+    MsgBox "تم حساب المرتب لـ " & selectedEmployees.count & " موظف", vbInformation
+End Sub
+
+Private Function GetSelectedEmployees() As Collection
+    Dim col As New Collection
+    Dim i As Integer
+    
+    ' الطريقة الأولى: إذا كان ListBox يدعم MultiSelect
+    For i = 0 To Me.lstEmployees.ListCount - 1
+        If Me.lstEmployees.Selected(i) Then
+            col.Add Me.lstEmployees.Column(0, i) ' EmployeeID
+        End If
+    Next i
+    
+    ' الطريقة الثانية: إذا لم ينجح الأول، نستخدم عمود التحديد
+    If col.count = 0 Then
+        For i = 0 To Me.lstEmployees.ListCount - 1
+            If Me.lstEmployees.Column(3, i) = True Then ' العمود الرابع (Selected)
+                col.Add Me.lstEmployees.Column(0, i) ' EmployeeID
+            End If
+        Next i
+    End If
+    
+    Set GetSelectedEmployees = col
+End Function
+
+Private Sub CalculatePayrollForEmployees(employees As Collection)
+'    Dim yearParam As Integer: yearParam = Me.cboYear.Value
+'    Dim monthParam As Integer: monthParam = Me.cboMonth.Value
+'
+'    ' إنشاء جدول مؤقت
+'    CreateTempTable
+'
+'    Dim employeeID As Variant
+'    For Each employeeID In employees
+'        CalculateSinglePayroll CLng(employeeID), yearParam, monthParam
+'    Next employeeID
+
+    On Error GoTo ErrorHandler
+    
+    Dim yearParam As Integer: yearParam = Me.cboYear.value
+    Dim monthParam As Integer: monthParam = Me.cboMonth.value
+    
+    ' إعداد شريط التقدم
+    SetupProgressBar employees.count, "جاري حساب المرتبات..."
+    
+    ' إنشاء جدول مؤقت
+    CreateTempTable
+    
+    Dim EmployeeID As Variant
+   
+    Dim currentIndex As Integer: currentIndex = 0
+    
+    For Each EmployeeID In employees
+        currentIndex = currentIndex + 1
+        
+        ' تحديث شريط التقدم
+        UpdateProgress currentIndex, employees.count, "جاري حساب موظف " & EmployeeID
+        
+        ' حساب المرتب
+        CalculateSinglePayroll CLng(EmployeeID), yearParam, monthParam
+    Next EmployeeID
+    
+    ' إخفاء شريط التقدم
+    HideProgressBar
+    
+    ' عرض النتائج
+    DisplayPayrollResults
+    
+    Exit Sub
+    
+ErrorHandler:
+    HideProgressBar
+    MsgBox "خطأ في الحساب: " & Err.Description, vbCritical
+End Sub
+
+
+
+Private Function ValidateInput() As Boolean
+    If IsNull(Me.cboYear.value) Or IsNull(Me.cboMonth.value) Then
+        MsgBox "يجب اختيار السنة والشهر أولاً", vbExclamation
+        ValidateInput = False
+    Else
+        ValidateInput = True
+    End If
+End Function
+
+Private Sub CalculateSinglePayroll(EmployeeID As Long, yearParam As Integer, monthParam As Integer)
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    
+    Dim BasicSalary As Currency, commission As Currency, Deductions As Currency, penalties As Currency
+    Dim EmployeeName As String, NetSalary As Currency
+    
+    ' 1. جلب الاسم والراتب الأساسي
+    EmployeeName = GetEmployeeName(EmployeeID)
+    BasicSalary = GetEmployeeBasicSalary(EmployeeID)
+    
+    ' 2. حساب العمولات (طريقة مباشرة)
+    commission = Nz(DLookup("SUM(CommissionAmount)", "dbo_CommissionAssignments", _
+                 "EmployeeID = " & EmployeeID & _
+                 " AND CommissionYear = " & yearParam & _
+                 " AND CommissionMonth = " & monthParam), 0)
+    
+    ' 3. حساب الخصومات (طريقة مباشرة)
+    Deductions = CalculateDeductions(EmployeeID, yearParam, monthParam, BasicSalary)
+    
+    ' 4. حساب الجزاءات (طريقة مباشرة)
+    penalties = CalculatePenalties(EmployeeID, yearParam, monthParam, BasicSalary)
+    
+    ' 5. حساب الصافي
+    NetSalary = BasicSalary + commission - Deductions - penalties
+    
+    ' 6. حفظ النتائج
+    SaveToTempTable EmployeeID, EmployeeName, BasicSalary, commission, Deductions, penalties, NetSalary, yearParam, monthParam
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في حساب موظف " & EmployeeID & ": " & Err.Description, vbExclamation
+End Sub
+'Private Function GetEmployeeDeductions(employeeID As Long, yearParam As Integer, monthParam As Integer, db As DAO.Database) As DAO.Recordset
+'    Dim qdf As DAO.QueryDef
+'    Set qdf = db.CreateQueryDef("")
+'
+'    qdf.sql = "PARAMETERS [EmpID] Long, [YearParam] Short, [MonthParam] Byte; " & _
+'              "SELECT * FROM qryMonthlyDeductions " & _
+'              "WHERE [كود الموظف] = [EmpID] " & _
+'              "AND PayrollYear = [YearParam] " & _
+'              "AND PayrollMonth = [MonthParam]"
+'
+'    qdf.Parameters("[EmpID]") = employeeID
+'    qdf.Parameters("[YearParam]") = yearParam
+'    qdf.Parameters("[MonthParam]") = monthParam
+'
+'    Set GetEmployeeDeductions = qdf.OpenRecordset()
+'End Function
+'Private Function GetEmployeeCommission(employeeID As Long, yearParam As Integer, monthParam As Integer, db As DAO.Database) As DAO.Recordset
+'    Dim qdf As DAO.QueryDef
+'    Set qdf = db.CreateQueryDef("")
+'
+'    qdf.sql = "PARAMETERS [EmpID] Long, [YearParam] Short, [MonthParam] Byte; " & _
+'              "SELECT * FROM qryCommissionSummary " & _
+'              "WHERE EmployeeID = [EmpID] " & _
+'              "AND CommissionYear = [YearParam] " & _
+'              "AND CommissionMonth = [MonthParam]"
+'
+'    qdf.Parameters("[EmpID]") = employeeID
+'    qdf.Parameters("[YearParam]") = yearParam
+'    qdf.Parameters("[MonthParam]") = monthParam
+'
+'    Set GetEmployeeCommission = qdf.OpenRecordset()
+'End Function
+
+Private Function GetEmployeeCommissionValue(EmployeeID As Long, yearParam As Integer, monthParam As Integer) As Currency
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    
+    Set rs = db.OpenRecordset( _
+        "SELECT SUM(CommissionAmount) AS TotalCommission " & _
+        "FROM dbo_CommissionAssignments " & _
+        "WHERE EmployeeID = " & EmployeeID & _
+        " AND CommissionYear = " & yearParam & _
+        " AND CommissionMonth = " & monthParam)
+    
+    GetEmployeeCommissionValue = Nz(rs!TotalCommission, 0)
+    rs.Close
+End Function
+
+'Private Function GetEmployeePenalties(employeeID As Long, yearParam As Integer, monthParam As Integer, db As DAO.Database) As DAO.Recordset
+'    Dim qdf As DAO.QueryDef
+'    Set qdf = db.CreateQueryDef("")
+'
+'    qdf.sql = "PARAMETERS [EmpID] Long, [YearParam] Short, [MonthParam] Byte; " & _
+'              "SELECT * FROM qryAttendancePenalties " & _
+'              "WHERE EmployeeID = [EmpID] " & _
+'              "AND PayrollYear = [YearParam] " & _
+'              "AND PayrollMonth = [MonthParam]"
+'
+'    qdf.Parameters("[EmpID]") = employeeID
+'    qdf.Parameters("[YearParam]") = yearParam
+'    qdf.Parameters("[MonthParam]") = monthParam
+'
+'    Set GetEmployeePenalties = qdf.OpenRecordset()
+'End Function
+
+Private Sub CreateTempTable()
+    ' التحقق من وجود الجدول بدون أخطاء
+    If Not TableExists("tblTempPayrollResults") Then
+        CurrentDb.Execute "CREATE TABLE tblTempPayrollResults (" & _
+            "EmployeeID LONG, " & _
+            "FullName TEXT(255), " & _
+            "BasicSalary CURRENCY, " & _
+            "Commission CURRENCY, " & _
+            "Deductions CURRENCY, " & _
+            "Penalties CURRENCY, " & _
+            "NetSalary CURRENCY, " & _
+            "PayrollYear SHORT, " & _
+            "PayrollMonth BYTE)"
+    Else
+        ' إذا الجدول موجود، نمسح البيانات فقط
+        CurrentDb.Execute "DELETE FROM tblTempPayrollResults"
+    End If
+End Sub
+
+Private Function TableExists(tableName As String) As Boolean
+    On Error Resume Next
+    Dim tdf As TableDef
+    TableExists = False
+    For Each tdf In CurrentDb.TableDefs
+        If tdf.Name = tableName Then
+            TableExists = True
+            Exit For
+        End If
+    Next tdf
+End Function
+
+Private Function GetEmployeeName(EmployeeID As Long) As String
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    
+    Set rs = db.OpenRecordset( _
+        "SELECT FullName FROM dbo_Employees WHERE EmployeeID = " & EmployeeID)
+    
+    If Not rs.EOF Then
+        GetEmployeeName = Nz(rs!FullName, "")
+    Else
+        GetEmployeeName = "غير معروف"
+    End If
+    
+    rs.Close
+End Function
+
+Private Sub SaveToTempTable(EmployeeID As Long, EmployeeName As String, BasicSalary As Currency, _
+                          commission As Currency, Deductions As Currency, penalties As Currency, _
+                          NetSalary As Currency, yearParam As Integer, monthParam As Integer)
+    Dim sql As String
+    sql = "INSERT INTO tblTempPayrollResults VALUES (" & _
+        EmployeeID & ", '" & Replace(EmployeeName, "'", "''") & "', " & _
+        BasicSalary & ", " & commission & ", " & Deductions & ", " & _
+        penalties & ", " & NetSalary & ", " & yearParam & ", " & monthParam & ")"
+    
+    CurrentDb.Execute sql
+End Sub
+
+Private Sub DisplayPayrollResults()
+    ' تأكد من وجود ListBox باسم lstResults
+    On Error Resume Next
+'    Me.lstResults.RowSource = "SELECT * FROM tblTempPayrollResults ORDER BY EmployeeID"
+Me.lstResults.rowSource = "SELECT " & _
+    "EmployeeID AS [كود الموظف], " & _
+    "FullName AS [الاسم بالكامل], " & _
+    "BasicSalary AS [الراتب الأساسي], " & _
+    "Commission AS [عمولة], " & _
+    "Deductions AS [خصومات], " & _
+    "Penalties AS [غرامات], " & _
+    "NetSalary AS [صافي الراتب], " & _
+    "PayrollYear AS [سنة الرواتب], " & _
+    "PayrollMonth AS [شهر الرواتب] " & _
+    "FROM tblTempPayrollResults " & _
+    "ORDER BY EmployeeID"
+    Me.lstResults.Requery
+    On Error GoTo 0
+End Sub
+
+Private Function GetEmployeeBasicSalary(EmployeeID As Long) As Currency
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    
+    Set rs = db.OpenRecordset( _
+        "SELECT CurrentSalaryBase FROM dbo_Employees WHERE EmployeeID = " & EmployeeID)
+    
+    GetEmployeeBasicSalary = Nz(rs!CurrentSalaryBase, 0)
+    rs.Close
+End Function
+'Private Function GetEmployeeDeductionsValue(employeeID As Long, yearParam As Integer, monthParam As Integer) As Currency
+'    On Error Resume Next
+'
+'    Dim db As DAO.Database
+'    Set db = CurrentDb
+'    Dim qdf As DAO.QueryDef
+'    Dim rs As DAO.Recordset
+'
+'    ' استخدم QueryDef مع Parameters
+'    Set qdf = db.CreateQueryDef("")
+'    qdf.sql = "PARAMETERS [EmpID] Long, [YearParam] Short, [MonthParam] Byte; " & _
+'              "SELECT [قيمة الخصم] FROM qryMonthlyDeductions " & _
+'              "WHERE [كود الموظف] = [EmpID] " & _
+'              "AND PayrollYear = [YearParam] " & _
+'              "AND PayrollMonth = [MonthParam]"
+'
+'    qdf.Parameters("[EmpID]") = employeeID
+'    qdf.Parameters("[YearParam]") = yearParam
+'    qdf.Parameters("[MonthParam]") = monthParam
+'
+'    Set rs = qdf.OpenRecordset()
+'
+'    If Not rs.EOF Then
+'        GetEmployeeDeductionsValue = Nz(rs![قيمة الخصم], 0)
+'    Else
+'        GetEmployeeDeductionsValue = 0
+'    End If
+'
+'    rs.Close
+'    qdf.Close
+'End Function
+Private Function GetEmployeePenaltiesValue(EmployeeID As Long, yearParam As Integer, monthParam As Integer) As Currency
+    On Error Resume Next
+    
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    
+    ' حساب الجزاءات مباشرة من جدول Attendance
+    Set rs = db.OpenRecordset( _
+        "SELECT SUM(a.PenaltyHours * (e.CurrentSalaryBase / 30 / 8)) AS TotalPenalties " & _
+        "FROM dbo_Employees e " & _
+        "INNER JOIN dbo_Attendance a ON e.BioEmployeeID = a.BiometricCode " & _
+        "WHERE e.EmployeeID = " & EmployeeID & _
+        " AND Year(a.LogDate) = " & yearParam & _
+        " AND Month(a.LogDate) = " & monthParam & _
+        " AND a.PenaltyHours > 0")
+    
+    If Not rs.EOF Then
+        GetEmployeePenaltiesValue = Nz(rs!TotalPenalties, 0)
+    Else
+        GetEmployeePenaltiesValue = 0
+    End If
+    
+    rs.Close
+End Function
+'لحساب ايام الغياب من اليوم الاول
+'Private Function CalculateDeductions(EmployeeID As Long, yearParam As Integer, monthParam As Integer, BasicSalary As Currency) As Currency
+'    Dim absentDays As Integer
+'
+'    ' حساب أيام الغياب غير المعفاة
+'    absentDays = Nz(DCount("*", "dbo_Attendance", _
+'                  "BiometricCode = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & ")" & _
+'                  " AND Year(LogDate) = " & yearParam & _
+'                  " AND Month(LogDate) = " & monthParam & _
+'                  " AND Status = 'غائب'" & _
+'                  " AND LogDate NOT IN (SELECT ExemptionDate FROM dbo_DailyExemptions WHERE BioEmployeeID = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & "))"), 0)
+'
+'    CalculateDeductions = (BasicSalary / 30) * absentDays
+'End Function
+'لحساب ايام الغياب بعد اليوم الثامن باعتبارهم راحه
+Private Function CalculateDeductions(EmployeeID As Long, yearParam As Integer, monthParam As Integer, BasicSalary As Currency) As Currency
+    Dim absentDays As Integer
+    Dim dailyRate As Currency
+    Dim excessDays As Integer
+    
+    ' حساب أيام الغياب غير المعفاة
+    absentDays = Nz(DCount("*", "dbo_Attendance", _
+                  "BiometricCode = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & ")" & _
+                  " AND Year(LogDate) = " & yearParam & _
+                  " AND Month(LogDate) = " & monthParam & _
+                  " AND Status = 'غائب'" & _
+                  " AND LogDate NOT IN (SELECT ExemptionDate FROM dbo_DailyExemptions WHERE BioEmployeeID = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & "))"), 0)
+    
+    ' حساب معدل اليوم
+    dailyRate = BasicSalary / 30
+    
+    ' حساب الأيام الزائدة عن 8 أيام
+    If absentDays > 8 Then
+        excessDays = absentDays - 8
+        CalculateDeductions = dailyRate * excessDays
+    Else
+        ' إذا الغياب 8 أيام أو أقل، لا يوجد خصم
+        CalculateDeductions = 0
+    End If
+End Function
+'Private Function CalculatePenalties(EmployeeID As Long, yearParam As Integer, monthParam As Integer, BasicSalary As Currency) As Currency
+'    Dim hourlyRate As Currency
+'    hourlyRate = BasicSalary / 30 / 8
+'
+'    Dim penaltyHours As Double, lateMinutes As Double, earlyMinutes As Double
+'
+'    ' حساب الساعات الجزائية
+'    penaltyHours = Nz(DSum("PenaltyHours", "dbo_Attendance", _
+'                     "BiometricCode = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & ")" & _
+'                     " AND Year(LogDate) = " & yearParam & _
+'                     " AND Month(LogDate) = " & monthParam), 0)
+'
+'
+'    CalculatePenalties = (penaltyHours * hourlyRate)
+'End Function
+
+Private Function CalculatePenalties(EmployeeID As Long, yearParam As Integer, monthParam As Integer, BasicSalary As Currency) As Currency
+    Dim hourlyRate As Currency
+    Dim dailyHours As Double
+    Dim StartTime As Date
+    Dim EndTime As Date
+    
+    ' جلب أوقات البدء والانتهاء بشكل منفصل
+    StartTime = Nz(DLookup("StartTime", "dbo_EmployeeShifts", _
+                    "EmployeeID = " & EmployeeID & _
+                    " AND EffectiveFrom <= #" & DateSerial(yearParam, monthParam, 1) & "#" & _
+                    " AND (EffectiveTo >= #" & DateSerial(yearParam, monthParam, 1) & "# OR EffectiveTo IS NULL)"), #8:00:00 AM#)
+    
+    EndTime = Nz(DLookup("EndTime", "dbo_EmployeeShifts", _
+                  "EmployeeID = " & EmployeeID & _
+                  " AND EffectiveFrom <= #" & DateSerial(yearParam, monthParam, 1) & "#" & _
+                  " AND (EffectiveTo >= #" & DateSerial(yearParam, monthParam, 1) & "# OR EffectiveTo IS NULL)"), #4:00:00 PM#)
+    
+    ' حساب عدد ساعات العمل اليومية
+    dailyHours = (EndTime - StartTime) * 24
+    
+    ' إذا كان الحساب خاطئ نستخدم 8 ساعات افتراضية
+    If dailyHours <= 0 Or dailyHours > 24 Then dailyHours = 8
+    
+    ' حساب معدل الساعة
+    hourlyRate = BasicSalary / 30 / dailyHours
+    
+    Dim PenaltyHours As Double
+    
+    ' حساب الساعات الجزائية
+    PenaltyHours = Nz(DSum("PenaltyHours", "dbo_Attendance", _
+                     "BiometricCode = (SELECT BioEmployeeID FROM dbo_Employees WHERE EmployeeID = " & EmployeeID & ")" & _
+                     " AND Year(LogDate) = " & yearParam & _
+                     " AND Month(LogDate) = " & monthParam), 0)
+    
+    ' حساب إجمالي الجزاءات
+    CalculatePenalties = (PenaltyHours * hourlyRate)
+End Function
+
+' ==== دوال شريط التقدم العامة (تضيفها مرة واحدة في الفورم) ====
+
+Private Sub SetupProgressBar(maxValue As Integer, Optional initialMessage As String = "جاري المعالجة...")
+    On Error Resume Next
+    
+    ' إعداد شريط التقدم
+    Me.progressBar.Visible = True
+    Me.progressBar.Min = 0
+    Me.progressBar.Max = maxValue
+    Me.progressBar.value = 0
+    
+    ' إعداد الليبل
+    Me.lblStatus.Visible = True
+    Me.lblStatus.Caption = initialMessage
+    
+    ' تحديث الشاشة
+    Me.Repaint
+    DoEvents
+End Sub
+
+Private Sub UpdateProgress(currentValue As Integer, maxValue As Integer, Optional Message As String = "")
+    On Error Resume Next
+    
+    ' تحديث شريط التقدم
+    Me.progressBar.value = currentValue
+    
+    ' تحديث الليبل
+    If Message <> "" Then
+        Me.lblStatus.Caption = Message & " (" & currentValue & " من " & maxValue & ")"
+    Else
+        Me.lblStatus.Caption = "جاري المعالجة (" & currentValue & " من " & maxValue & ")"
+    End If
+    
+    ' تحديث الشاشة
+    Me.Repaint
+    DoEvents
+End Sub
+
+Private Sub HideProgressBar()
+    On Error Resume Next
+    
+    ' إخفاء عناصر التقدم
+    Me.progressBar.Visible = False
+    Me.lblStatus.Visible = False
+    Me.lblStatus.Caption = "جاهز"
+    
+    Me.Repaint
+End Sub
+
+Private Sub cmdExport_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من وجود بيانات للتصدير
+    If DCount("*", "tblTempPayrollResults") = 0 Then
+        MsgBox "لا توجد بيانات للتصدير", vbExclamation
+        Exit Sub
+    End If
+    
+    ' عرض خيارات التصدير
+    Dim Response As Integer
+    Response = MsgBox("هل تريد تصدير بيانات الرواتب إلى Excel؟", vbQuestion + vbYesNo, "تصدير البيانات")
+    
+    If Response = vbNo Then Exit Sub
+    
+    ' تنفيذ التصدير
+    ExportToExcel
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical
+End Sub
+
+Private Sub ExportToExcel()
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    Dim xlApp As Object
+    Dim xlWorkbook As Object
+    Dim xlWorksheet As Object
+    Dim sql As String
+    Dim savePath As String
+    Dim i As Integer
+    
+    ' إعداد شريط التقدم
+    SetupProgressBar 5, "جاري تحضير بيانات التصدير..."
+    
+    ' فتح التسجيلات
+    sql = "SELECT * FROM tblTempPayrollResults ORDER BY EmployeeID"
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset(sql)
+    
+    If rs.EOF Then
+        MsgBox "لا توجد بيانات للتصدير", vbExclamation
+        Exit Sub
+    End If
+    
+    UpdateProgress 1, 5, "جاري إنشاء ملف Excel..."
+    
+    ' إنشاء تطبيق Excel
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlWorkbook = xlApp.Workbooks.Add
+    Set xlWorksheet = xlWorkbook.Worksheets(1)
+    
+    xlApp.Visible = False
+    
+    UpdateProgress 2, 5, "جاري كتابة العناوين..."
+    
+    ' كتابة العناوين
+    With xlWorksheet
+        .Cells(1, 1).value = "كشف رواتب الموظفين"
+        .Cells(1, 1).Font.Bold = True
+        .Cells(1, 1).Font.Size = 14
+        .Range("A1:I1").Merge
+        
+        ' كتابة تاريخ التقرير
+        .Cells(2, 1).value = "تاريخ التصدير: " & Format(Date, "yyyy/mm/dd")
+        .Cells(2, 1).Font.Bold = True
+        
+        ' العناوين الرئيسية
+        .Cells(4, 1).value = "كود الموظف"
+        .Cells(4, 2).value = "اسم الموظف"
+        .Cells(4, 3).value = "الراتب الأساسي"
+        .Cells(4, 4).value = "العمولة"
+        .Cells(4, 5).value = "الخصومات"
+        .Cells(4, 6).value = "الجزاءات"
+        .Cells(4, 7).value = "صافي الراتب"
+        .Cells(4, 8).value = "السنة"
+        .Cells(4, 9).value = "الشهر"
+        
+        ' تنسيق العناوين
+        With .Range("A4:I4")
+            .Font.Bold = True
+            .Interior.Color = RGB(200, 200, 200)
+            .Borders.LineStyle = 1
+        End With
+    End With
+    
+    UpdateProgress 3, 5, "جاري كتابة البيانات..."
+    
+    ' كتابة البيانات
+    i = 5
+    Do While Not rs.EOF
+        xlWorksheet.Cells(i, 1).value = rs!EmployeeID
+        xlWorksheet.Cells(i, 2).value = rs!FullName
+        xlWorksheet.Cells(i, 3).value = rs!BasicSalary
+        xlWorksheet.Cells(i, 4).value = rs!commission
+        xlWorksheet.Cells(i, 5).value = rs!Deductions
+        xlWorksheet.Cells(i, 6).value = rs!penalties
+        xlWorksheet.Cells(i, 7).value = rs!NetSalary
+        xlWorksheet.Cells(i, 8).value = rs!PayrollYear
+        xlWorksheet.Cells(i, 9).value = rs!PayrollMonth
+        
+        rs.MoveNext
+        i = i + 1
+    Loop
+    
+    UpdateProgress 4, 5, "جاري تنسيق الملف..."
+    
+    ' تنسيق الجدول
+    With xlWorksheet
+        ' إضافة الحدود
+        .Range("A4:I" & i - 1).Borders.LineStyle = 1
+        
+        ' تنسيق الأرقام
+        .Range("C:G").NumberFormat = "#,##0.00"
+        
+        ' ضبط عرض الأعمدة
+        .Columns("A:A").ColumnWidth = 10
+        .Columns("B:B").ColumnWidth = 25
+        .Columns("C:G").ColumnWidth = 12
+        .Columns("H:I").ColumnWidth = 8
+        
+        ' محاذاة النص
+        .Range("A4:I" & i - 1).HorizontalAlignment = -4108 ' مركز
+        
+        ' إضافة الإجماليات
+        .Cells(i + 1, 1).value = "الإجمالي:"
+        .Cells(i + 1, 1).Font.Bold = True
+        
+        .Cells(i + 1, 3).Formula = "=SUM(C5:C" & i - 1 & ")"
+        .Cells(i + 1, 4).Formula = "=SUM(D5:D" & i - 1 & ")"
+        .Cells(i + 1, 5).Formula = "=SUM(E5:E" & i - 1 & ")"
+        .Cells(i + 1, 6).Formula = "=SUM(F5:F" & i - 1 & ")"
+        .Cells(i + 1, 7).Formula = "=SUM(G5:G" & i - 1 & ")"
+        
+        ' تنسيق الإجماليات
+        With .Range("A" & i + 1 & ":G" & i + 1)
+            .Font.Bold = True
+            .Interior.Color = RGB(220, 230, 241)
+            .Borders.LineStyle = 1
+        End With
+    End With
+    
+    UpdateProgress 5, 5, "جاري حفظ الملف..."
+    
+    ' حفظ الملف
+    savePath = CurrentProject.Path & "\كشف_الرواتب_" & Format(Date, "yyyy-mm-dd") & ".xlsx"
+    
+    ' التحقق من عدم وجود الملف
+    If Dir(savePath) <> "" Then
+        Kill savePath
+    End If
+    
+    xlWorkbook.SaveAs savePath
+    xlWorkbook.Close
+    xlApp.Quit
+    
+    ' تنظيف الذاكرة
+    Set xlWorksheet = Nothing
+    Set xlWorkbook = Nothing
+    Set xlApp = Nothing
+    
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    
+    HideProgressBar
+    
+    ' فتح الملف
+    MsgBox "تم تصدير البيانات بنجاح إلى: " & vbCrLf & savePath, vbInformation, "تصدير ناجح"
+    
+    ' فتح الملف
+    Shell "explorer.exe """ & savePath & """", vbNormalFocus
+    
+    Exit Sub
+    
+ErrorHandler:
+    ' تنظيف الذاكرة في حالة الخطأ
+    On Error Resume Next
+    If Not xlWorksheet Is Nothing Then Set xlWorksheet = Nothing
+    If Not xlWorkbook Is Nothing Then
+        xlWorkbook.Close False
+        Set xlWorkbook = Nothing
+    End If
+    If Not xlApp Is Nothing Then
+        xlApp.Quit
+        Set xlApp = Nothing
+    End If
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+    
+    HideProgressBar
+    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical
+End Sub

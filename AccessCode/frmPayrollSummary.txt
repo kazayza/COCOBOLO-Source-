@@ -1,0 +1,135 @@
+﻿Option Compare Database
+
+
+'Private Sub Form_Open(Cancel As Integer)
+'    ' ناكد ان TempVars موجودة
+'    On Error GoTo ErrHandler
+'    If IsNull(TempVars!empID) Then
+'        MsgBox "لم يتم تحديد الموظف أو الفترة. افتح الفورم من شاشة التقارير.", vbExclamation
+'        Cancel = True
+'        Exit Sub
+'    End If
+'
+'    ' ربط الفورم بالاستعلام المحفوظ (الذي يستخدم TempVars)
+'    Me.RecordSource = "qryPayrollSummary"
+'    Me.Requery
+'    Exit Sub
+'
+'ErrHandler:
+'    MsgBox "خطأ اثناء فتح النموذج: " & Err.Description, vbCritical
+'    Cancel = True
+'End Sub
+
+'Public Sub OpenPayrollSummaryForm(empID As Long, yr As Integer, mth As Integer)
+'    On Error Resume Next
+'    ' نحذف لو موجودين مسبقًا
+'    TempVars.Remove "EmpID"
+'    TempVars.Remove "YearParam"
+'    TempVars.Remove "MonthParam"
+'    On Error GoTo 0
+'
+'    ' نضيف القيم الجديدة
+'    TempVars.Add "EmpID", empID
+'    TempVars.Add "YearParam", yr
+'    TempVars.Add "MonthParam", mth
+'
+'    ' نفتح الفورم (الفورم يكون بدون RecordSource افتراضيًا)
+'    DoCmd.OpenForm "frmPayrollSummary", acNormal
+'End Sub
+
+Private Sub cmdShow_Click()
+    Dim EmpId As Variant
+    Dim yr As Variant
+    Dim mth As Variant
+
+    ' قراءة القيم من الكومبو بوكس
+    EmpId = Me.cboEmployee.Column(0)
+    yr = Me.cboYear
+    mth = Me.cboMonth.Column(0)
+
+    ' التحقق من القيم
+    If IsNull(EmpId) Or IsNull(yr) Or IsNull(mth) Then
+        MsgBox "يجب اختيار الموظف والشهر والسنة أولاً", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+
+    ' مسح القيم القديمة من TempVars
+    On Error Resume Next
+    TempVars.Remove "EmpID"
+    TempVars.Remove "YearParam"
+    TempVars.Remove "MonthParam"
+    On Error GoTo 0
+
+    ' تخزين القيم الجديدة
+    TempVars.Add "EmpID", EmpId
+    TempVars.Add "YearParam", yr
+    TempVars.Add "MonthParam", mth
+
+    ' إعادة ربط RecordSource وتشغيل الاستعلام من جديد
+    Me.RecordSource = "qryPayrollSummary"
+    Me.Requery
+End Sub
+
+Private Sub Command20_Click()
+
+'Dim qdf As DAO.QueryDef
+'    Dim strReport As String
+'
+'     ' اسم الاستعلام الرئيسي (غير "qryMain" لاسمك)
+'    Set qdf = CurrentDb.QueryDefs("qryPayroll")  ' qryMain = اسم الاستعلام الرئيسي
+'
+'    ' تعيين الـ Parameters من الـ Form
+'    qdf.Parameters("[EmpID]") = CLng(Me.cboEmployee.value)      ' Long
+'    qdf.Parameters("[YearParam]") = CInt(Me.cboYear.value)   ' Short
+'    qdf.Parameters("[MonthParam]") = CByte(Me.cboMonth.value) ' Byte
+'
+'    ' تحديث الـ Cache (مهم!)
+'    qdf.Parameters.Refresh
+'
+'    ' فتح التقرير المعتمد على الاستعلام
+'    DoCmd.OpenReport "Report3", acViewPreview   ' استبدل rptPayrollSummary باسم تقريرك
+'
+'Set qdf = Nothing
+
+
+
+
+    On Error GoTo ErrHandler
+    
+    Dim qdfMain As DAO.QueryDef
+    Dim EmpId As Long: EmpId = CLng(Me.cboEmployee)
+    Dim yearVal As Integer: yearVal = CInt(Me.cboYear)
+    Dim monthVal As Byte: monthVal = CByte(Me.cboMonth)
+    
+    ' الرئيسي
+    Set qdfMain = CurrentDb.QueryDefs("qryPayroll")
+    With qdfMain
+        .Parameters.item("[EmpID]").value = EmpId
+        .Parameters.item("[YearParam]").value = yearVal
+        .Parameters.item("[MonthParam]").value = monthVal
+    End With
+    
+    ' نفس للـ Subqueries
+    Dim qdfDeduct As DAO.QueryDef: Set qdfDeduct = CurrentDb.QueryDefs("qryMonthlyDeductions")
+    With qdfDeduct
+        .Parameters.item("[EmpID]").value = EmpId
+        .Parameters.item("[YearParam]").value = yearVal
+        .Parameters.item("[MonthParam]").value = monthVal
+    End With
+    
+    Dim qdfPenalty As DAO.QueryDef: Set qdfPenalty = CurrentDb.QueryDefs("qryAttendancePenalties")
+    With qdfPenalty
+        .Parameters.item("[EmpID]").value = EmpId
+        .Parameters.item("[YearParam]").value = yearVal
+        .Parameters.item("[MonthParam]").value = monthVal
+    End With
+    
+    DoEvents
+    DoCmd.OpenReport "Report3", acViewPreview
+    
+    Set qdfMain = Nothing: Set qdfDeduct = Nothing: Set qdfPenalty = Nothing
+    Exit Sub
+    
+ErrHandler:
+    MsgBox Err.Description
+End Sub

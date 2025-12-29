@@ -1,0 +1,19 @@
+﻿Form: frmTransList
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label1		Label		رقم الفاتورة
+Label3		Label		التاريخ
+Label5		Label		العميل
+Label9		Label		اجمالى الفاتورة
+Label7		Label		الموظف
+Label11		Label		اجمالى المدفوع
+Label13		Label		الرصيد
+TransactionID		TextBox		TransactionID
+TransactionDate		TextBox		TransactionDate
+PartyID		TextBox		PartyID
+EmpId		TextBox		EmpId
+TotalAmount		TextBox		NetTotalAmount
+PaidAmount		TextBox		PaidSlaes
+Balance		TextBox		Balance

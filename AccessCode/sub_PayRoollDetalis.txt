@@ -1,0 +1,11 @@
+﻿Option Compare Database
+
+
+Private Sub btnDelete_Click()
+    If Not IsNull(Me!TmpID) Then
+        CurrentDb.Execute "DELETE FROM tmp_PayrollDetails WHERE TmpID = " & Me!TmpID
+        Me.Requery
+    End If
+End Sub
+
+

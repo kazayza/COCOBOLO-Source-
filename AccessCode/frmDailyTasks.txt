@@ -1,0 +1,309 @@
+﻿Option Compare Database
+Option Explicit
+
+' ==========================================
+' Form: frmDailyTasks
+' شاشة المتابعات اليومية
+' ==========================================
+
+Private Sub Form_Load()
+    On Error Resume Next
+
+    Call LoadFilters
+    Call LoadData
+    Call UpdateStats
+End Sub
+
+' ==========================================
+' تحميل الفلاتر
+' ==========================================
+Private Sub LoadFilters()
+    On Error Resume Next
+
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+
+    ' فلتر الموظفين
+    sql = "SELECT EmployeeID, FullName FROM dbo_Employees WHERE Status = 'نشط' ORDER BY FullName"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+
+    strList = "0;كل الموظفين"
+    Do While Not rs.EOF
+        strList = strList & ";" & rs!EmployeeID & ";" & Nz(rs!FullName, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+
+    With Me.cmbEmployee
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .rowSource = strList
+        .value = 0
+    End With
+
+    ' فلتر الحالة
+    With Me.cmbStatus
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .rowSource = "0;الكل;1;متأخر;2;اليوم;3;غدا"
+        .value = 0
+    End With
+End Sub
+
+' ==========================================
+' تحميل البيانات
+' ==========================================
+'Private Sub LoadData()
+'    On Error Resume Next
+'
+'    Dim sql As String
+'    Dim whereClause As String
+'
+'whereClause = " WHERE IsActive = 1 AND Status <> 'Completed'"
+'
+'' فلتر الموظف
+'If Nz(Me.cmbEmployee, 0) <> 0 Then
+'    whereClause = whereClause & " AND AssignedTo = " & Me.cmbEmployee
+'End If
+'
+'' فلتر الحالة
+'Select Case Nz(Me.cmbStatus, 0)
+'    Case 1 ' متأخر
+'        whereClause = whereClause & " AND DueDate < Date()"
+'    Case 2 ' اليوم
+'        whereClause = whereClause & " AND DueDate = Date()"
+'    Case 3 ' بكره
+'        whereClause = whereClause & " AND DueDate = Date()+1"
+'End Select
+'
+''  sql = "SELECT TOP 50 " & _
+''      "t.TaskID, t.PartyID, " & _
+''      "p.PartyName, p.Phone, " & _
+''      "e.FullName AS EmployeeName, " & _
+''      "t.DueDate, " & _
+''      "Nz(tt.TaskTypeName, 'غير محدد') AS TaskTypeName, " & _
+''      "IIF(t.DueDate < Date(), 'متأخر', " & _
+''      "IIF(t.DueDate = Date(), 'اليوم', " & _
+''      "IIF(t.DueDate = Date()+1, 'بكره', 'قادم'))) AS TaskStatus " & _
+''      "FROM (((dbo_CRM_Tasks AS t " & _
+''      "LEFT JOIN dbo_Parties AS p ON t.PartyID = p.PartyID) " & _
+''      "LEFT JOIN dbo_Employees AS e ON t.AssignedTo = e.EmployeeID) " & _
+''      "LEFT JOIN dbo_TaskTypes AS tt ON t.TaskTypeID = tt.TaskTypeID)" & _
+''      whereClause & _
+''      " ORDER BY t.DueDate"
+'sql = "SELECT TOP 50 " & _
+'      "TaskID, PartyID, ClientName, Phone, " & _
+'      "AssignedToName AS EmployeeName, " & _
+'      "DueDate, " & _
+'      "Nz(TaskTypeName, 'غير محدد') AS TaskTypeName, " & _
+'      "IIF(DueDate < Date(), 'متأخر', " & _
+'      "IIF(DueDate = Date(), 'اليوم', " & _
+'      "IIF(DueDate = Date()+1, 'بكره', 'قادم'))) AS TaskStatus " & _
+'      "FROM dbo_vw_CRM_Tasks " & _
+'      whereClause & _
+'      " ORDER BY DueDate;"
+'
+'
+'
+'    Me.subTasks.Form.RecordSource = sql
+''    Me.subTasks.Form.Requery
+'End Sub
+Private Sub LoadData()
+    On Error Resume Next
+
+    Dim sql As String
+    Dim whereClause As String
+
+    whereClause = " WHERE IsActive = 1 AND Status <> 'Completed'"
+
+    ' فلتر الموظف
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND AssignedTo = " & Me.cmbEmployee
+    End If
+
+    ' فلتر الحالة - استخدم TaskDueStatus من الـ View
+    Select Case Nz(Me.cmbStatus, 0)
+        Case 1: whereClause = whereClause & " AND TaskDueStatus = 'Overdue'"
+        Case 2: whereClause = whereClause & " AND TaskDueStatus = 'Today'"
+        Case 3: whereClause = whereClause & " AND TaskDueStatus = 'Tomorrow'"
+    End Select
+
+    ' استخدم الأعمدة الجاهزة من الـ View بدون Nz و IIF
+'    sql = "SELECT TOP 50 " & _
+'          "TaskID, " & _
+'          "PartyID, " & _
+'          "ClientName, " & _
+'          "Phone, " & _
+'          "AssignedToName AS EmployeeName, " & _
+'          "DueDate, " & _
+'          "TaskTypeName, " & _
+'          "TaskDueStatus AS TaskStatus " & _
+'          "FROM dbo_vw_CRM_Tasks" & whereClause & _
+'          " ORDER BY DaysUntilDue, DueDate"
+sql = "SELECT TOP 50 " & _
+      "TaskID, " & _
+      "PartyID, " & _
+      "ClientName, " & _
+      "Phone, " & _
+      "AssignedToName AS EmployeeName, " & _
+      "DueDate, " & _
+      "TaskTypeName, " & _
+      "SWITCH(" & _
+          "TaskDueStatus='Overdue', 'متأخر', " & _
+          "TaskDueStatus='Today', 'اليوم', " & _
+          "TaskDueStatus='Tomorrow', 'غدا', " & _
+          "TaskDueStatus='Upcoming', 'قادم', " & _
+          "TaskDueStatus='Completed', 'مكتمل', " & _
+          "True, TaskDueStatus) AS TaskStatus " & _
+      "FROM dbo_vw_CRM_Tasks" & whereClause & _
+      " ORDER BY DaysUntilDue, DueDate"
+'    Debug.Print sql
+    
+    Me.subTasks.Form.RecordSource = sql
+End Sub
+' ==========================================
+' تحديث الإحصائيات
+' ==========================================
+Private Sub UpdateStats()
+    On Error Resume Next
+
+    Dim rs As DAO.Recordset
+    Dim whereEmp As String
+    Dim cntOverdue As Long
+    Dim cntToday As Long
+    Dim cntTomorrow As Long
+    Dim cntTotal As Long
+
+    whereEmp = ""
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereEmp = " AND AssignedTo = " & Me.cmbEmployee
+    End If
+
+    ' متأخر
+    Set rs = CurrentDb.OpenRecordset("SELECT COUNT(*) FROM dbo_CRM_Tasks WHERE IsActive=1 AND Status<>'Completed' AND DueDate < Date()" & whereEmp, dbOpenSnapshot, dbSeeChanges)
+    cntOverdue = Nz(rs.Fields(0).value, 0)
+    Me.lblOverdue.Caption = "متأخر: " & cntOverdue
+    rs.Close
+
+    ' اليوم
+    Set rs = CurrentDb.OpenRecordset("SELECT COUNT(*) FROM dbo_CRM_Tasks WHERE IsActive=1 AND Status<>'Completed' AND DueDate = Date()" & whereEmp, dbOpenSnapshot, dbSeeChanges)
+    cntToday = Nz(rs.Fields(0).value, 0)
+    Me.lblToday.Caption = "اليوم: " & cntToday
+    rs.Close
+
+    ' بكره
+    Set rs = CurrentDb.OpenRecordset("SELECT COUNT(*) FROM dbo_CRM_Tasks WHERE IsActive=1 AND Status<>'Completed' AND DueDate = Date()+1" & whereEmp, dbOpenSnapshot, dbSeeChanges)
+    cntTomorrow = Nz(rs.Fields(0).value, 0)
+    Me.lblTomorrow.Caption = "غدا: " & cntTomorrow
+    rs.Close
+
+    ' الكل
+    Set rs = CurrentDb.OpenRecordset("SELECT COUNT(*) FROM dbo_CRM_Tasks WHERE IsActive=1 AND Status<>'Completed'" & whereEmp, dbOpenSnapshot, dbSeeChanges)
+    cntTotal = Nz(rs.Fields(0).value, 0)
+    Me.lblTotal.Caption = "الكل: " & cntTotal
+    rs.Close
+
+    Set rs = Nothing
+
+    ' تلوين الـ Labels
+    Me.lblOverdue.ForeColor = RGB(255, 0, 0)      ' أحمر
+    Me.lblToday.ForeColor = RGB(255, 165, 0)      ' برتقالي
+    Me.lblTomorrow.ForeColor = RGB(0, 128, 0)     ' أخضر
+    Me.lblTotal.ForeColor = RGB(0, 0, 128)        ' أزرق
+End Sub
+
+' ==========================================
+' عند تغيير الفلاتر
+' ==========================================
+Private Sub cmbEmployee_AfterUpdate()
+    Call LoadData
+    Call UpdateStats
+End Sub
+
+Private Sub cmbStatus_AfterUpdate()
+    Call LoadData
+    Call UpdateStats
+End Sub
+
+' ==========================================
+' زر تحديث
+' ==========================================
+Private Sub btnRefresh_Click()
+    Call LoadData
+    Call UpdateStats
+End Sub
+
+' ==========================================
+' زر تم التواصل
+' ==========================================
+Private Sub btnDone_Click()
+    On Error GoTo ErrorHandler
+
+    Dim TaskID As Long
+    Dim sql As String
+    Dim currentDate As String
+
+    If IsNull(Me.subTasks.Form!TaskID) Then
+        MsgBox "برجاء اختيار مهمة أولاً", vbExclamation
+        Exit Sub
+    End If
+
+    TaskID = Me.subTasks.Form!TaskID
+    currentDate = "'" & Format(Now(), "yyyy-mm-dd hh:nn:ss") & "'"
+
+    sql = "UPDATE dbo_CRM_Tasks SET " & _
+          "Status = 'Completed', " & _
+          "CompletedDate = " & currentDate & ", " & _
+          "CompletedBy = '" & currentUser.UserName & "' " & _
+          "WHERE TaskID = " & TaskID
+
+    CurrentDb.Execute sql, dbFailOnError + dbSeeChanges
+
+    MsgBox "تم!", vbInformation
+
+    Call LoadData
+    Call UpdateStats
+
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "خطأ: " & Err.Description, vbCritical
+End Sub
+
+' ==========================================
+' زر تسجيل مكالمة
+' ==========================================
+Private Sub btnNewCall_Click()
+    On Error Resume Next
+
+    If Not IsNull(Me.subTasks.Form!PartyID) Then
+        DoCmd.OpenForm "frmNewInteraction", , , , , , Me.subTasks.Form!PartyID
+    Else
+        DoCmd.OpenForm "frmNewInteraction"
+    End If
+End Sub
+
+' ==========================================
+' زر بطاقة العميل
+' ==========================================
+Private Sub btnClient_Click()
+    On Error Resume Next
+
+    If IsNull(Me.subTasks.Form!PartyID) Then
+        MsgBox "برجاء اختيار مهمة أولاً", vbExclamation
+        Exit Sub
+    End If
+
+    DoCmd.OpenForm "frmClientCard", , , , , , Me.subTasks.Form!PartyID
+End Sub
+
+' ==========================================
+' زر إغلاق
+' ==========================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub

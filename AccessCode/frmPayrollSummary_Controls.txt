@@ -1,0 +1,26 @@
+﻿Form: frmPayrollSummary
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtBasicSalary		TextBox		الراتب الأساسي
+Label1		Label		الراتب الاساسى
+txtCommission		TextBox		مبلغ العمولة
+Label3		Label		العمولة
+txtAbsent		TextBox		خصم الغياب
+Label5		Label		الغياب
+txtHours		TextBox		خصم الساعات
+Label7		Label		خصم الساعات التاخير والانصراف المبكر
+txtDeducions		TextBox		إجمالي الخصم
+Label9		Label		إجمالى الخصم
+txtNetSalary		TextBox		صافى الراتب
+Label11		Label		صافى الراتب
+cmdrefresh		Button		Refresh
+cboemployee		ComboBox		SELECT dbo_Employees.EmployeeID, dbo_Employees.FullName, dbo_Employees.Status FROM dbo_Employees WHERE (((dbo_Employees.Status)="نشط")); 
+Label14		Label		الموظف
+cbomonth		ComboBox		SELECT tbl_months.MonthNo, tbl_months.MonthName FROM tbl_months; 
+Label16		Label		الشهر
+cboyear		ComboBox		"2025";"2026";"2027";"2028";"2029";"2030"
+Label18		Label		السنه
+cmdShow		Button		Command19
+Command20		Button		Command20

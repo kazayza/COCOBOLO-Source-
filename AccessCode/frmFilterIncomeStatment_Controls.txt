@@ -1,0 +1,34 @@
+﻿Form: frmFilterIncomeStatment
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboYear		ComboBox		SELECT DISTINCT Year(TransactionDate) AS FiscalYear FROM dbo_Transactions ORDER BY Year(TransactionDate) DESC; 
+TransactionDate_Label		Label		السنه
+cboMonth		ComboBox		SELECT MonthNo, MonthName
+FROM tbl_Months
+ORDER BY MonthNo;
+
+Label7		Label		الشهر
+btnShowReport		Button		   قائمة الدخل
+btnClose		Button		Command17
+fraFilterType		OptionGroup		
+Label12		Label		الفترة
+optSingleMonth		OptionButton		
+Label15		Label		شهر محدد
+optDateRange		OptionButton		
+Label17		Label		فترة محدده
+cboYearFrom		ComboBox		SELECT DISTINCT Year(TransactionDate) AS FiscalYear FROM dbo_Transactions ORDER BY Year(TransactionDate) DESC; 
+Label19		Label		السنه
+cboMonthFrom		ComboBox		SELECT MonthNo, MonthName
+FROM tbl_Months
+ORDER BY MonthNo;
+
+Label21		Label		من شهر
+cboYearTo		ComboBox		SELECT DISTINCT Year(TransactionDate) AS FiscalYear FROM dbo_Transactions ORDER BY Year(TransactionDate) DESC; 
+Label23		Label		السنه
+cboMonthTo		ComboBox		SELECT MonthNo, MonthName
+FROM tbl_Months
+ORDER BY MonthNo;
+
+Label25		Label		الى شهر

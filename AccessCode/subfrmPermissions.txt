@@ -1,0 +1,23 @@
+﻿Option Compare Database
+
+'Private Sub chkCanAdd_AfterUpdate()
+'UpdateTmpTable Me.PermissionID, "CanAdd", Me.chkCanAdd
+'End Sub
+'
+'Private Sub chkCanDelete_AfterUpdate()
+'UpdateTmpTable Me.PermissionID, "CanDelete", Me.chkCanDelete
+'End Sub
+'
+'Private Sub chkCanEdit_AfterUpdate()
+'UpdateTmpTable Me.PermissionID, "CanEdit", Me.chkCanEdit
+'End Sub
+'
+'Private Sub chkCanView_AfterUpdate()
+'UpdateTmpTable Me.PermissionID, "CanView", Me.chkCanView
+'End Sub
+'Private Sub UpdateTmpTable(PermissionID As Long, FieldName As String, Value As Boolean)
+'    Dim strSQL As String
+'    strSQL = "UPDATE tmp_UserPermissionsGrid SET " & FieldName & " = " & Value & _
+'             " WHERE PermissionID = " & PermissionID
+'    CurrentDb.Execute strSQL, dbFailOnError
+'End Sub

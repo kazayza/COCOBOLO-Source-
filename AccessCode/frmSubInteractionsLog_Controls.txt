@@ -1,0 +1,21 @@
+﻿Form: frmSubInteractionsLog
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtDate		TextBox		InteractionDate
+Label1		Label		التاريخ
+txtClient		TextBox		ClientName
+Label3		Label		العميل
+txtPhone		TextBox		Phone
+Label5		Label		التليفون
+txtEmployee		TextBox		EmployeeName
+Label7		Label		الموظف
+txtSource		TextBox		SourceName
+Label9		Label		المصدر
+txtStatus		TextBox		StatusName
+Label11		Label		الحالة
+txtStage		TextBox		StageAfterName
+Label13		Label		المرحلة
+txtSummary		TextBox		Summary
+Label15		Label		الملخص

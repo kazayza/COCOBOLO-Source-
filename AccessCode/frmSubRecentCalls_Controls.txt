@@ -1,0 +1,13 @@
+﻿Form: frmSubRecentCalls
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtDate		TextBox		InteractionDate
+lblDate		Label		التاريخ
+txtClient		TextBox		ClientName
+lblClient		Label		العميل
+txtSource		TextBox		SourceName
+Label5		Label		المصدر
+txtEmployee		TextBox		EmployeeName
+Label7		Label		الموظف

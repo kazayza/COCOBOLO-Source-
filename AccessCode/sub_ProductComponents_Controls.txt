@@ -1,0 +1,13 @@
+﻿Form: sub_ProductComponents
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label3		Label		الكمية
+
+Label1		Label		اسم مكون المنتج
+
+ComponentName
+		TextBox		ComponentName
+Quantity
+		TextBox		Quantity

@@ -1,0 +1,16 @@
+﻿Form: frmExpensesFilter
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtFromDate		TextBox		
+Label1		Label		من
+txtToDate		TextBox		
+Label3		Label		الى
+btnShowReport		Button		Command4
+Box5		Rectangle		
+Box6		Rectangle		
+Label7		Label		تقرير مجموعات المصروفات عن فترة محدده
+btnClose		Button		Command17
+btnExportExcel		Button		Command8
+Chart9		Other (133)		qry_ExpenseByGroupMonthlyFilterd

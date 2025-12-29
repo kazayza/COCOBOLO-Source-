@@ -1,0 +1,26 @@
+﻿
+   
+
+
+Private Sub Form_Load()
+' If Not IsNull(Me.OpenArgs) Then
+'        Dim prodID As Long
+'        prodID = CLng(Me.OpenArgs)
+'
+'        LoadProductComponentsDetails prodID
+'    End If
+
+
+End Sub
+
+
+Private Sub LoadProductComponentsDetails(prodID As Long)
+'    ' ربط النموذج بالبيانات حسب ID
+'    Me.RecordSource = "SELECT * FROM dbo_ProductComponents WHERE ProductID = " & prodID
+
+    End Sub
+
+
+
+
+

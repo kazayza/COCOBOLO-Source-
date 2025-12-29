@@ -1,0 +1,20 @@
+﻿Form: frmDailyTasks
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		المتابعات اليومية
+cmbEmployee		ComboBox		0;كل الموظفين;6;أسماء عبد الحميد يونس;17;على يحى محمد السيد;8;مايا احمد محمود محمود يوسف;21;محمد مجدى حسنى عبد الحميد;22;مصطفى محمد ابراهيم السيد;3;ندى عمر عثمان السنتيهي;28;نهى عرابى حسين عرابى
+Label2		Label		الموظف
+cmbStatus		ComboBox		0;الكل;1;متأخر;2;اليوم;3;بكره
+Label4		Label		الحاله
+btnRefresh		Button		    تحديث
+lblOverdue		Label		متأخر: 17
+lblToday		Label		اليوم: 0
+lblTomorrow		Label		بكره: 0
+lblTotal		Label		الكل: 17
+subTasks		Subform		
+btnDone		Button		تم التواصل
+btnNewCall		Button		NewCall
+btnClient		Button		بطاقة العميل
+btnClose		Button		إغلاق

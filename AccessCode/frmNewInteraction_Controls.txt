@@ -1,0 +1,60 @@
+﻿Form: frmNewInteraction
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+lblHeader		Label		تسجيل تواصل جديد
+fraClient		Rectangle		
+optClientType		OptionGroup		
+optClientTypelbl		Label		عميل جديد / موجود
+optExistingClient		OptionButton		
+Label8		Label		عميل موجود
+optNewClient		OptionButton		
+Label6		Label		عميل جديد
+cmbClient		ComboBox		
+lblSelectClient		Label		اختر العميل
+txtClientName		TextBox		
+lblClientName		Label		اسم العميل
+txtPhone		TextBox		
+lblPhone		Label		رقم الهاتف
+fraInteraction		Rectangle		
+cmbEmployee		ComboBox		6;أسماء عبد الحميد يونس;17;على يحى محمد السيد;8;مايا احمد محمود محمود يوسف;21;محمد مجدى حسنى عبد الحميد;22;مصطفى محمد ابراهيم السيد;3;ندى عمر عثمان السنتيهي;28;نهى عرابى حسين عرابى
+lblEmployee		Label		الموظف
+cmbSource		ComboBox		1;WhatsApp;2;Facebook;3;Phone Call;4;Showroom Visit;5;Instagram;6;Customer Referral;7;Google;8;TikTok
+lblSource		Label		المصدر
+cmbAdType		ComboBox		
+lblAdType		Label		الاعلان
+cmbStatus		ComboBox		1;First Contact;2;Called;3;Message;4;Old Client
+lblStatus		Label		حاله التواصل
+cmbStage		ComboBox		1;Lead;2;Potential;3;Closed Deal;4;Lost;5;Not Interested
+lblStage		Label		المرحلة
+cmbCategory		ComboBox		1;Bedroom;2;Dining Room;3;Living Room;4;Sofa;5;Kitchen;6;Office;7;Kids Room;8;Wardrobe;9;Custom Made
+lblCategory		Label		المنتجات
+txtInterestedProduct		TextBox		
+lblProduct		Label		المنتج
+txtSummary		TextBox		
+lblSummary		Label		الملخص
+fraFollowUp		Rectangle		
+txtFollowUpDate		TextBox		
+lblFollowUpDate		Label		تاريخ المتابعة
+cmbTaskType		ComboBox		1;Follow Up;2;Call;3;WhatsApp Message;4;Showroom Visit;5;Send Quotation;6;Site Visit;7;Delivery Follow Up;8;Payment Follow Up
+lblTaskType		Label		نوع المتابعة
+txtGuidance		TextBox		
+lblGuidance		Label		ملاحــــــــــــظات
+lblClientPhone		Label		 
+txtClientAddress		TextBox		
+lblClientAddress		Label		العنوان
+cmbLostReason		ComboBox		
+lblLostReason		Label		سبب الخساره
+txtFirstContactDate		TextBox		
+lblFirstContactDate		Label		تاريخ التواصل
+txtLostNotes		TextBox		
+lblLostNotes		Label		تفاصيل سبب الخسارة
+facebook		Image		
+whatsapp		Image		
+instagram		Image		
+phonelogo		Image		
+tiktok.png		Image		
+btnSave		Button		💾 حفظ
+btnSaveNew		Button		💾  حفظ وجديد
+btnCancel		Button		❌   إلغاء

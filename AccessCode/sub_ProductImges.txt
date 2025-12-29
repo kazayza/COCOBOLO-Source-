@@ -1,0 +1,98 @@
+﻿Option Compare Database
+
+Private Sub btnAddImage_Click()
+
+ 
+    Dim fd As fileDialog
+    Dim imgPath As Variant
+
+    ' إنشاء مربع حوار لاختيار ملف
+    Set fd = Application.fileDialog(msoFileDialogFilePicker)
+    With fd
+        .AllowMultiSelect = False
+        .Title = "اختر صورة للمنتج"
+        .Filters.Clear
+        .Filters.Add "صور", "*.jpg; *.jpeg; *.png; *.bmp", 1
+
+        If .Show = -1 Then
+            imgPath = .SelectedItems(1)
+
+            ' حفظ المسار في الحقل
+            Me.ImagePath = imgPath
+
+            ' علامة لتتبع التعديل إن كنت تستخدمها
+            mIsDirty = True
+        End If
+    End With
+End Sub
+
+
+Private Sub btnDelete_Click()
+    On Error GoTo ErrHandler
+
+    Dim db As DAO.Database
+    Dim sql As String
+
+    If IsNull(Me.txtID) Then
+        MsgBox "لا يوجد سجل للحذف", vbExclamation, "COCOBOLO"
+        Exit Sub
+    End If
+
+    If MsgBox("هل أنت متأكد من حذف السجل؟", vbYesNo + vbQuestion) = vbNo Then
+        Exit Sub
+    End If
+
+    Set db = CurrentDb
+
+    ' 1?? حذف من الجدول الرئيسي (SQL Server)
+    sql = "DELETE FROM dbo_ProductImages WHERE  ProductImagesID = " & Me.txtID
+    db.Execute sql, dbFailOnError + dbSeeChanges
+
+    ' 2?? حذف من الجدول المؤقت المحلي
+    sql = "DELETE FROM Temp_ProductImages WHERE ProductImagesID = " & Me.txtID
+    db.Execute sql, dbFailOnError
+
+    ' تنظيف النموذج
+Me.Form.Requery
+
+    MsgBox "تم الحذف بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    Exit Sub
+
+ErrHandler:
+    MsgBox "حدث خطأ أثناء الحذف: " & Err.Description, vbCritical
+End Sub
+
+
+Private Sub Form_Current()
+    On Error GoTo ErrHandler
+    
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim tempPath As String
+    
+    If Not IsNull(Me!ProductImagesID) Then
+        sql = "SELECT ImageProduct FROM dbo_ProductImages WHERE ProductImagesID = " & Me!ProductImagesID
+        Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot)
+        
+        If Not rs.EOF Then
+            tempPath = Environ("TEMP") & "\TempImg_" & Format(Now, "yyyymmddhhmmss") & ".jpg"
+            Call SaveImageToFile(rs, "ImageProduct", tempPath)
+            Me.Parent!Image32.Picture = tempPath
+        Else
+            Me.Parent!Image32.Picture = ""
+        End If
+        
+        rs.Close
+        Set rs = Nothing
+    Else
+        Me.Parent!Image32.Picture = ""
+    End If
+    
+    Exit Sub
+    
+ErrHandler:
+    Debug.Print "Error in Form_Current: " & Err.Description
+End Sub
+
+
+

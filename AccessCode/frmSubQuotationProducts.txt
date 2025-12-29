@@ -1,0 +1,76 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub Form_Load()
+    On Error Resume Next
+'    Call LoadProducts
+End Sub
+
+Private Sub LoadProducts()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    ' المنتجات اللي مش مربوطة بعميل فقط
+    sql = "SELECT ProductID, ProductName, SuggestedSalePrice " & _
+          "FROM dbo_Products " & _
+          "WHERE Customer IS NULL " & _
+          "ORDER BY ProductName"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = ""
+    Do While Not rs.EOF
+        If strList <> "" Then strList = strList & ";"
+        strList = strList & rs!ProductID & ";" & Nz(rs!ProductName, "") & ";" & Nz(rs!SuggestedSalePrice, 0)
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbProduct
+        .RowSourceType = "Value List"
+        .ColumnCount = 3
+        .BoundColumn = 1
+        .ColumnWidths = "0;5cm;2cm"
+        .rowSource = strList
+    End With
+End Sub
+Private Sub cmbProduct_AfterUpdate()
+    On Error Resume Next
+    
+    If Not IsNull(Me.cmbProduct) Then
+        Me.txtProductName = Me.cmbProduct.Column(1)
+        Me.txtUnitPrice = Me.cmbProduct.Column(2)
+        
+        If Nz(Me.txtQuantity, 0) = 0 Then
+            Me.txtQuantity = 1
+        End If
+        
+        Call CalculateTotal
+    End If
+End Sub
+
+Private Sub txtQuantity_AfterUpdate()
+    Call CalculateTotal
+End Sub
+
+Private Sub txtUnitPrice_AfterUpdate()
+    Call CalculateTotal
+End Sub
+
+Private Sub CalculateTotal()
+    On Error Resume Next
+    
+    Dim qty As Double
+    Dim price As Currency
+    
+    qty = Nz(Me.txtQuantity, 0)
+    price = Nz(Me.txtUnitPrice, 0)
+    
+    Me.txtTotal = qty * price
+    
+    Me.Parent.UpdateTotals
+End Sub

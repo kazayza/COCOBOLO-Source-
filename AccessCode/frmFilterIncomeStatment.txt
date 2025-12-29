@@ -1,0 +1,193 @@
+﻿Option Compare Database
+'Private Sub btnShowReport_Click()
+'
+'    Dim strFilter As String
+'
+'    If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+'        ' حالة اختيار السنة + الشهر
+'        strFilter = "[FiscalYear] = " & Me.cboYear & " AND [FiscalMonth] = " & Me.cboMonth
+'    ElseIf Not IsNull(Me.cboYear) Then
+'        ' حالة اختيار السنة فقط
+'        strFilter = "[FiscalYear] = " & Me.cboYear
+'    Else
+'        ' لم يتم الاختيار
+'        MsgBox "من فضلك اختر السنة أو السنة والشهر معاً", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    ' التحقق من وجود بيانات
+'    If DCount("*", "qry_IncomeStatement", strFilter) = 0 Then
+'        MsgBox "لا توجد بيانات لهذه الفترة", vbInformation
+'        Exit Sub
+'    End If
+'
+'    ' فتح التقرير
+'    DoCmd.OpenReport "rpt_IncomeStatement", acViewPreview, , strFilter
+'End Sub
+
+
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+'============================================
+' عند فتح الفورم - تهيئة الإعدادات
+'============================================
+Private Sub Form_Load()
+    ' تحديد الخيار الافتراضي (شهر معين)
+    Me.fraFilterType = 1
+    Call ToggleFilterControls
+End Sub
+
+'============================================
+' عند تغيير نوع الفلترة
+'============================================
+Private Sub fraFilterType_AfterUpdate()
+    Call ToggleFilterControls
+End Sub
+
+'============================================
+' إظهار/إخفاء الكنترولز حسب نوع الفلترة
+'============================================
+Private Sub ToggleFilterControls()
+    Dim bSingleMonth As Boolean
+    
+    bSingleMonth = (Me.fraFilterType = 1)
+    
+    ' كنترولز الشهر المعين
+    Me.cboYear.Enabled = bSingleMonth
+    Me.cboMonth.Enabled = bSingleMonth
+    Me.cboYear.BackColor = IIf(bSingleMonth, vbWhite, &HC0C0C0)
+    Me.cboMonth.BackColor = IIf(bSingleMonth, vbWhite, &HC0C0C0)
+    
+    ' كنترولز الفترة
+    Me.cboYearFrom.Enabled = Not bSingleMonth
+    Me.cboMonthFrom.Enabled = Not bSingleMonth
+    Me.cboYearTo.Enabled = Not bSingleMonth
+    Me.cboMonthTo.Enabled = Not bSingleMonth
+    Me.cboYearFrom.BackColor = IIf(Not bSingleMonth, vbWhite, &HC0C0C0)
+    Me.cboMonthFrom.BackColor = IIf(Not bSingleMonth, vbWhite, &HC0C0C0)
+    Me.cboYearTo.BackColor = IIf(Not bSingleMonth, vbWhite, &HC0C0C0)
+    Me.cboMonthTo.BackColor = IIf(Not bSingleMonth, vbWhite, &HC0C0C0)
+    
+    ' تفريغ الكنترولز غير المستخدمة
+    If bSingleMonth Then
+        Me.cboYearFrom = Null
+        Me.cboMonthFrom = Null
+        Me.cboYearTo = Null
+        Me.cboMonthTo = Null
+    Else
+        Me.cboYear = Null
+        Me.cboMonth = Null
+    End If
+End Sub
+
+'============================================
+' زر عرض التقرير
+'============================================
+'============================================
+' زر عرض التقرير
+'============================================
+Private Sub btnShowReport_Click()
+    Dim strFilter As String
+    Dim strReportName As String
+    
+    ' التحقق من نوع الفلترة المختار
+    Select Case Me.fraFilterType
+    
+        Case 1  ' فلترة بشهر معين
+            strFilter = BuildSingleMonthFilter()
+            strReportName = "rpt_IncomeStatement"  ' التقرير القديم
+            
+        Case 2  ' فلترة بفترة
+            strFilter = BuildDateRangeFilter()
+            strReportName = "rpt_IncomeStatement_ByPeriod"  ' التقرير الجديد
+            
+    End Select
+    
+    ' لو الفلتر فاضي، اخرج
+    If strFilter = "" Then Exit Sub
+    
+    ' التحقق من وجود بيانات
+    If DCount("*", "qry_IncomeStatement_ByPeriod", strFilter) = 0 Then
+        MsgBox "لا توجد بيانات لهذه الفترة", vbInformation, "تنبيه"
+        Exit Sub
+    End If
+    
+    ' فتح التقرير
+    DoCmd.OpenReport strReportName, acViewPreview, , strFilter
+    
+End Sub
+'============================================
+' بناء فلتر الشهر المعين
+'============================================
+Private Function BuildSingleMonthFilter() As String
+    Dim strFilter As String
+    
+    If Not IsNull(Me.cboYear) And Not IsNull(Me.cboMonth) Then
+        ' سنة + شهر
+        strFilter = "[FiscalYear] = " & Me.cboYear & _
+                    " AND [FiscalMonth] = " & Me.cboMonth
+                    
+    ElseIf Not IsNull(Me.cboYear) Then
+        ' سنة فقط
+        strFilter = "[FiscalYear] = " & Me.cboYear
+        
+    Else
+        MsgBox "من فضلك اختر السنة على الأقل", vbExclamation, "تنبيه"
+        strFilter = ""
+    End If
+    
+    BuildSingleMonthFilter = strFilter
+End Function
+
+'============================================
+' بناء فلتر الفترة
+'============================================
+'============================================
+' بناء فلتر الفترة
+'============================================
+Private Function BuildDateRangeFilter() As String
+    Dim strFilter As String
+    Dim lngStartPeriod As Long
+    Dim lngEndPeriod As Long
+    
+    ' التحقق من اختيار الفترة كاملة
+    If IsNull(Me.cboYearFrom) Or IsNull(Me.cboMonthFrom) Or _
+       IsNull(Me.cboYearTo) Or IsNull(Me.cboMonthTo) Then
+        MsgBox "من فضلك اختر الفترة كاملة (من سنة/شهر إلى سنة/شهر)", _
+               vbExclamation, "تنبيه"
+        BuildDateRangeFilter = ""
+        Exit Function
+    End If
+    
+    ' حساب الفترة كرقم واحد للمقارنة (السنة × 100 + الشهر)
+    ' مثال: 2024/03 = 202403
+    lngStartPeriod = CLng(Me.cboYearFrom) * 100 + CLng(Me.cboMonthFrom)
+    lngEndPeriod = CLng(Me.cboYearTo) * 100 + CLng(Me.cboMonthTo)
+    
+    ' التحقق من صحة الفترة (البداية قبل النهاية)
+    If lngStartPeriod > lngEndPeriod Then
+        MsgBox "تاريخ البداية يجب أن يكون قبل تاريخ النهاية", _
+               vbExclamation, "تنبيه"
+        BuildDateRangeFilter = ""
+        Exit Function
+    End If
+    
+    ' بناء الفلتر
+    strFilter = "([FiscalYear] * 100 + [FiscalMonth]) >= " & lngStartPeriod & _
+                " AND ([FiscalYear] * 100 + [FiscalMonth]) <= " & lngEndPeriod
+    
+    BuildDateRangeFilter = strFilter
+End Function
+'============================================
+' زر الإغلاق
+'============================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub

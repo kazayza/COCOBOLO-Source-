@@ -1,0 +1,13 @@
+﻿Form: subTopEmployees
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label7		Label		مبيعات الشهر السابق
+Label5		Label		مبيعات الشهر الحالى
+Label9		Label		نسبة التغير
+Label3		Label		اسم الموظف
+txtEmpName		TextBox		FullName
+txtSalesCurrentMonth		TextBox		SalesCurrentMonth
+txtSalesPrevMonth		TextBox		SalesPrevMonth
+txtPctChangeEmp		TextBox		PctChange

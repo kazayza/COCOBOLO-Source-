@@ -1,0 +1,18 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub Form_Current()
+    On Error Resume Next
+    
+    ' تلوين الصف حسب الحالة
+    Select Case Nz(Me!TaskStatus, "")
+        Case "متأخر"
+            Me.Detail.BackColor = RGB(255, 200, 200) ' أحمر فاتح
+        Case "اليوم"
+            Me.Detail.BackColor = RGB(255, 255, 200) ' أصفر فاتح
+        Case "بكره"
+            Me.Detail.BackColor = RGB(200, 255, 200) ' أخضر فاتح
+        Case Else
+            Me.Detail.BackColor = RGB(255, 255, 255) ' أبيض
+    End Select
+End Sub

@@ -1,0 +1,507 @@
+﻿Option Compare Database
+Option Explicit
+
+'Private Sub btnCheckAll_Click()
+'    Dim frm As Form
+'
+'    ' الوصول للنموذج الفرعي
+'    Set frm = Me.subfrmPermissions.Form
+'
+'    ' تحديث كل السجلات وتعليم الـ CheckBox
+'    With frm.RecordsetClone
+'        If Not (.BOF And .EOF) Then
+'            .MoveFirst
+'            Do While Not .EOF
+'                frm.Bookmark = .Bookmark
+'                frm!chkCanView = True
+'                 frm!chkCanAdd = True
+'                  frm!chkCanEdit = True
+'                   frm!chkCanDelete = True
+'                .MoveNext
+'            Loop
+'        End If
+'    End With
+'
+'    ' تحديث العرض
+'    frm.Requery
+'End Sub
+Private Sub btnCheckAll_Click()
+    Dim strSQL As String
+    
+    ' تحديث جميع السجلات في عملية واحدة
+    strSQL = "UPDATE tmp_UserPermissionsGrid SET " & _
+             "CanView = True, CanAdd = True, CanEdit = True, CanDelete = True"
+    
+    CurrentDb.Execute strSQL, dbFailOnError
+    Me.subfrmPermissions.Requery
+End Sub
+
+Private Sub cboUsers_AfterUpdate()
+    On Error GoTo ErrHandler
+    
+    If Not IsNull(Me.cboUsers) Then
+        LoadGrid CLng(Me.cboUsers)
+    Else
+        ' ??? ?? ??? ?????? ??????? ???? ??????
+        ClearTmpTable
+    End If
+    
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "??? ?? ????? ?????? ????????: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+Private Sub ClearTmpTable()
+    On Error Resume Next
+    CurrentDb.Execute "DELETE FROM tmp_UserPermissionsGrid", dbFailOnError
+    Me.subfrmPermissions.Requery
+End Sub
+'Private Sub LoadGrid(ByVal UserId As Long)
+'    On Error GoTo ErrH
+'    Dim db As DAO.Database: Set db = CurrentDb
+'
+'    ' فضي الجدول المؤقت
+'    db.Execute "DELETE FROM tmp_UserPermissionsGrid", dbFailOnError
+'
+'    ' ادخل كل الصلاحيات بقيم 0
+'    db.Execute _
+'        "INSERT INTO tmp_UserPermissionsGrid (PermissionID, PermissionName, CanView, CanAdd, CanEdit, CanDelete) " & _
+'        "SELECT p.PermissionID, p.PermissionName, False, False, False, False " & _
+'        "FROM dbo_Permissions AS p;", dbFailOnError
+'
+'    ' حدّث القيم من جدول صلاحيات المستخدمين
+'    db.Execute _
+'        "UPDATE tmp_UserPermissionsGrid AS g " & _
+'        "INNER JOIN dbo_UserPermissions AS up " & _
+'        "ON g.PermissionID = up.PermissionID " & _
+'        "SET g.CanView = up.CanView, " & _
+'        "    g.CanAdd  = up.CanAdd, " & _
+'        "    g.CanEdit = up.CanEdit, " & _
+'        "    g.CanDelete = up.CanDelete " & _
+'        "WHERE up.UserID = " & UserId & ";", dbFailOnError
+'
+'    Me.subfrmPermissions.Requery
+'    Exit Sub
+'ErrH:
+'    MsgBox "خطأ أثناء تحميل الصلاحيات: " & Err.Number & " - " & Err.Description, vbCritical
+'End Sub
+
+Private Sub LoadGrid(ByVal UserId As Long)
+    On Error GoTo ErrH
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    EnsureTmpTable
+    
+    ' الخطوة 1: تنظيف الجدول المؤقت
+    db.Execute "DELETE FROM tmp_UserPermissionsGrid", dbFailOnError
+    
+    ' الخطوة 2: إدخال جميع الصلاحيات بقيم افتراضية False
+    db.Execute "INSERT INTO tmp_UserPermissionsGrid (PermissionID, PermissionName,Description,Category, CanView, CanAdd, CanEdit, CanDelete) " & _
+               "SELECT PermissionID, PermissionName,Description,Category, False, False, False, False FROM dbo_Permissions", dbFailOnError
+    
+    ' الخطوة 3: تحديث الصلاحيات التي لدى المستخدم
+    Dim rsUserPerms As DAO.Recordset
+    Set rsUserPerms = db.OpenRecordset( _
+        "SELECT PermissionID, CanView, CanAdd, CanEdit, CanDelete FROM dbo_UserPermissions WHERE UserID = " & UserId, dbOpenSnapshot)
+    
+    If Not (rsUserPerms.BOF And rsUserPerms.EOF) Then
+        rsUserPerms.MoveFirst
+        Do While Not rsUserPerms.EOF
+            db.Execute "UPDATE tmp_UserPermissionsGrid SET " & _
+                       "CanView = " & IIf(rsUserPerms!CanView, "True", "False") & ", " & _
+                       "CanAdd = " & IIf(rsUserPerms!CanAdd, "True", "False") & ", " & _
+                       "CanEdit = " & IIf(rsUserPerms!CanEdit, "True", "False") & ", " & _
+                       "CanDelete = " & IIf(rsUserPerms!CanDelete, "True", "False") & " " & _
+                       "WHERE PermissionID = " & rsUserPerms!PermissionID, dbFailOnError
+            rsUserPerms.MoveNext
+        Loop
+    End If
+    
+    rsUserPerms.Close
+    Me.subfrmPermissions.Requery
+    Exit Sub
+    
+ErrH:
+    MsgBox "خطأ أثناء تحميل الصلاحيات: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+
+
+' دالة لتنظيف النص من الأحرف الخاصة
+Private Function CleanString(strText As String) As String
+    Dim i As Integer
+    Dim strResult As String
+    Dim char As String
+    
+    strResult = ""
+    For i = 1 To Len(strText)
+        char = Mid(strText, i, 1)
+        ' السماح فقط بالأحرف والأرقام والمسافات
+        If Asc(char) >= 32 And Asc(char) <= 126 Then
+            strResult = strResult & char
+        Else
+            strResult = strResult & " "
+        End If
+    Next i
+    
+    CleanString = Trim(strResult)
+End Function
+
+' تحويل قيمة إلى 1/0 بشكل آمن (يتعامل مع Boolean, Number, "True"/"False", "1"/"0")
+Private Function ToBit(v As Variant) As Integer
+    If IsNull(v) Then
+        ToBit = 0
+        Exit Function
+    End If
+    Select Case VarType(v)
+        Case vbBoolean
+            If v Then ToBit = 1 Else ToBit = 0
+        Case vbString
+            Select Case Trim(UCase(CStr(v)))
+                Case "TRUE", "1"
+                    ToBit = 1
+                Case Else
+                    ToBit = 0
+            End Select
+        Case vbInteger, vbLong, vbByte
+            If CLng(v) <> 0 Then ToBit = 1 Else ToBit = 0
+        Case vbNull
+            ToBit = 0
+        Case Else
+            On Error Resume Next
+            If CBool(v) Then ToBit = 1 Else ToBit = 0
+            On Error GoTo 0
+    End Select
+End Function
+
+
+
+
+' ---------- Helper: هل الحقل موجود في Recordset ----------
+Private Function FieldExists(rs As DAO.Recordset, fldName As String) As Boolean
+    Dim F As DAO.Field
+    On Error Resume Next
+    FieldExists = False
+    If rs Is Nothing Then Exit Function
+    For Each F In rs.Fields
+        If LCase(F.Name) = LCase(fldName) Then
+            FieldExists = True
+            Exit For
+        End If
+    Next F
+End Function
+
+' ---------- الإجراء الرئيسي للحفظ/التعديل ----------
+'Private Sub cmdsave_Click()
+'    Dim db As DAO.Database
+'    Dim rsTemp As DAO.Recordset
+'    Dim rsUserPerm As DAO.Recordset
+'    Dim ws As DAO.Workspace
+'    Dim lngUserID As Long
+'    Dim permID As Long
+'    Dim bTrans As Boolean
+'    Dim assignedFieldExists As Boolean
+'    Dim assignedFieldType As Long
+'
+'    On Error GoTo ErrHandler
+'
+'    ' تحقق من اختيار المستخدم
+'    If IsNull(Me.cboUsers) Then
+'        MsgBox "يرجى اختيار المستخدم أولاً", vbExclamation
+'        Exit Sub
+'    End If
+'    lngUserID = CLng(Me.cboUsers)
+'
+'    Set db = CurrentDb
+'    Set ws = DBEngine.Workspaces(0)
+'
+'    ' افتح الجدول الرئيسي بدعم Identity
+'    Set rsUserPerm = db.OpenRecordset("dbo_UserPermissions", dbOpenDynaset, dbSeeChanges)
+'
+'    ' افتح نسخة من recordset للنموذج الفرعي (الجدول المؤقت)
+'    Set rsTemp = Me.subfrmPermissions.Form.RecordsetClone
+'
+'    ' تأكد وجود الحقول الأساسية في الجدول المؤقت
+'    If Not FieldExists(rsTemp, "PermissionID") Then
+'        MsgBox "حقل PermissionID غير موجود في مصدر النموذج الفرعي (الجدول المؤقت).", vbCritical
+'        GoTo CleanUp
+'    End If
+'    If Not FieldExists(rsTemp, "CanView") Then
+'        MsgBox "حقل CanView غير موجود في مصدر النموذج الفرعي.", vbCritical
+'        GoTo CleanUp
+'    End If
+'    If Not FieldExists(rsTemp, "CanAdd") Then
+'        MsgBox "حقل CanAdd غير موجود في مصدر النموذج الفرعي.", vbCritical
+'        GoTo CleanUp
+'    End If
+'    If Not FieldExists(rsTemp, "CanEdit") Then
+'        MsgBox "حقل CanEdit غير موجود في مصدر النموذج الفرعي.", vbCritical
+'        GoTo CleanUp
+'    End If
+'    If Not FieldExists(rsTemp, "CanDelete") Then
+'        MsgBox "حقل CanDelete غير موجود في مصدر النموذج الفرعي.", vbCritical
+'        GoTo CleanUp
+'    End If
+'
+'    ' تأكد إن AssignedBy موجود وحدد نوعه (إن وجد)
+'    assignedFieldExists = FieldExists(rsUserPerm, "AssignedBy")
+'    If assignedFieldExists Then
+'        On Error Resume Next
+'        assignedFieldType = rsUserPerm.Fields("AssignedBy").Type
+'        If Err.Number <> 0 Then
+'            assignedFieldExists = False
+'            Err.Clear
+'        End If
+'        On Error GoTo ErrHandler
+'    End If
+'
+'    ' ابدأ المعاملة
+'    ws.BeginTrans
+'    bTrans = True
+'
+'    ' لو الجدول المؤقت فاضي خلص
+'    If (rsTemp.BOF And rsTemp.EOF) Then
+'        MsgBox "لا توجد صلاحيات في الجدول المؤقت للحفظ.", vbInformation
+'        GoTo CommitAndExit
+'    End If
+'
+'    rsTemp.MoveFirst
+'    Do While Not rsTemp.EOF
+'        ' تأكد PermissionID صالح
+'        If Not IsNull(rsTemp!PermissionID) Then
+'            On Error Resume Next
+'            permID = CLng(rsTemp!PermissionID)
+'            If Err.Number <> 0 Then
+'                Err.Clear
+'                rsTemp.MoveNext
+'                GoTo ContinueLoop
+'            End If
+'            On Error GoTo ErrHandler
+'
+'            ' قيم checkboxes إلى 0/1
+'            Dim vCanView As Integer, vCanAdd As Integer, vCanEdit As Integer, vCanDelete As Integer
+'            vCanView = ToBit(rsTemp!CanView)
+'            vCanAdd = ToBit(rsTemp!CanAdd)
+'            vCanEdit = ToBit(rsTemp!CanEdit)
+'            vCanDelete = ToBit(rsTemp!CanDelete)
+'
+'            ' ابحث عن السجل الحالي في dbo_UserPermissions
+'            rsUserPerm.FindFirst "UserID=" & lngUserID & " AND PermissionID=" & permID
+'
+'            If rsUserPerm.NoMatch Then
+'                rsUserPerm.AddNew
+'                rsUserPerm!UserId = lngUserID
+'                rsUserPerm!PermissionID = permID
+'             '  rsUserPerm!AssignedBy = "Admin"
+'            Else
+'                rsUserPerm.Edit
+'            End If
+'
+'            ' عَبّي الحقول
+'            rsUserPerm!CanView = vCanView
+'            rsUserPerm!CanAdd = vCanAdd
+'            rsUserPerm!CanEdit = vCanEdit
+'            rsUserPerm!CanDelete = vCanDelete
+'
+'
+'            ' AssignedBy: إذا الحقل نصي نضع اسم المستخدم الحالي، إذا رقمي نضع Null
+'            If assignedFieldExists Then
+'                Select Case assignedFieldType
+'                    Case dbText, dbMemo
+'                        rsUserPerm!AssignedBy = Environ("USERNAME")
+'                    Case Else
+'                        rsUserPerm!AssignedBy = Null
+'                End Select
+'            End If
+'
+'            rsUserPerm.Update
+'        End If
+'
+'ContinueLoop:
+'        rsTemp.MoveNext
+'    Loop
+'
+'CommitAndExit:
+'    ' اكتمال المعاملة
+'    If bTrans Then
+'        ws.CommitTrans
+'        bTrans = False
+'    End If
+'
+'    MsgBox "تم حفظ الصلاحيات بنجاح", vbInformation
+'
+'CleanUp:
+'    On Error Resume Next
+'    If Not rsUserPerm Is Nothing Then rsUserPerm.Close
+'    If Not rsTemp Is Nothing Then rsTemp.Close
+'    Set rsUserPerm = Nothing
+'    Set rsTemp = Nothing
+'    Set db = Nothing
+'    Set ws = Nothing
+'    Exit Sub
+'
+'ErrHandler:
+'    On Error Resume Next
+'    If bTrans Then
+'        If Not ws Is Nothing Then ws.Rollback
+'    End If
+'    MsgBox "حدث خطأ أثناء الحفظ: " & Err.Number & " - " & Err.Description, vbCritical
+'    Resume CleanUp
+'End Sub
+
+
+Private Sub cmdsave_Click()
+    On Error GoTo ErrHandler
+    
+    If IsNull(Me.cboUsers) Then
+        MsgBox "يرجى اختيار المستخدم أولاً", vbExclamation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    Dim UserId As Long
+    Dim db As DAO.Database
+    Dim ws As DAO.Workspace
+    
+    UserId = CLng(Me.cboUsers)
+    Set db = CurrentDb
+    Set ws = DBEngine.Workspaces(0)
+    
+    ' التحقق من وجود بيانات للحفظ
+    If Not HasDataToSave(UserId) Then
+        MsgBox "لا توجد صلاحيات جديدة لإضافتها", vbInformation, "COCOBOLO SYSTEM"
+        Exit Sub
+    End If
+    
+    ' بدء المعاملة
+    ws.BeginTrans
+    
+    ' حذف القديم
+    db.Execute "DELETE FROM dbo_UserPermissions WHERE UserID = " & UserId, dbSeeChanges + dbFailOnError
+    
+    ' إدراج الجديد باستخدام تحويلات أنواع بيانات صارمة
+    db.Execute _
+        "INSERT INTO dbo_UserPermissions (UserID, PermissionID, CanView, CanAdd, CanEdit, CanDelete, AssignedBy) " & _
+        "SELECT " & UserId & ", " & _
+        "PermissionID, " & _
+        "IIF(CanView IS NULL, 0, IIF(CanView, 1, 0)), " & _
+        "IIF(CanAdd IS NULL, 0, IIF(CanAdd, 1, 0)), " & _
+        "IIF(CanEdit IS NULL, 0, IIF(CanEdit, 1, 0)), " & _
+        "IIF(CanDelete IS NULL, 0, IIF(CanDelete, 1, 0)), " & _
+        "'" & Replace(currentUser.UserName, "'", "''") & "' " & _
+        "FROM tmp_UserPermissionsGrid " & _
+        "WHERE CanView = TRUE OR CanAdd = TRUE OR CanEdit = TRUE OR CanDelete = TRUE", _
+        dbSeeChanges + dbFailOnError
+    
+    ' إتمام المعاملة
+    ws.CommitTrans
+    
+    MsgBox "تم حفظ الصلاحيات بنجاح", vbInformation, "COCOBOLO SYSTEM"
+    
+    ' تنظيف
+    Set db = Nothing
+    Set ws = Nothing
+    Exit Sub
+
+ErrHandler:
+    ' التراجع عن المعاملة في حالة الخطأ
+    On Error Resume Next
+    If Not ws Is Nothing Then ws.Rollback
+    On Error GoTo 0
+    
+    MsgBox "خطأ في الحفظ:" & vbCrLf & vbCrLf & _
+           "رقم الخطأ: " & Err.Number & vbCrLf & _
+           "الوصف: " & Err.Description & vbCrLf & vbCrLf & _
+           "الرجاء:" & vbCrLf & _
+           "1. التأكد من تطابق أنواع البيانات" & vbCrLf & _
+           "2. إعادة تحميل الصلاحيات والمحاولة مرة أخرى", vbCritical, "COCOBOLO SYSTEM"
+    
+    Set db = Nothing
+    Set ws = Nothing
+End Sub
+
+Private Function HasDataToSave(UserId As Long) As Boolean
+    Dim db As DAO.Database
+    Dim rs As DAO.Recordset
+    
+    Set db = CurrentDb
+    Set rs = db.OpenRecordset( _
+        "SELECT COUNT(*) AS RecCount FROM tmp_UserPermissionsGrid " & _
+        "WHERE CanView = True OR CanAdd = True OR CanEdit = True OR CanDelete = True", _
+        dbOpenSnapshot)
+    
+    HasDataToSave = (rs!recCount > 0)
+    rs.Close
+    Set rs = Nothing
+    Set db = Nothing
+End Function
+
+Private Sub DisplayDataTypeError(ErrNumber As Long, ErrDescription As String)
+    Dim msg As String
+    msg = "خطأ في أنواع البيانات (Error " & ErrNumber & ")" & vbCrLf & vbCrLf
+    msg = msg & "الحلول المقترحة:" & vbCrLf
+    msg = msg & "1. تأكد من تطابق أنواع الحقول بين الجدولين" & vbCrLf
+    msg = msg & "2. تحقق من أن جميع الحقول تحتوي على قيم صحيحة" & vbCrLf
+    msg = msg & "3. أعد تحميل الصلاحيات وحاول مرة أخرى"
+    
+    MsgBox msg, vbCritical
+End Sub
+
+
+' دالة مساعدة للتحقق من وجود الكنترول (تفادي Is Nothing errors)
+Private Function HasControl(frm As Form, ctlName As String) As Boolean
+    Dim ctl As Control
+    On Error Resume Next
+    Set ctl = frm.Controls(ctlName)
+    HasControl = (Err.Number = 0)
+    Err.Clear
+End Function
+
+
+Private Sub EnsureTmpTable()
+    On Error Resume Next
+    Dim db As DAO.Database
+    Set db = CurrentDb
+    
+    ' محاولة فتح الجدول، إذا فشل ننشئه
+    Dim testRS As DAO.Recordset
+    Set testRS = db.OpenRecordset("tmp_UserPermissionsGrid")
+    
+    If Err.Number <> 0 Then
+        ' إنشاء الجدول بأنواع بيانات متوافقة
+        db.Execute "CREATE TABLE tmp_UserPermissionsGrid (" & _
+                   "PermissionID LONG, " & _
+                   "PermissionName TEXT(255), " & _
+                   "Description MEMO, " & _
+                   "CanView YESNO, " & _
+                   "CanAdd YESNO, " & _
+                   "CanEdit YESNO, " & _
+                   "CanDelete YESNO)"
+    End If
+    
+    If Not testRS Is Nothing Then testRS.Close
+End Sub
+
+
+Private Sub Form_Load()
+    On Error Resume Next
+    EnsureTmpTable
+    CurrentDb.Execute "DELETE FROM tmp_UserPermissionsGrid"
+    Me.subfrmPermissions.Requery
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name) Then
+       Cancel = True
+        MsgBox "غير مصرح لك بالدخول", vbExclamation, "COCOBOLO SYSTEM"
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+Private Sub btnUncheckAll_Click()
+    Dim strSQL As String
+    strSQL = "UPDATE tmp_UserPermissionsGrid SET " & _
+             "CanView = False, CanAdd = False, CanEdit = False, CanDelete = False"
+    CurrentDb.Execute strSQL, dbFailOnError
+    Me.subfrmPermissions.Requery
+End Sub

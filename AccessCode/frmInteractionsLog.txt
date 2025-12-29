@@ -1,0 +1,311 @@
+﻿Option Compare Database
+Option Explicit
+
+' ==========================================
+' Form: frmInteractionsLog
+' سجل التواصلات
+' ==========================================
+
+Private Sub Form_Load()
+    On Error Resume Next
+    
+    Call LoadFilters
+    Call InitializeForm
+    Call LoadData
+End Sub
+
+' ==========================================
+' تحميل الفلاتر
+' ==========================================
+Private Sub LoadFilters()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    ' فلتر الموظفين
+'    sql = "SELECT EmployeeID, FullName FROM dbo_Employees WHERE Status = 'نشط' ORDER BY FullName"
+sql = "SELECT EmployeeID, FullName FROM dbo_Employees WHERE Status = 'نشط' AND Department = 'المبيعات' ORDER BY FullName"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = "0;كل الموظفين"
+    Do While Not rs.EOF
+        strList = strList & ";" & rs!EmployeeID & ";" & Nz(rs!FullName, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbEmployee
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;4cm"
+        .rowSource = strList
+        .value = 0
+    End With
+    
+    ' فلتر المصادر
+    sql = "SELECT SourceID, SourceNameAr FROM dbo_ContactSources WHERE IsActive = 1"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = "0;كل المصادر"
+    Do While Not rs.EOF
+        strList = strList & ";" & rs!sourceID & ";" & Nz(rs!SourceNameAr, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbSource
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;4cm"
+        .rowSource = strList
+        .value = 0
+    End With
+End Sub
+
+' ==========================================
+' تهيئة النموذج
+' ==========================================
+Private Sub InitializeForm()
+    On Error Resume Next
+    
+    ' تاريخ افتراضي (آخر 30 يوم)
+    Me.txtFromDate = DateAdd("d", -30, Date)
+    Me.txtToDate = Date
+    
+    Me.lblTotal.Caption = "الإجمالي: 0"
+End Sub
+
+' ==========================================
+' تحميل البيانات
+' ==========================================
+Private Sub LoadData()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim whereClause As String
+    Dim rs As DAO.Recordset
+    Dim totalCount As Long
+    
+    ' بناء الفلتر
+    whereClause = " WHERE 1=1"
+    
+    ' فلتر التاريخ من
+    If Not IsNull(Me.txtFromDate) Then
+        whereClause = whereClause & " AND InteractionDate >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "#"
+    End If
+    
+    ' فلتر التاريخ إلى
+    If Not IsNull(Me.txtToDate) Then
+        whereClause = whereClause & " AND InteractionDate <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & " 23:59:59#"
+    End If
+    
+    ' فلتر الموظف
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND EmployeeID = " & Me.cmbEmployee
+    End If
+    
+    ' فلتر المصدر
+    If Nz(Me.cmbSource, 0) <> 0 Then
+        whereClause = whereClause & " AND SourceID = " & Me.cmbSource
+    End If
+    
+    ' الاستعلام من الـ View
+    sql = "SELECT " & _
+          "InteractionDate, " & _
+          "ClientName, " & _
+          "Phone, " & _
+          "EmployeeName, " & _
+          "SourceName, " & _
+          "StatusName, " & _
+          "StageAfterName, " & _
+          "Summary " & _
+          "FROM dbo_vw_CustomerInteractions" & whereClause & _
+          " ORDER BY InteractionDate DESC"
+    
+    Me.subInteractionsLog.Form.RecordSource = sql
+    
+    ' حساب الإجمالي
+    Set rs = CurrentDb.OpenRecordset("SELECT COUNT(*) FROM dbo_vw_CustomerInteractions" & whereClause, dbOpenSnapshot, dbSeeChanges)
+    totalCount = Nz(rs.Fields(0).value, 0)
+    rs.Close
+    Set rs = Nothing
+    
+    Me.lblTotal.Caption = "الإجمالي: " & totalCount & " تواصل"
+End Sub
+
+' ==========================================
+' زر البحث
+' ==========================================
+Private Sub btnSearch_Click()
+    Call LoadData
+End Sub
+
+' ==========================================
+' عند تغيير الفلاتر
+' ==========================================
+Private Sub cmbEmployee_AfterUpdate()
+    Call LoadData
+End Sub
+
+Private Sub cmbSource_AfterUpdate()
+    Call LoadData
+End Sub
+
+Private Sub txtFromDate_AfterUpdate()
+    Call LoadData
+End Sub
+
+Private Sub txtToDate_AfterUpdate()
+    Call LoadData
+End Sub
+
+' ==========================================
+' زر الطباعة
+' ==========================================
+Private Sub btnPrint_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim whereClause As String
+    Dim qdf As DAO.QueryDef
+    Dim dateRange As String
+    
+    ' بناء الفلتر
+    whereClause = " WHERE 1=1"
+    
+    If Not IsNull(Me.txtFromDate) Then
+        whereClause = whereClause & " AND InteractionDate >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "#"
+    End If
+    
+    If Not IsNull(Me.txtToDate) Then
+        whereClause = whereClause & " AND InteractionDate <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & " 23:59:59#"
+    End If
+    
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND EmployeeID = " & Me.cmbEmployee
+    End If
+    
+    If Nz(Me.cmbSource, 0) <> 0 Then
+        whereClause = whereClause & " AND SourceID = " & Me.cmbSource
+    End If
+    
+    ' الاستعلام
+    sql = "SELECT " & _
+          "InteractionDate, " & _
+          "ClientName, " & _
+          "Phone, " & _
+          "EmployeeName, " & _
+          "SourceName, " & _
+          "Summary " & _
+          "FROM dbo_vw_CustomerInteractions" & whereClause & _
+          " ORDER BY InteractionDate DESC"
+    
+    ' حذف الـ Query لو موجود
+    On Error Resume Next
+    CurrentDb.QueryDefs.Delete "qry_ReportInteractions"
+    On Error GoTo ErrorHandler
+    
+    ' إنشاء Query مؤقت
+    Set qdf = CurrentDb.CreateQueryDef("qry_ReportInteractions", sql)
+    Set qdf = Nothing
+    
+    ' تحديد الفترة للعنوان
+    dateRange = "من: " & Format(Nz(Me.txtFromDate, Date), "dd/mm/yyyy") & _
+                "  إلى: " & Format(Nz(Me.txtToDate, Date), "dd/mm/yyyy")
+    
+    ' فتح التقرير
+    DoCmd.OpenReport "rpt_InteractionsLog", acViewPreview, , , , dateRange
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الطباعة: " & Err.Description, vbCritical
+End Sub
+
+
+' ==========================================
+' زر التصدير
+' ==========================================
+Private Sub btnExport_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim whereClause As String
+    Dim qdf As DAO.QueryDef
+    Dim fileName As String
+    Dim filePath As String
+    
+    ' بناء الفلتر
+    whereClause = " WHERE 1=1"
+    
+    If Not IsNull(Me.txtFromDate) Then
+        whereClause = whereClause & " AND InteractionDate >= #" & Format(Me.txtFromDate, "yyyy-mm-dd") & "#"
+    End If
+    
+    If Not IsNull(Me.txtToDate) Then
+        whereClause = whereClause & " AND InteractionDate <= #" & Format(Me.txtToDate, "yyyy-mm-dd") & " 23:59:59#"
+    End If
+    
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND EmployeeID = " & Me.cmbEmployee
+    End If
+    
+    If Nz(Me.cmbSource, 0) <> 0 Then
+        whereClause = whereClause & " AND SourceID = " & Me.cmbSource
+    End If
+    
+    ' الاستعلام
+    sql = "SELECT " & _
+          "InteractionDate AS [التاريخ], " & _
+          "ClientName AS [العميل], " & _
+          "Phone AS [التليفون], " & _
+          "EmployeeName AS [الموظف], " & _
+          "SourceName AS [المصدر], " & _
+          "StatusName AS [الحالة], " & _
+          "StageAfterName AS [المرحلة], " & _
+          "Summary AS [الملخص] " & _
+          "FROM dbo_vw_CustomerInteractions" & whereClause & _
+          " ORDER BY InteractionDate DESC"
+    
+    ' حذف الـ Query لو موجود
+    On Error Resume Next
+    CurrentDb.QueryDefs.Delete "qry_TempExport"
+    On Error GoTo ErrorHandler
+    
+    ' إنشاء Query مؤقت
+    Set qdf = CurrentDb.CreateQueryDef("qry_TempExport", sql)
+    Set qdf = Nothing
+    
+    ' اختيار مكان الحفظ
+    fileName = "سجل_التواصلات_" & Format(Date, "yyyy-mm-dd") & ".xlsx"
+    filePath = Application.CurrentProject.Path & "\" & fileName
+    
+    ' التصدير
+    DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel12Xml, "qry_TempExport", filePath, True
+    
+    ' حذف الـ Query المؤقت
+    CurrentDb.QueryDefs.Delete "qry_TempExport"
+    
+    MsgBox "تم التصدير بنجاح!" & vbCrLf & vbCrLf & "الملف: " & filePath, vbInformation
+    
+    ' فتح الملف
+    Shell "explorer.exe /select," & filePath, vbNormalFocus
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في التصدير: " & Err.Description, vbCritical
+End Sub
+
+' ==========================================
+' زر الإغلاق
+' ==========================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub

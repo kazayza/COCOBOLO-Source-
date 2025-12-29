@@ -1,0 +1,17 @@
+﻿Form: frmSubQuotationProducts
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cmbProduct		ComboBox		ProductID
+Label1		Label		المنتج
+txtQuantity		TextBox		Quantity
+Label3		Label		الكمية
+txtUnitPrice		TextBox		UnitPrice
+Label5		Label		السعر
+txtTotal		TextBox		TotalAmount
+Label7		Label		الاجمالى
+txtProductName		TextBox		ProductName
+Label9		Label		المنتج
+txtNotes		TextBox		Notes
+Label11		Label		ملاحظات

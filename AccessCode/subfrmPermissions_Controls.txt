@@ -1,0 +1,22 @@
+﻿Form: subfrmPermissions
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label8		Label		PermissionID
+Label9		Label		وصف الصلاحية
+Label10		Label		CanView
+Label11		Label		CanAdd
+Label12		Label		CanEdit
+Label13		Label		CanDelete
+Label94		Label		نوع الصلاحية
+Label97		Label		 الصلاحية
+txtPermissionID		TextBox		PermissionID
+txtDescription		TextBox		Description
+chkCanView		CheckBox		CanView
+chkCanAdd		CheckBox		CanAdd
+chkCanEdit		CheckBox		CanEdit
+chkCanDelete		CheckBox		CanDelete
+Line91		Line		
+Text92		TextBox		Category
+PermissionName		TextBox		PermissionName

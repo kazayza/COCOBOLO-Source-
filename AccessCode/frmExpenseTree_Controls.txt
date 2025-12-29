@@ -1,0 +1,15 @@
+﻿Form: frmExpenseTree
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+tvExpenseGroups		Other (119)		
+txtFromDate		TextBox		
+Label3		Label		من تاريخ
+txtToDate		TextBox		
+Label5		Label		الى تاريخ
+cmdFilter		Button		تحديث
+cmdReset		Button		الغاء
+lblTotalAmount		Label		الإجمالي الكلي: 320,965.50
+lblMainGroupsTotal		Label		المجموعات الرئيسية: 0.00
+Command10		Button		اضافة مصروف / مجموعه

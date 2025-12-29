@@ -1,0 +1,15 @@
+﻿Form: sub_PayRoollDetalis
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label2		Label		النوع
+Label3		Label		الوصــــف
+Label4		Label		المبلغ
+EmptyCell46		Other (127)		
+EmptyCell61		Other (127)		
+DetailType		TextBox		DetailKind
+DetailDescription		TextBox		DetailDesc
+Amount		TextBox		Amount
+btnDelete		Button		delete
+EmptyCell59		Other (127)		

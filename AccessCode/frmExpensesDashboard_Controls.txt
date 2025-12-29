@@ -1,0 +1,186 @@
+﻿Form: frmExpensesDashboard
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+lblFormTitle		Label		لوحة مؤشرات أداء المصروفات
+txtHeaderDate		TextBox		=Format(Date(),"yyyy/mm/dd")
+txtHeaderTime		TextBox		=Format(Time(),"Short Time")
+btnClose		Button		✕
+lblLoading		Label		   
+boxFilterSection		Rectangle		
+Command9		Button		Command9
+Line10		Line		
+cboExpMonth		ComboBox		0;-- السنة كاملة --;1;يناير;2;فبراير;3;مارس;4;أبريل;5;مايو;6;يونيو;7;يوليو;8;أغسطس;9;سبتمبر;10;أكتوبر;11;نوفمبر;12;ديسمبر
+Label12		Label		📅 الشهر:
+cboExpYear		ComboBox		2025;2026;2027;2028;2029;2030
+cboExpYearlbl		Label		السنة
+cboExpGroup		ComboBox		SELECT ExpenseGroupID, ExpenseGroupName FROM dbo_ExpenseGroups WHERE ParentGroupID Is Null ORDER BY ExpenseGroupName; 
+Label18		Label		📊 المجموعة:
+cboExpItem		ComboBox		
+Label21		Label		📋 البند:
+btnExpFilter		Button		Command146
+btnExpReset		Button		Command146
+boxCard1		Rectangle		
+txtExpensesToday		TextBox		
+lblCard1Title		Label		مصروفات اليوم
+lblCard1Logo		Label		💰
+Line27		Line		
+Im1		Image		
+boxCard2		Rectangle		
+txtPayrollMonth		TextBox		
+lblCard2Title		Label		رواتب الشهر
+lblCard2Logo		Label		💰
+Line32		Line		
+Image33		Image		
+Line34		Line		
+Line35		Line		
+lblsalary		Label		رواتب الشهر
+boxCard3		Rectangle		
+txtTotalExpMonth		TextBox		
+lblCard3Title		Label		إجمــالى الشهر
+lblCard3Logo		Label		💰
+Line41		Line		
+Image42		Image		
+Line43		Line		
+boxCard4		Rectangle		
+txtExpPctChange		TextBox		
+lblCard4Title		Label		مقارنة شهرية
+lblCard4Logo		Label		💰
+Line48		Line		
+Image49		Image		
+Line50		Line		
+lblExpUp		Label		▲
+lblExpDown		Label		▼
+boxMainGroupSection		Rectangle		
+Line54		Line		
+txtMainGroupName1		TextBox		
+txtMainGroupName2		TextBox		
+txtMainGroupName3		TextBox		
+txtMainGroupName4		TextBox		
+txtMainGroupName5		TextBox		
+txtMainGroupName6		TextBox		
+Line67		Line		
+Label68		Label		المجموعات الرئيسية:
+
+txtMainGroupAmount1		TextBox		
+txtMainGroupAmount2		TextBox		
+txtMainGroupAmount3		TextBox		
+txtMainGroupAmount4		TextBox		
+txtMainGroupAmount5		TextBox		
+txtMainGroupAmount6		TextBox		
+txtMainGroupPct1		TextBox		
+txtMainGroupPct2		TextBox		
+txtMainGroupPct3		TextBox		
+txtMainGroupPct4		TextBox		
+txtMainGroupPct5		TextBox		
+txtMainGroupPct6		TextBox		
+Box82		Rectangle		
+Line83		Line		
+txtTopItemName1		TextBox		
+txtTopItemName2		TextBox		
+txtTopItemName3		TextBox		
+txtTopItemName4		TextBox		
+txtTopItemName5		TextBox		
+txtTopItemAmount1		TextBox		
+txtTopItemAmount2		TextBox		
+txtTopItemAmount3		TextBox		
+txtTopItemAmount4		TextBox		
+txtTopItemAmount5		TextBox		
+Label104		Label		أعلى 5 بنود:
+Line105		Line		
+Line107		Line		
+Label108		Label		📋 قسم التصنيفات:
+Line109		Line		
+Label110		Label		📋 قسم الرواتب:
+boxPayrollSummary		Rectangle		
+Line112		Line		
+lblPayrollSummaryTitle		Label		ملخص الرواتب:
+
+txtTotalBasicSalary		TextBox		
+lblBasicSalary		Label		الأساسي
+txtTotalAllowances		TextBox		
+lblAllowances		Label		+ البدلات
+
+txtTotalDeductions		TextBox		
+lblDeductions		Label		- الخصومات
+
+txtTotalNetSalary		TextBox		
+lblNetSalary		Label		الصافي
+
+txtEmployeeCount		TextBox		
+txtAvgSalary		TextBox		
+lblPayrollStatusBig		Label		 
+Image126		Image		
+boxTopSalaries		Rectangle		
+Line137		Line		
+txtSalaryEmpName1		TextBox		
+txtSalaryEmpName2		TextBox		
+txtSalaryEmpName3		TextBox		
+txtSalaryEmpName4		TextBox		
+txtSalaryEmpName5		TextBox		
+txtSalaryAmount1		TextBox		
+txtSalaryAmount2		TextBox		
+txtSalaryAmount3		TextBox		
+txtSalaryAmount4		TextBox		
+txtSalaryAmount5		TextBox		
+lblTopSalariesTitle		Label		أعلى 5 رواتب:
+Line149		Line		
+boxLastExpSection		Rectangle		
+Line151		Line		
+txtLastExpNo1		TextBox		
+txtLastExpNo2		TextBox		
+txtLastExpNo3		TextBox		
+txtLastExpNo4		TextBox		
+txtLastExpNo5		TextBox		
+txtLastExpGroup1		TextBox		
+txtLastExpGroup2		TextBox		
+txtLastExpGroup3		TextBox		
+txtLastExpGroup4		TextBox		
+txtLastExpGroup5		TextBox		
+lblLastExpTitle		Label		📋 آخر 5 مصروفات
+Line163		Line		
+txtLastExpAmount1		TextBox		
+txtLastExpAmount2		TextBox		
+txtLastExpAmount3		TextBox		
+txtLastExpAmount4		TextBox		
+txtLastExpAmount5		TextBox		
+txtLastExpDate1		TextBox		
+txtLastExpDate2		TextBox		
+txtLastExpDate3		TextBox		
+txtLastExpDate4		TextBox		
+txtLastExpDate5		TextBox		
+boxExpRatioSection		Rectangle		
+Line175		Line		
+lblExpRatioTitle		Label		📋 قسم نسبة المصروفات
+Line187		Line		
+boxExpRatioBg		Rectangle		
+boxExpRatioBar		Rectangle		
+lblExpRatioStatus		Label		 
+boxFinSummary		Rectangle		
+Line194		Line		
+txtFinSales		TextBox		
+txtFinPurchases		TextBox		
+txtFinExpenses		TextBox		
+txtFinNetProfit		TextBox		
+lblFinSummaryTitle		Label		💵 الملخص المالي الشامل
+Line206		Line		
+lblFinSales		Label		📈 المبيعــــات:
+lblFinPurchases		Label		📉 المشتريـات:
+
+lblFinExpenses		Label		💸 المصروفات:
+
+lblFinNetProfit		Label		💰 صافي الربح:
+
+txtLastExpName1		TextBox		
+txtLastExpName2		TextBox		
+txtLastExpName3		TextBox		
+txtLastExpName4		TextBox		
+txtLastExpName5		TextBox		
+txtExpRatioPct		TextBox		
+btnRefresh		Button		🔄 تحديث
+
+btnExportExcel		Button		📤 تصدير Excel
+
+
+txtExpLastUpdate		TextBox		

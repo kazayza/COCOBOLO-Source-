@@ -1,0 +1,70 @@
+﻿Option Compare Database
+
+Private Sub Command11_Click()
+  
+ 
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من البيانات
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Or IsNull(Me.EmpId) Then
+        MsgBox "يرجى اختيار الشهر والسنة والموظف"
+        Exit Sub
+    End If
+    
+    Dim qdf As DAO.QueryDef
+    Set qdf = CurrentDb.QueryDefs("qryAttendancePenalties")
+    
+    ' تمرير القيم مباشرة من النموذج
+    qdf.Parameters("EmpID").value = Me.EmpId.value
+    qdf.Parameters("MonthParam").value = Me.cboMonth.value
+    qdf.Parameters("YearParam").value = Me.cboYear.value
+    
+    ' فتح الاستعلام مباشرة في عرض البيانات
+    DoCmd.OpenQuery "qryAttendancePenalties"
+    
+    Set qdf = Nothing
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "حدث خطأ: " & Err.Description & " - رقم الخطأ: " & Err.Number
+
+
+End Sub
+
+Private Sub Command8_Click()
+
+    On Error GoTo ErrHandler
+    
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "من فضلك اختر الشهر والسنة أولاً", vbExclamation, "بيانات ناقصة"
+        Exit Sub
+    End If
+    
+    ' بناء الفلتر الأساسي (الشهر والسنة - إجباري)
+    Dim filterCondition As String
+    filterCondition = "Month([LogDate]) = " & Me.cboMonth & " AND Year([LogDate]) = " & Me.cboYear
+    
+    ' إضافة فلتر الموظف إذا تم اختياره (اختياري)
+     If Not IsNull(Me.EmpId) Then
+        Dim BioEmployeeID As Long
+        BioEmployeeID = Me.BioId.value ' الـ BioEmployeeID من العمود الأول
+        
+        filterCondition = filterCondition & " AND a.BiometricCode = " & BioEmployeeID
+    End If
+    
+    ' فتح التقرير مع الفلتر
+    DoCmd.OpenReport "rptAttendanceFull", acViewPreview, , filterCondition
+    
+    Exit Sub
+    
+ErrHandler:
+    MsgBox "خطأ أثناء فتح التقرير: " & Err.Description, vbCritical
+
+End Sub
+
+Private Sub Form_Load()
+ Me.lblWelcome.Caption = "مرحباً، " & vbCrLf & currentUser.FullName
+    Me.lblusername.Caption = currentUser.UserName
+    Me.EmpId = DLookup("employeeID", "dbo_Users", "UserID = " & currentUser.UserId)
+    Me.BioId = DLookup("BioEmployeeID", "dbo_Employees", "EmployeeID = " & Me.EmpId)
+End Sub

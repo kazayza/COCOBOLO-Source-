@@ -1,0 +1,409 @@
+﻿Option Compare Database
+Option Explicit
+
+' ==========================================
+' Form: frmNewQuotation
+' عرض سعر جديد
+' ==========================================
+
+Private mPartyID As Long
+Private mOpportunityID As Long
+Private mQuotationID As Long
+
+Private Sub Command23_Click()
+ 
+ mPartyID = Me.cmbParty
+ 
+ Call InsertIntoTempTransactionSQL(mPartyID)
+  
+        
+        ' ربط النموذج الفرعي بالجدول المحلي
+        Me.subProducts.Form.Requery
+        
+End Sub
+
+' ==========================================
+' Form Load
+' ==========================================
+Private Sub Form_Load()
+    On Error Resume Next
+    
+    mPartyID = 0
+    mOpportunityID = 0
+    mQuotationID = 0
+    
+    ' مسح البيانات المؤقتة
+    CurrentDb.Execute "DELETE FROM Temp_TransactionDetalis", dbFailOnError
+    
+    ' تحميل القوائم
+    Call LoadCombos
+    
+    ' تهيئة النموذج
+    Call InitializeForm
+    
+    ' تحديد الموظف تلقائياً
+    Call SetCurrentEmployee
+    
+    ' تحديث الـ SubForm
+    Me.subProducts.Form.Requery
+    
+    ' استقبال PartyID أو PartyID;OpportunityID من OpenArgs
+    If Nz(Me.OpenArgs, "") <> "" Then
+        Dim args() As String
+        args = Split(Me.OpenArgs, ";")
+        
+        ' أول قيمة = PartyID
+        mPartyID = val(args(0))
+        Me.cmbParty = mPartyID
+        
+        ' لو في قيمة تانية = OpportunityID
+        If UBound(args) >= 1 Then
+            mOpportunityID = val(args(1))
+        Else
+            ' جلب آخر فرصة بيع مفتوحة للعميل
+            Call GetOpenOpportunity
+        End If
+    End If
+End Sub
+
+' ==========================================
+' تحميل القوائم
+' ==========================================
+Private Sub LoadCombos()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    ' قائمة العملاء
+    sql = "SELECT PartyID, PartyName FROM dbo_Parties WHERE IsActive = 1 ORDER BY PartyName"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = ""
+    Do While Not rs.EOF
+        If strList <> "" Then strList = strList & ";"
+        strList = strList & rs!PartyID & ";" & Nz(rs!PartyName, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbParty
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;6cm"
+        .rowSource = strList
+    End With
+    
+    ' قائمة الموظفين
+    sql = "SELECT EmployeeID, FullName FROM dbo_Employees WHERE Status = 'نشط' ORDER BY FullName"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = ""
+    Do While Not rs.EOF
+        If strList <> "" Then strList = strList & ";"
+        strList = strList & rs!EmployeeID & ";" & Nz(rs!FullName, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbEmployee
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;4cm"
+        .rowSource = strList
+    End With
+End Sub
+
+' ==========================================
+' تهيئة النموذج
+' ==========================================
+Private Sub InitializeForm()
+    On Error Resume Next
+    
+    Me.txtQuotationID = "(جديد)"
+    Me.txtDate = Date
+    Me.cmbParty = Null
+    Me.cmbEmployee = Null
+    Me.txtNotes = ""
+    
+    Me.lblProductsTotal.Caption = "0.00"
+    Me.lblChargesTotal.Caption = "0.00"
+    Me.lblGrandTotal.Caption = "0.00"
+End Sub
+
+' ==========================================
+' تحديث الإجماليات
+' ==========================================
+Public Sub UpdateTotals()
+    On Error Resume Next
+    
+    Dim productsTotal As Currency
+    Dim chargesTotal As Currency
+    Dim GrandTotal As Currency
+    Dim rs As DAO.Recordset
+    
+    productsTotal = 0
+    chargesTotal = 0
+    
+    ' حساب إجمالي المنتجات
+    Set rs = Me.subProducts.Form.RecordsetClone
+    If Not (rs.BOF And rs.EOF) Then
+        rs.MoveFirst
+        Do While Not rs.EOF
+            productsTotal = productsTotal + Nz(rs!TotalAmount, 0)
+            rs.MoveNext
+        Loop
+    End If
+    Set rs = Nothing
+    
+    GrandTotal = productsTotal + chargesTotal
+    
+    Me.lblProductsTotal.Caption = Format(productsTotal, "#,##0.00")
+    Me.lblChargesTotal.Caption = Format(chargesTotal, "#,##0.00")
+    Me.lblGrandTotal.Caption = Format(GrandTotal, "#,##0.00")
+    
+    ' تلوين الإجمالي
+    Me.lblGrandTotal.ForeColor = RGB(39, 174, 96)
+    Me.lblGrandTotal.FontBold = True
+    Me.lblGrandTotal.FontSize = 14
+End Sub
+' ==========================================
+' زر الحفظ
+' ==========================================
+Private Sub btnSave_Click()
+    On Error GoTo ErrorHandler
+    
+    ' التحقق من البيانات
+    If Not ValidateForm() Then Exit Sub
+    
+    ' حفظ البيانات
+    If SaveQuotation() Then
+        MsgBox "تم حفظ عرض السعر بنجاح!" & vbCrLf & _
+               "رقم العرض: " & mQuotationID, vbInformation, "تم الحفظ"
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الحفظ: " & Err.Description, vbCritical
+End Sub
+
+' ==========================================
+' التحقق من صحة البيانات
+' ==========================================
+Private Function ValidateForm() As Boolean
+    On Error Resume Next
+    
+    ValidateForm = False
+    
+    If IsNull(Me.cmbParty) Then
+        MsgBox "برجاء اختيار العميل", vbExclamation
+        Me.cmbParty.SetFocus
+        Exit Function
+    End If
+    
+    ValidateForm = True
+End Function
+
+' ==========================================
+' حفظ عرض السعر
+' ==========================================
+Private Function SaveQuotation() As Boolean
+    On Error GoTo ErrorHandler
+    
+    SaveQuotation = False
+    
+    Dim db As DAO.Database
+    Dim rsMaster As DAO.Recordset
+    Dim rsDetails As DAO.Recordset
+    Dim rsTemp As DAO.Recordset
+    Dim productsTotal As Currency
+    
+    Set db = CurrentDb
+    productsTotal = 0
+    
+    ' =====================
+    ' 1- حفظ البيانات الأساسية
+    ' =====================
+    Set rsMaster = db.OpenRecordset("dbo_Quotations", dbOpenDynaset, dbSeeChanges)
+    rsMaster.AddNew
+    rsMaster!QuotationDate = Nz(Me.txtDate, Date)
+    rsMaster!PartyID = Me.cmbParty
+    rsMaster!TotalAmount = 0
+    rsMaster!GrandTotal = 0
+    rsMaster!Notes = Nz(Me.txtNotes, "")
+    rsMaster!CreatedBy = currentUser.UserName
+    rsMaster!CreatedAt = Now()
+    rsMaster.Update
+    rsMaster.Bookmark = rsMaster.LastModified
+    mQuotationID = rsMaster!QuotationID
+    rsMaster.Close
+    Set rsMaster = Nothing
+    
+    ' =====================
+    ' 2- حفظ تفاصيل المنتجات
+    ' =====================
+    Set rsDetails = db.OpenRecordset("dbo_QuotationDetails", dbOpenDynaset, dbSeeChanges)
+    Set rsTemp = db.OpenRecordset("SELECT * FROM Temp_TransactionDetalis", dbOpenSnapshot)
+    
+    If Not (rsTemp.BOF And rsTemp.EOF) Then
+        rsTemp.MoveFirst
+        Do While Not rsTemp.EOF
+            rsDetails.AddNew
+            rsDetails!QuotationID = mQuotationID
+            rsDetails!ProductID = rsTemp!ProductID
+            rsDetails!Quantity = Nz(rsTemp!Quantity, 1)
+            rsDetails!UnitPrice = Nz(rsTemp!UnitPrice, 0)
+            rsDetails.Update
+            
+            productsTotal = productsTotal + (Nz(rsTemp!Quantity, 1) * Nz(rsTemp!UnitPrice, 0))
+            
+            rsTemp.MoveNext
+        Loop
+    End If
+    
+    rsTemp.Close
+    rsDetails.Close
+    Set rsTemp = Nothing
+    Set rsDetails = Nothing
+    
+    ' =====================
+    ' 3- تحديث الإجمالي
+    ' =====================
+    db.Execute "UPDATE dbo_Quotations SET TotalAmount = " & productsTotal & _
+               ", GrandTotal = " & productsTotal & _
+               " WHERE QuotationID = " & mQuotationID, dbFailOnError + dbSeeChanges
+    
+    ' =====================
+    ' 4- ربط بفرصة البيع
+    ' =====================
+    If mOpportunityID > 0 Then
+        db.Execute "UPDATE dbo_SalesOpportunities SET " & _
+                   "QuotationID = " & mQuotationID & ", " & _
+                   "LastUpdatedBy = '" & currentUser.UserName & "', " & _
+                   "LastUpdatedAt = #" & Format(Now(), "yyyy-mm-dd hh:nn:ss") & "# " & _
+                   "WHERE OpportunityID = " & mOpportunityID, dbFailOnError + dbSeeChanges
+    End If
+    
+    ' تحديث رقم العرض في الفورم
+    Me.txtQuotationID = mQuotationID
+    
+    Set db = Nothing
+    
+    SaveQuotation = True
+    Exit Function
+    
+ErrorHandler:
+    MsgBox "خطأ في حفظ البيانات: " & Err.Description, vbCritical
+    SaveQuotation = False
+End Function
+
+
+
+' ==========================================
+' زر الطباعة
+' ==========================================
+Private Sub btnPrint_Click()
+    On Error GoTo ErrorHandler
+    
+    If mQuotationID = 0 Then
+        MsgBox "برجاء حفظ العرض أولاً", vbExclamation
+        Exit Sub
+    End If
+    
+    DoCmd.OpenReport "rpt_NewQuotation", acViewPreview, , "QuotationID = " & mQuotationID
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "خطأ في الطباعة: " & Err.Description, vbCritical
+End Sub
+
+' ==========================================
+' زر الإغلاق
+' ==========================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+' ==========================================
+' تحديد الموظف من اليوزر الحالي
+' ==========================================
+Private Sub SetCurrentEmployee()
+    On Error Resume Next
+    
+    Dim EmployeeID As Long
+    
+    ' جلب كود الموظف من جدول Users
+    EmployeeID = Nz(DLookup("employeeID", "dbo_Users", "Username = '" & currentUser.UserName & "'"), 0)
+    
+    If EmployeeID > 0 Then
+        Me.cmbEmployee = EmployeeID
+    End If
+End Sub
+
+
+
+' ==========================================
+' جلب فرصة البيع المفتوحة للعميل
+' ==========================================
+Private Sub GetOpenOpportunity()
+    On Error Resume Next
+    
+    If mPartyID = 0 Then Exit Sub
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    sql = "SELECT TOP 1 OpportunityID FROM dbo_SalesOpportunities " & _
+          "WHERE PartyID = " & mPartyID & " AND IsActive = 1 " & _
+          "AND StageID NOT IN (3, 4, 5) " & _
+          "ORDER BY CreatedAt DESC"
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rs.EOF Then
+        mOpportunityID = rs!OpportunityID
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+End Sub
+
+ Public Function InsertIntoTempTransactionSQL(mPartyID As Long)
+    On Error GoTo ErrorHandler
+    
+    Dim db As DAO.Database
+    Dim strSQL As String
+    
+    Set db = CurrentDb
+    
+    ' مسح البيانات القديمة
+    db.Execute "DELETE FROM Temp_TransactionDetalis", dbFailOnError
+    
+    ' إدخال البيانات باستخدام SQL مباشرة
+    strSQL = "INSERT INTO Temp_TransactionDetalis (ProductID, Quantity, UnitPrice, TotalAmount) " & _
+             "SELECT " & _
+             "ProductID, " & _
+             "QTY AS Quantity, " & _
+             "SuggestedSalePrice AS UnitPrice, " & _
+             "SuggestedSalePrice * QTY AS TotalAmount " & _
+             "FROM dbo_Products " & _
+             "WHERE Customer = " & mPartyID & " AND IsSelected = 1"
+    
+    db.Execute strSQL, dbFailOnError
+    
+    
+    Set db = Nothing
+    Exit Function
+    
+ErrorHandler:
+    MsgBox "خطأ في إدخال البيانات: " & Err.Description, vbCritical, "خطأ"
+    Set db = Nothing
+End Function
+

@@ -1,0 +1,23 @@
+﻿Form: frmPayrollProcessor
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+cboMonth		ComboBox		tbl_months
+Label1		Label		الشهر
+cboYear		ComboBox		2025;2026;2027
+Label3		Label		السنه
+lstEmployees		ListBox		SELECT EmployeeID, FullName, CurrentSalaryBase, False AS Selected FROM dbo_Employees WHERE Status = 'نشط' ORDER BY EmployeeID; 
+cmdSelectAll		Button		اختيار الكل
+cmdDeselectAll		Button		الغاء اختيار
+cmdCalculate		Button		حساب الرواتب
+cmdPreview		Button		معاينه الرواتب
+cmdExport		Button		تصدير
+lstResults		ListBox		SELECT EmployeeID AS [كود الموظف], FullName AS [الاسم بالكامل], BasicSalary AS [الراتب الأساسي], Commission AS عمولة, Deductions AS خصومات, Penalties AS غرامات, NetSalary AS [صافي الراتب], PayrollYear AS [سنة الرواتب], PayrollMonth AS [شهر الرواتب] FROM tblTempPayrollResults ORDER BY tblTempPayrollResults.EmployeeID; 
+cmdSave		Button		حفظ الراتب
+progressBar		Other (119)		
+lblStatus		Label		.
+Box18		Rectangle		
+Box19		Rectangle		
+cmdPreviewPayroll		Button		Command20
+cmdExportPDF		Button		pdf

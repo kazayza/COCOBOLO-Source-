@@ -1,0 +1,10 @@
+﻿Form: frmViewImg
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label0		Label		ProductID
+Label1		Label		ImagePath
+ProductID		TextBox		ProductID
+ImagePath		TextBox		ImagePath
+Image9		Image		

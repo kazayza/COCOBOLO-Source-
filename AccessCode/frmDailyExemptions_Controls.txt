@@ -1,0 +1,25 @@
+﻿Form: frmDailyExemptions
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+ExemptionID		TextBox		
+Label0		Label		كود
+ExemptionDate		TextBox		
+Label2		Label		تاريخ الاستثناء
+Description		TextBox		
+Label4		Label		وصف السبب
+ApprovedBy		TextBox		
+Label5		Label		ApprovedBy
+CreatedDate		TextBox		
+Label6		Label		CreatedDate
+BioEmployeeID		ComboBox		SELECT dbo_Employees.BioEmployeeID, dbo_Employees.FullName FROM dbo_Employees WHERE (((dbo_Employees.BioEmployeeID) Is Not Null) AND ((dbo_Employees.Status)="نشط")); 
+Label1		Label		الموظف
+ReasonCode		ComboBox		
+Label3		Label		سبب الاستثناء
+cmdSave		Button		حفظ
+cmdClose		Button		&Close
+Box9		Rectangle		
+Box10		Rectangle		
+Box12		Rectangle		
+Box11		Rectangle		

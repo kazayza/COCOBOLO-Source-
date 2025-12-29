@@ -1,0 +1,63 @@
+﻿
+Option Compare Database
+
+'Private Sub btnSaveComponent_Click()
+'    On Error GoTo ErrorHandler
+'
+'    If IsNull(Me.ProductID) Then
+'        MsgBox "Product ID غير متوفر", vbCritical
+'        Exit Sub
+'    End If
+'
+'    If Trim(Nz(Me.ComponentName, "")) = "" Then
+'        MsgBox "أدخل اسم المكون", vbExclamation
+'        Exit Sub
+'    End If
+'
+'    Dim db As DAO.Database
+'    Dim rs As DAO.Recordset
+'
+'    Set db = CurrentDb
+'    Set rs = db.OpenRecordset("dbo_ProductComponents", dbOpenDynaset, dbSeeChanges)
+'
+'    rs.AddNew
+'    rs!ProductID = Me.ProductID
+'    rs!ComponentName = Me.ComponentName
+'    rs!Quantity = Nz(Me.Quantity, 1)
+'    rs!CreatedBy = admin
+'    rs.Update
+'
+'    rs.Close: Set rs = Nothing: Set db = Nothing
+'
+'    MsgBox "تم حفظ المكون", vbInformation
+'    Me.Requery
+'
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "حدث خطأ: " & Err.Description, vbCritical
+
+' On Error GoTo ErrorHandler
+'
+'    If Me.Dirty Then Me.Dirty = False
+'
+'    MsgBox "تم حفظ المكونات بنجاح", vbInformation
+'    DoCmd.Close
+'    Exit Sub
+'
+'ErrorHandler:
+'    MsgBox "حدث خطأ أثناء حفظ المكونات: " & Err.Description, vbCritical
+'
+'
+'End Sub
+''
+'Private Sub Form_Load()
+'    If Not IsNull(Me.OpenArgs) Then
+'        Me.ProductID = CLng(Me.OpenArgs)
+'    End If
+'End Sub
+'
+'
+'
+'
+'

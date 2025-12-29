@@ -1,0 +1,127 @@
+﻿Option Compare Database
+Option Explicit
+
+Private Sub Ctl_btnExport_Click()
+
+End Sub
+
+'============================================================
+'                    عند فتح الفورم
+'============================================================
+Private Sub Form_Load()
+DoCmd.Maximize
+    ' تعيين القيم الافتراضية
+    Me.cboMonth = Month(Date)
+    Me.cboYear = Year(Date)
+    Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+    ' تحديث Dashboard بالشهر الحالي
+    Call modDashboard.RefreshDashboard(Me)
+End Sub
+
+'============================================================
+'                    زر تطبيق الفلتر
+'============================================================
+Private Sub btnFilter_Click()
+    If IsNull(Me.cboMonth) Or IsNull(Me.cboYear) Then
+        MsgBox "الرجاء اختيار الشهر والسنة", vbExclamation, "تنبيه"
+        Exit Sub
+    End If
+        Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth.Column(1) & " لسنه " & Me.cboYear
+
+    Call modDashboard.RefreshDashboardWithFilter(Me, Me.cboMonth, Me.cboYear)
+End Sub
+
+'============================================================
+'                    زر العودة للشهر الحالي
+'============================================================
+Private Sub btnReset_Click()
+    Me.cboMonth = Month(Date)
+    Me.cboYear = Year(Date)
+        Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+
+    Call modDashboard.RefreshDashboard(Me)
+End Sub
+
+'============================================================
+'                    عند تغيير الشهر (تحديث تلقائي)
+'============================================================
+Private Sub cboMonth_AfterUpdate()
+    If Not IsNull(Me.cboYear) Then
+        Call modDashboard.RefreshDashboardWithFilter(Me, Me.cboMonth, Me.cboYear)
+            Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+
+    End If
+End Sub
+
+'============================================================
+'                    عند تغيير السنة (تحديث تلقائي)
+'============================================================
+Private Sub cboYear_AfterUpdate()
+    If Not IsNull(Me.cboMonth) Then
+        Call modDashboard.RefreshDashboardWithFilter(Me, Me.cboMonth, Me.cboYear)
+            Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+
+    End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+End Sub
+
+'============================================================
+'                    تحديث تلقائي كل دقيقة
+'============================================================
+'Private Sub Form_Timer()
+'    Call modDashboard.RefreshDashboard(Me)
+'        Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+'
+'End Sub
+
+'============================================================
+'                    زر التحديث
+'============================================================
+Private Sub btnRefresh_Click()
+    Call modDashboard.RefreshDashboard(Me)
+        Me.lblTitle.Caption = " لوحة مؤشرات أداء المبيعات عن شهر  " & Me.cboMonth & " لسنه " & Me.cboYear
+
+    MsgBox "تم تحديث البيانات بنجاح", vbInformation, "تحديث"
+End Sub
+
+'============================================================
+'                    زر التقرير
+'============================================================
+Private Sub btnReport_Click()
+'    Call modDashboard.OpenDetailedReport("Sales")
+End Sub
+
+'============================================================
+'                    زر التصدير
+'============================================================
+Private Sub btnExport_Click()
+'    Call modDashboard.ExportDashboardToExcel
+End Sub
+
+'============================================================
+'                    زر الطباعة
+'============================================================
+Private Sub btnPrint_Click()
+    Call modDashboard.PrintDashboard(Me)
+End Sub
+
+'============================================================
+'                    زر الإغلاق
+'============================================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+'============================================================
+'                    تحريك الفورم بالـ Header
+'============================================================
+Private Sub Form_Header_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+    ' كود تحريك الفورم (اختياري)
+End Sub

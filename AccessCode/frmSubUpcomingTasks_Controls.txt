@@ -1,0 +1,15 @@
+﻿Form: frmSubUpcomingTasks
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+txtDueDate		TextBox		DueDate
+Label1		Label		التاريخ
+txtClient		TextBox		ClientName
+Label3		Label		العميل
+txtEmployee		TextBox		EmployeeName
+Label5		Label		الموظف
+txtTaskType		TextBox		TaskTypeName
+Label7		Label		المهمه
+txtStatus		TextBox		TaskDueStatus
+Label9		Label		الحاله

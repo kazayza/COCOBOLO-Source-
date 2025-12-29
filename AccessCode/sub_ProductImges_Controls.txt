@@ -1,0 +1,14 @@
+﻿Form: sub_ProductImges
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label1		Label		ملاحظات
+Label0		Label		مسار الصورة
+Label8		Label		ProductImagesID
+ImagePath		TextBox		imagepath
+ImageNote		TextBox		ImageNote
+btnAddImage		Button		اضافة صورة
+ProductImagesID		TextBox		ProductImagesID
+btnDelete		Button		Command15
+txtID		TextBox		ProductImagesID

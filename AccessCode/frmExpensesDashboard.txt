@@ -1,0 +1,107 @@
+﻿Option Compare Database
+Option Explicit
+
+'============================================================
+'                    عند فتح الفورم
+'============================================================
+Private Sub Form_Load()
+    ' إيقاف التحديث التلقائي مؤقتاً
+'    modExpensesDashboard.gAutoRefresh = False
+    
+    ' تعيين القيم الافتراضية بدون تحديث
+    Me.cboExpMonth = Month(Date)
+    Me.cboExpYear = Year(Date)
+    Me.cboExpGroup = Null
+    Me.cboExpItem = Null
+    
+    ' تحديث قائمة البنود
+    Call modExpensesDashboard.UpdateItemsCombo(Me)
+    
+    ' تفعيل التحديث التلقائي
+'    modExpensesDashboard.gAutoRefresh = True
+    
+    ' تحديث Dashboard مرة واحدة
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    زر تطبيق الفلتر
+'============================================================
+Private Sub btnExpFilter_Click()
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    زر إعادة تعيين
+'============================================================
+Private Sub btnExpReset_Click()
+    Me.cboExpMonth = Month(Date)
+    Me.cboExpYear = Year(Date)
+    Me.cboExpGroup = Null
+    Me.cboExpItem = Null
+    
+    Call modExpensesDashboard.UpdateItemsCombo(Me)
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    عند تغيير الشهر
+'============================================================
+Private Sub cboExpMonth_AfterUpdate()
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    عند تغيير السنة
+'============================================================
+Private Sub cboExpYear_AfterUpdate()
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    عند تغيير المجموعة
+'============================================================
+Private Sub cboExpGroup_AfterUpdate()
+    ' تحديث قائمة البنود
+    Call modExpensesDashboard.UpdateItemsCombo(Me)
+    ' تحديث Dashboard
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    عند تغيير البند
+'============================================================
+Private Sub cboExpItem_AfterUpdate()
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+End Sub
+
+'============================================================
+'                    زر التحديث
+'============================================================
+Private Sub btnRefresh_Click()
+    Call modExpensesDashboard.RefreshExpensesDashboard(Me)
+    MsgBox "تم تحديث البيانات", vbInformation, "تحديث"
+End Sub
+
+'============================================================
+'                    زر تصدير Excel
+'============================================================
+Private Sub btnExportExcel_Click()
+    Call modExpensesDashboard.ExportExpensesToExcel(Me)
+End Sub
+
+'============================================================
+'                    زر الإغلاق
+'============================================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+ If Not currentUser.HasPermission(Me.Name, "View") Then
+        Cancel = True
+        MsgBox "ليس لديك صلاحية لعرض هذه الشاشة.", vbExclamation
+        DoCmd.Close acForm, Me.Name
+    End If
+DoCmd.Maximize
+End Sub

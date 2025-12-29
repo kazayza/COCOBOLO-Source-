@@ -1,0 +1,714 @@
+﻿Option Compare Database
+Option Explicit
+
+' ==========================================
+' Form: frmSalesPipeline
+' Pipeline المبيعات - النسخة المحسنة
+' ==========================================
+
+Private mSelectedPartyID As Long
+Private mSelectedOpportunityID As Long
+
+Private Sub btnExport_Click()
+    On Error GoTo ErrorHandler
+    
+    Dim sql As String
+    Dim whereClause As String
+    Dim fileName As String
+    Dim filePath As String
+    
+    ' بناء الفلتر
+    whereClause = " WHERE o.IsActive = 1"
+    
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND o.EmployeeID = " & Me.cmbEmployee
+    End If
+    
+    If Nz(Me.cmbSource, 0) <> 0 Then
+        whereClause = whereClause & " AND o.SourceID = " & Me.cmbSource
+    End If
+    
+    If Nz(Me.cmbAdType, 0) <> 0 Then
+        whereClause = whereClause & " AND o.AdTypeID = " & Me.cmbAdType
+    End If
+    
+    If Nz(Me.txtDateFrom, "") <> "" Then
+        whereClause = whereClause & " AND o.CreatedAt >= #" & Format(Me.txtDateFrom, "MM/DD/YYYY") & "#"
+    End If
+    
+    If Nz(Me.txtDateTo, "") <> "" Then
+        whereClause = whereClause & " AND o.CreatedAt <= #" & Format(Me.txtDateTo, "MM/DD/YYYY") & " 23:59:59#"
+    End If
+    
+    ' Query مصحح مع الأقواس الصحيحة
+    sql = "SELECT p.PartyName AS [اسم العميل], " & _
+          "p.Phone AS [الهاتف], " & _
+          "s.StageNameAr AS [المرحلة], " & _
+          "o.CreatedAt AS [تاريخ الإنشاء], " & _
+          "o.LastContactDate AS [آخر تواصل], " & _
+          "e.FullName AS [الموظف] " & _
+          "FROM ((dbo_SalesOpportunities AS o " & _
+          "INNER JOIN dbo_Parties AS p ON o.PartyID = p.PartyID) " & _
+          "LEFT JOIN dbo_SalesStages AS s ON o.StageID = s.StageID) " & _
+          "LEFT JOIN dbo_Employees AS e ON o.EmployeeID = e.EmployeeID" & _
+          whereClause & _
+          " ORDER BY o.StageID, o.CreatedAt DESC"
+    
+    ' حذف الـ Query لو موجود
+    On Error Resume Next
+    CurrentDb.QueryDefs.Delete "مراحل_المبيعات"
+    On Error GoTo ErrorHandler
+    
+    ' إنشاء Query جديد
+    CurrentDb.CreateQueryDef "مراحل_المبيعات", sql
+    
+    ' اسم الملف
+    fileName = "مراحل المبيعات_" & Format(Now, "YYYYMMDD_HHMMSS") & ".xlsx"
+    filePath = Environ("USERPROFILE") & "\Desktop\" & fileName
+    
+    ' التصدير
+    DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel12Xml, "مراحل_المبيعات", filePath, True
+    
+    ' حذف الـ Query المؤقت
+    CurrentDb.QueryDefs.Delete "qryExportPipeline"
+    
+    MsgBox "تم التصدير بنجاح!" & vbNewLine & vbNewLine & _
+           "الملف: " & filePath, vbInformation, "تصدير Excel"
+    
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "حدث خطأ أثناء التصدير: " & Err.Description, vbCritical, "خطأ"
+End Sub
+Private Sub btnReset_Click()
+    Me.cmbEmployee = 0
+    Me.cmbSource = 0
+    Me.cmbAdType = 0
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    Call LoadPipeline
+End Sub
+
+' ==========================================
+' Form Load
+' ==========================================
+Private Sub Form_Load()
+    On Error Resume Next
+    
+    mSelectedPartyID = 0
+    mSelectedOpportunityID = 0
+    
+    ' تفريغ التواريخ
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    
+    Call LoadFilters
+    Call LoadPipeline
+End Sub
+
+' ==========================================
+' تحميل الفلاتر
+' ==========================================
+Private Sub LoadFilters()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim strList As String
+    
+    ' فلتر الموظفين
+    sql = "SELECT EmployeeID, FullName FROM dbo_Employees WHERE Status = 'نشط' ORDER BY FullName"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = "0;كل الموظفين"
+    Do While Not rs.EOF
+        strList = strList & ";" & rs!EmployeeID & ";" & Nz(rs!FullName, "")
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbEmployee
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;3cm"
+        .rowSource = strList
+        .value = 0
+    End With
+    
+    ' فلتر المصادر
+    sql = "SELECT SourceID, SourceNameAr FROM dbo_ContactSources WHERE IsActive = 1"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = "0;كل المصادر"
+    Do While Not rs.EOF
+        strList = strList & ";" & rs!sourceID & ";" & Nz(rs!SourceNameAr, rs!sourceID)
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbSource
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;3cm"
+        .rowSource = strList
+        .value = 0
+    End With
+    
+    ' فلتر نوع الإعلان
+    sql = "SELECT AdTypeID, AdTypeName, AdTypeNameAr FROM dbo_AdTypes WHERE IsActive = 1"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    strList = "0;كل الإعلانات"
+    Do While Not rs.EOF
+        Dim adName As String
+        adName = Nz(rs!AdTypeName, "") & " - " & Nz(rs!AdTypeNameAr, "")
+        strList = strList & ";" & rs!adTypeID & ";" & adName
+        rs.MoveNext
+    Loop
+    rs.Close
+    Set rs = Nothing
+    
+    With Me.cmbAdType
+        .RowSourceType = "Value List"
+        .ColumnCount = 2
+        .BoundColumn = 1
+        .ColumnWidths = "0;4cm"
+        .rowSource = strList
+        .value = 0
+    End With
+    
+End Sub
+
+' ==========================================
+' تحميل Pipeline
+' ==========================================
+Private Sub LoadPipeline()
+    On Error Resume Next
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim whereClause As String
+    
+    ' بناء الفلتر الأساسي
+    whereClause = " WHERE o.IsActive = 1"
+    
+    ' فلتر الموظف
+    If Nz(Me.cmbEmployee, 0) <> 0 Then
+        whereClause = whereClause & " AND o.EmployeeID = " & Me.cmbEmployee
+    End If
+    
+    ' فلتر المصدر
+    If Nz(Me.cmbSource, 0) <> 0 Then
+        whereClause = whereClause & " AND o.SourceID = " & Me.cmbSource
+    End If
+    
+    ' فلتر نوع الإعلان
+    If Nz(Me.cmbAdType, 0) <> 0 Then
+        whereClause = whereClause & " AND o.AdTypeID = " & Me.cmbAdType
+    End If
+    
+    ' فلتر التاريخ من
+    If Nz(Me.txtDateFrom, "") <> "" Then
+        whereClause = whereClause & " AND o.CreatedAt >= #" & Format(Me.txtDateFrom, "MM/DD/YYYY") & "#"
+    End If
+    
+    ' فلتر التاريخ إلى
+    If Nz(Me.txtDateTo, "") <> "" Then
+        whereClause = whereClause & " AND o.CreatedAt <= #" & Format(Me.txtDateTo, "MM/DD/YYYY") & " 23:59:59#"
+    End If
+    
+    ' Query
+    sql = "SELECT o.OpportunityID, o.PartyID, p.PartyName, p.Phone, o.StageID " & _
+          "FROM dbo_SalesOpportunities o " & _
+          "INNER JOIN dbo_Parties p ON o.PartyID = p.PartyID" & _
+          whereClause & _
+          " ORDER BY o.StageID"
+
+      
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    ' المتغيرات
+    Dim strLead As String
+    Dim strPotential As String
+    Dim strHighPotential As String
+    Dim strClosed As String
+    Dim strLost As String
+    
+    Dim cntLead As Long
+    Dim cntPotential As Long
+    Dim cntHighPotential As Long
+    Dim cntClosed As Long
+    Dim cntLost As Long
+    
+    Dim item As String
+    
+    ' تصفير
+    strLead = ""
+    strPotential = ""
+    strHighPotential = ""
+    strClosed = ""
+    strLost = ""
+    
+    cntLead = 0
+    cntPotential = 0
+    cntHighPotential = 0
+    cntClosed = 0
+    cntLost = 0
+    
+    ' توزيع البيانات
+    Do While Not rs.EOF
+        item = rs!OpportunityID & ";" & rs!PartyID & ";" & _
+               Nz(rs!PartyName, "") & ";" & Nz(rs!Phone, "")
+       
+        Select Case rs!stageID
+            Case 1  ' Lead
+                If strLead <> "" Then strLead = strLead & ";"
+                strLead = strLead & item
+                cntLead = cntLead + 1
+                
+            Case 2  ' Potential
+                If strPotential <> "" Then strPotential = strPotential & ";"
+                strPotential = strPotential & item
+                cntPotential = cntPotential + 1
+                
+            Case 7  ' High Potential
+                If strHighPotential <> "" Then strHighPotential = strHighPotential & ";"
+                strHighPotential = strHighPotential & item
+                cntHighPotential = cntHighPotential + 1
+                
+            Case 3  ' Closed Deal
+                If strClosed <> "" Then strClosed = strClosed & ";"
+                strClosed = strClosed & item
+                cntClosed = cntClosed + 1
+                
+            Case 4, 5  ' Lost / Not Interested
+                If strLost <> "" Then strLost = strLost & ";"
+                strLost = strLost & item
+                cntLost = cntLost + 1
+        End Select
+        
+        rs.MoveNext
+    Loop
+    
+    rs.Close
+    Set rs = Nothing
+    
+    ' تحديث الـ ListBoxes
+    Call FillListBox(Me.lstLead, strLead)
+    Call FillListBox(Me.lstPotential, strPotential)
+    Call FillListBox(Me.lstHighPotential, strHighPotential)
+    Call FillListBox(Me.lstClosed, strClosed)
+    Call FillListBox(Me.lstLost, strLost)
+    
+    ' تحديث الـ Labels مع التلوين
+    Me.lblLead.Caption = cntLead & vbNewLine & "عميل محتمل"
+    Me.lblLead.BackStyle = 1
+    Me.lblLead.BackColor = RGB(52, 152, 219)
+    Me.lblLead.ForeColor = RGB(255, 255, 255)
+    Me.lblLead.TextAlign = 2
+    Me.lblLead.FontSize = 14
+    Me.lblLead.FontBold = True
+    
+    Me.lblPotential.Caption = cntPotential & vbNewLine & "مهتم"
+    Me.lblPotential.BackStyle = 1
+    Me.lblPotential.BackColor = RGB(241, 196, 15)
+    Me.lblPotential.ForeColor = RGB(0, 0, 0)
+    Me.lblPotential.TextAlign = 2
+    Me.lblPotential.FontSize = 14
+    Me.lblPotential.FontBold = True
+    
+    Me.lblHighPotential.Caption = cntHighPotential & vbNewLine & "عالى الاهتمام"
+    Me.lblHighPotential.BackStyle = 1
+    Me.lblHighPotential.BackColor = RGB(230, 126, 34)
+    Me.lblHighPotential.ForeColor = RGB(255, 255, 255)
+    Me.lblHighPotential.TextAlign = 2
+    Me.lblHighPotential.FontSize = 14
+    Me.lblHighPotential.FontBold = True
+    
+    Me.lblClosed.Caption = cntClosed & vbNewLine & "تم البيع"
+    Me.lblClosed.BackStyle = 1
+    Me.lblClosed.BackColor = RGB(39, 174, 96)
+    Me.lblClosed.ForeColor = RGB(255, 255, 255)
+    Me.lblClosed.TextAlign = 2
+    Me.lblClosed.FontSize = 14
+    Me.lblClosed.FontBold = True
+    
+    Me.lblLost.Caption = cntLost & vbNewLine & "خسارة"
+    Me.lblLost.BackStyle = 1
+    Me.lblLost.BackColor = RGB(231, 76, 60)
+    Me.lblLost.ForeColor = RGB(255, 255, 255)
+    Me.lblLost.TextAlign = 2
+    Me.lblLost.FontSize = 14
+    Me.lblLost.FontBold = True
+    
+    
+        ' ==========================================
+    ' تنبيه العملاء المهملين (أكتر من 7 أيام بدون تواصل)
+    ' ==========================================
+    Dim sqlNeglected As String
+    Dim rsNeglected As DAO.Recordset
+    Dim cntNeglected As Long
+    
+    sqlNeglected = "SELECT COUNT(*) AS Total FROM dbo_SalesOpportunities o " & _
+                   "WHERE o.IsActive = 1 " & _
+                   "AND o.StageID IN (1, 2, 7) " & _
+                   "AND (o.LastContactDate IS NULL OR o.LastContactDate <= #" & Format(Date - 7, "MM/DD/YYYY") & "#)"
+    
+    Set rsNeglected = CurrentDb.OpenRecordset(sqlNeglected, dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rsNeglected.EOF Then
+        cntNeglected = Nz(rsNeglected!Total, 0)
+    Else
+        cntNeglected = 0
+    End If
+    
+    rsNeglected.Close
+    Set rsNeglected = Nothing
+    
+    ' تحديث الـ Label
+    If cntNeglected > 0 Then
+        Me.lblNeglected.Caption = "?? " & cntNeglected & " عميل بدون تواصل منذ 7 أيام"
+        Me.lblNeglected.BackStyle = 1
+        Me.lblNeglected.BackColor = RGB(255, 193, 7)
+        Me.lblNeglected.ForeColor = RGB(0, 0, 0)
+        Me.lblNeglected.Visible = True
+    Else
+        Me.lblNeglected.Caption = "? لا يوجد عملاء مهملين"
+        Me.lblNeglected.BackStyle = 1
+        Me.lblNeglected.BackColor = RGB(39, 174, 96)
+        Me.lblNeglected.ForeColor = RGB(255, 255, 255)
+        Me.lblNeglected.Visible = True
+    End If
+    ' ==========================================
+    ' إحصائيات سريعة
+    ' ==========================================
+    Dim totalClients As Long
+    Dim conversionRate As Double
+    
+    ' إجمالي العملاء في الـ Pipeline
+    totalClients = cntLead + cntPotential + cntHighPotential + cntClosed + cntLost
+    
+    Me.lblTotalClients.Caption = totalClients & vbNewLine & "إجمالي العملاء"
+    Me.lblTotalClients.BackStyle = 1
+    Me.lblTotalClients.BackColor = RGB(52, 73, 94)
+    Me.lblTotalClients.ForeColor = RGB(255, 255, 255)
+    Me.lblTotalClients.TextAlign = 2
+    Me.lblTotalClients.FontSize = 14
+    Me.lblTotalClients.FontBold = True
+    
+    ' نسبة التحويل (Closed / Total * 100)
+    If totalClients > 0 Then
+        conversionRate = Round((cntClosed / totalClients) * 100, 1)
+    Else
+        conversionRate = 0
+    End If
+    
+    Me.lblConversionRate.Caption = conversionRate & "%" & vbNewLine & "نسبة التحويل"
+    Me.lblConversionRate.BackStyle = 1
+    If conversionRate >= 20 Then
+        Me.lblConversionRate.BackColor = RGB(39, 174, 96)   ' أخضر - ممتاز
+    ElseIf conversionRate >= 10 Then
+        Me.lblConversionRate.BackColor = RGB(241, 196, 15)  ' أصفر - متوسط
+    Else
+        Me.lblConversionRate.BackColor = RGB(231, 76, 60)   ' أحمر - ضعيف
+    End If
+    Me.lblConversionRate.ForeColor = RGB(255, 255, 255)
+    Me.lblConversionRate.TextAlign = 2
+    Me.lblConversionRate.FontSize = 14
+    Me.lblConversionRate.FontBold = True
+    
+    ' عملاء هذا الشهر
+    Dim sqlMonth As String
+    Dim rsMonth As DAO.Recordset
+    Dim cntMonth As Long
+    
+    sqlMonth = "SELECT COUNT(*) AS Total FROM dbo_SalesOpportunities " & _
+               "WHERE IsActive = 1 AND CreatedAt >= #" & Format(DateSerial(Year(Date), Month(Date), 1), "MM/DD/YYYY") & "#"
+    
+    Set rsMonth = CurrentDb.OpenRecordset(sqlMonth, dbOpenSnapshot, dbSeeChanges)
+    cntMonth = Nz(rsMonth!Total, 0)
+    rsMonth.Close
+    Set rsMonth = Nothing
+    
+    Me.lblThisMonth.Caption = cntMonth & vbNewLine & "هذا الشهر"
+    Me.lblThisMonth.BackStyle = 1
+    Me.lblThisMonth.BackColor = RGB(155, 89, 182)
+    Me.lblThisMonth.ForeColor = RGB(255, 255, 255)
+    Me.lblThisMonth.TextAlign = 2
+    Me.lblThisMonth.FontSize = 14
+    Me.lblThisMonth.FontBold = True
+    
+    ' عملاء هذا الأسبوع
+    Dim sqlWeek As String
+    Dim rsWeek As DAO.Recordset
+    Dim cntWeek As Long
+    
+    sqlWeek = "SELECT COUNT(*) AS Total FROM dbo_SalesOpportunities " & _
+              "WHERE IsActive = 1 AND CreatedAt >= #" & Format(Date - 7, "MM/DD/YYYY") & "#"
+    
+    Set rsWeek = CurrentDb.OpenRecordset(sqlWeek, dbOpenSnapshot, dbSeeChanges)
+    cntWeek = Nz(rsWeek!Total, 0)
+    rsWeek.Close
+    Set rsWeek = Nothing
+    
+    Me.lblThisWeek.Caption = cntWeek & vbNewLine & "هذا الأسبوع"
+    Me.lblThisWeek.BackStyle = 1
+    Me.lblThisWeek.BackColor = RGB(26, 188, 156)
+    Me.lblThisWeek.ForeColor = RGB(255, 255, 255)
+    Me.lblThisWeek.TextAlign = 2
+    Me.lblThisWeek.FontSize = 14
+    Me.lblThisWeek.FontBold = True
+End Sub
+
+' ==========================================
+' ملء ListBox
+' ==========================================
+Private Sub FillListBox(ByRef lst As ListBox, ByVal strData As String)
+    On Error Resume Next
+
+    With lst
+        .RowSourceType = "Value List"
+        .ColumnCount = 4
+        .ColumnWidths = "0;0;4cm;2cm"
+        .BoundColumn = 1
+        .rowSource = strData
+    End With
+End Sub
+
+
+' ==========================================
+' أحداث الفلاتر - AfterUpdate
+' ==========================================
+Private Sub cmbEmployee_AfterUpdate()
+    Call LoadPipeline
+End Sub
+
+Private Sub cmbSource_AfterUpdate()
+    Call LoadPipeline
+End Sub
+
+Private Sub cmbAdType_AfterUpdate()
+    Call LoadPipeline
+End Sub
+
+Private Sub txtDateFrom_AfterUpdate()
+    Call LoadPipeline
+End Sub
+
+Private Sub txtDateTo_AfterUpdate()
+    Call LoadPipeline
+End Sub
+
+' ==========================================
+' زر تحديث
+' ==========================================
+Private Sub btnRefresh_Click()
+    Call LoadPipeline
+End Sub
+
+' ==========================================
+' أحداث الـ ListBoxes - Click
+' ==========================================
+Private Sub lstLead_Click()
+    Call SelectFromList(Me.lstLead)
+End Sub
+
+Private Sub lstPotential_Click()
+    Call SelectFromList(Me.lstPotential)
+End Sub
+
+Private Sub lstHighPotential_Click()
+    Call SelectFromList(Me.lstHighPotential)
+End Sub
+
+Private Sub lstClosed_Click()
+    Call SelectFromList(Me.lstClosed)
+End Sub
+
+Private Sub lstLost_Click()
+    Call SelectFromList(Me.lstLost)
+End Sub
+
+'Private Sub SelectFromList(ByRef lst As ListBox)
+'    On Error Resume Next
+'
+'    If lst.ListIndex >= 0 Then
+'        mSelectedOpportunityID = Nz(lst.Column(0), 0)
+'        mSelectedPartyID = Nz(lst.Column(1), 0)
+'    Else
+'        mSelectedOpportunityID = 0
+'        mSelectedPartyID = 0
+'    End If
+'End Sub
+Private Sub SelectFromList(ByRef lst As ListBox)
+    On Error Resume Next
+    
+    If lst.ListIndex >= 0 Then
+        mSelectedOpportunityID = Nz(lst.Column(0), 0)
+        mSelectedPartyID = Nz(lst.Column(1), 0)
+        
+        ' عرض تفاصيل العميل
+        Call ShowClientDetails(mSelectedOpportunityID)
+    Else
+        mSelectedOpportunityID = 0
+        mSelectedPartyID = 0
+        Call ShowClientDetails(0)
+    End If
+End Sub
+' ==========================================
+' أحداث الـ ListBoxes - DblClick
+' ==========================================
+Private Sub lstLead_DblClick(Cancel As Integer)
+    Call btnViewClient_Click
+End Sub
+
+Private Sub lstPotential_DblClick(Cancel As Integer)
+    Call btnViewClient_Click
+End Sub
+
+Private Sub lstHighPotential_DblClick(Cancel As Integer)
+    Call btnViewClient_Click
+End Sub
+
+Private Sub lstClosed_DblClick(Cancel As Integer)
+    Call btnViewClient_Click
+End Sub
+
+Private Sub lstLost_DblClick(Cancel As Integer)
+    Call btnViewClient_Click
+End Sub
+
+' ==========================================
+' زر عرض بطاقة العميل
+' ==========================================
+Private Sub btnViewClient_Click()
+    On Error Resume Next
+    
+    If mSelectedPartyID = 0 Then
+        MsgBox "برجاء اختيار عميل أولاً", vbExclamation
+        Exit Sub
+    End If
+    
+    DoCmd.OpenForm "frmClientCard", , , , , , mSelectedPartyID
+End Sub
+
+' ==========================================
+' زر تسجيل مكالمة
+' ==========================================
+Private Sub btnNewCall_Click()
+    On Error Resume Next
+    
+    If mSelectedPartyID = 0 Then
+        MsgBox "برجاء اختيار عميل أولاً", vbExclamation
+        Exit Sub
+    End If
+    
+    DoCmd.OpenForm "frmNewInteraction", , , , , , mSelectedPartyID
+    
+    Call LoadPipeline
+End Sub
+
+' ==========================================
+' زر إغلاق
+' ==========================================
+Private Sub btnClose_Click()
+    DoCmd.Close acForm, Me.Name
+End Sub
+
+' ==========================================
+' أزرار التواريخ السريعة
+' ==========================================
+
+Private Sub btnToday_Click()
+    Me.txtDateFrom = Date
+    Me.txtDateTo = Date
+    Call LoadPipeline
+End Sub
+
+Private Sub btnWeek_Click()
+    Me.txtDateFrom = Date - 7
+    Me.txtDateTo = Date
+    Call LoadPipeline
+End Sub
+
+Private Sub btnMonth_Click()
+    Me.txtDateFrom = DateSerial(Year(Date), Month(Date), 1)
+    Me.txtDateTo = Date
+    Call LoadPipeline
+End Sub
+
+Private Sub btnAllDates_Click()
+    Me.txtDateFrom = Null
+    Me.txtDateTo = Null
+    Call LoadPipeline
+End Sub
+
+
+
+Private Sub ShowClientDetails(ByVal OpportunityID As Long)
+    On Error Resume Next
+    
+    If OpportunityID = 0 Then
+        Me.lblClientDetails.Caption = "اختر عميل لعرض التفاصيل"
+        Me.lblClientDetails.BackColor = RGB(200, 200, 200)
+        Exit Sub
+    End If
+    
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    Dim details As String
+    Dim callCount As Long
+    Dim lastContact As String
+    Dim empName As String
+    Dim clientName As String
+    
+    ' جلب عدد المكالمات
+    sql = "SELECT COUNT(*) AS Total FROM dbo_CustomerInteractions WHERE OpportunityID = " & OpportunityID
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    callCount = Nz(rs!Total, 0)
+    rs.Close
+    
+    ' جلب باقي التفاصيل
+    sql = "SELECT p.PartyName, o.LastContactDate, e.FullName " & _
+          "FROM ((dbo_SalesOpportunities AS o " & _
+          "INNER JOIN dbo_Parties AS p ON o.PartyID = p.PartyID) " & _
+          "LEFT JOIN dbo_Employees AS e ON o.EmployeeID = e.EmployeeID) " & _
+          "WHERE o.OpportunityID = " & OpportunityID
+    
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    
+    If Not rs.EOF Then
+        clientName = Nz(rs!PartyName, "-")
+        
+        If IsNull(rs!LastContactDate) Then
+            lastContact = "لا يوجد"
+        Else
+            lastContact = Format(rs!LastContactDate, "DD/MM/YYYY")
+        End If
+        
+        empName = Nz(rs!FullName, "-")
+    End If
+    
+    rs.Close
+    Set rs = Nothing
+    
+    ' بناء النص
+details = " * " & clientName & vbNewLine & _
+          "ــــــــــــــــــــــ" & vbNewLine & _
+          "آخر تواصل : " & lastContact & vbNewLine & _
+          "المكالمات : " & callCount & vbNewLine & _
+          "الموظف : " & empName
+    
+    ' تحديث الـ Label
+    Me.lblClientDetails.Caption = details
+    Me.lblClientDetails.BackStyle = 1
+    Me.lblClientDetails.BackColor = RGB(236, 240, 241)
+    Me.lblClientDetails.ForeColor = RGB(44, 62, 80)
+    Me.lblClientDetails.TextAlign = 1
+    Me.lblClientDetails.FontSize = 11
+    
+End Sub

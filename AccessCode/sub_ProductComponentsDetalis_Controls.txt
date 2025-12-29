@@ -1,0 +1,9 @@
+﻿Form: sub_ProductComponentsDetalis
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+Label27		Label		Quantity
+Label26		Label		ComponentName
+ComponentName		TextBox		ComponentName
+Quantity		TextBox		Quantity

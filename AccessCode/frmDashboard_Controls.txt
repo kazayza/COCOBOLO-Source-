@@ -1,0 +1,210 @@
+﻿Form: frmDashboard
+========================================
+
+Control Name		Type		Caption/Source
+------------------------------------------------------------------------
+lblTitle		Label		لوحة مؤشرات المبيعات
+btnClose		Button		✕
+Line94		Line		
+boxCard4		Rectangle		
+boxCard3		Rectangle		
+Line95		Line		
+boxCard2		Rectangle		
+Line96		Line		
+boxCard1		Rectangle		
+Line97		Line		
+Im1		Image		
+Image98		Image		
+lblCard4Unit		Label		عميل
+txtNewCustomers		TextBox		
+lblCard4Title		Label		👥 عملاء جدد
+txtTargetPct		TextBox		
+lblCard3Title		Label		🎯 نسبة التارجيت
+lblCard2Currency		Label		ج.م
+txtMonthSales		TextBox		
+lblCard2Title		Label		📈 مبيعات الشهر
+lblCard1Currency		Label		ج.م
+txtTodaySales		TextBox		
+lblCard1Title		Label		💰 مبيعات اليوم
+txtCustomersPctChange		TextBox		
+lblCustomersDown		Label		▼
+lblCustomersUp		Label		▲
+lblCard3Target		Label		من 3,000,000 ج.م
+imgMonthDown		Label		▼
+imgMonthUp		Label		▲
+txtMonthPctChange		TextBox		
+imgTodayUp		Label		▲
+imgTodayDown		Label		▼
+txtTodayPctChange		TextBox		
+boxProgressSection		Rectangle		
+txtRemainingAmount		TextBox		
+txtTargetAmount		TextBox		
+txtAchievedAmount		TextBox		
+lblProgressTitle		Label		📈 نسبة تحقيق التارجت الشهري
+boxProgressBg		Rectangle		
+boxProgressBar		Rectangle		
+txtTargetPctLarge		TextBox		
+boxInvoicesSection		Rectangle		
+Line125		Line		
+boxEmployeesSection		Rectangle		
+lblInvoicesTitle		Label		 ⏰  آخر 5 فواتير
+lblProductsTitle		Label		🛒 أكثر 5 منتجات مبيعاً
+lblEmployeesTitle		Label		🏆 أفضل 5 موظفين مبيعات
+txtInvStatus1		TextBox		
+txtInvAmount1		TextBox		
+txtInvCustomer1		TextBox		
+txtInvNo1		TextBox		
+txtProdQty1		TextBox		
+Line75		Line		
+txtProdName1		TextBox		
+Line73		Line		
+txtEmpSales1		TextBox		
+Line51		Line		
+txtEmpName1		TextBox		
+Line46		Line		
+txtInvStatus2		TextBox		
+txtInvAmount2		TextBox		
+txtInvCustomer2		TextBox		
+txtInvNo2		TextBox		
+txtProdQty2		TextBox		
+Line79		Line		
+txtProdName2		TextBox		
+Line77		Line		
+txtEmpSales2		TextBox		
+Line57		Line		
+txtEmpName2		TextBox		
+Line55		Line		
+txtInvStatus3		TextBox		
+txtInvAmount3		TextBox		
+txtInvCustomer3		TextBox		
+txtInvNo3		TextBox		
+txtProdQty3		TextBox		
+Line83		Line		
+txtProdName3		TextBox		
+Line81		Line		
+txtEmpSales3		TextBox		
+Line61		Line		
+txtEmpName3		TextBox		
+Line59		Line		
+txtInvStatus4		TextBox		
+txtInvAmount4		TextBox		
+txtInvCustomer4		TextBox		
+txtInvNo4		TextBox		
+txtProdQty4		TextBox		
+Line87		Line		
+txtProdName4		TextBox		
+Line85		Line		
+txtEmpSales4		TextBox		
+Line65		Line		
+txtEmpName4		TextBox		
+Line63		Line		
+txtInvStatus5		TextBox		
+txtInvAmount5		TextBox		
+txtInvCustomer5		TextBox		
+txtInvNo5		TextBox		
+txtProdQty5		TextBox		
+Line91		Line		
+txtProdName5		TextBox		
+Line89		Line		
+txtEmpSales5		TextBox		
+Line69		Line		
+txtEmpName5		TextBox		
+Line67		Line		
+Box126		Rectangle		
+Line127		Line		
+lblCollectionsTitle		Label		💵 التحصيلات
+txtCollections		TextBox		
+lblCollectionsCurrency		Label		ج.م
+txtCollectionsPctChange		TextBox		
+lblCollectionsUp		Label		▲
+lblCollectionsDown		Label		▼
+Image136		Image		
+Image137		Image		
+Box144		Rectangle		
+Line145		Line		
+Box140		Rectangle		
+cboMonth		ComboBox		1;يناير;2;فبراير;3;مارس;4;أبريل;5;مايو;6;يونيو;7;يوليو;8;أغسطس;9;سبتمبر;10;أكتوبر;11;نوفمبر;12;ديسمبر
+Label139		Label		الشهر
+Box141		Rectangle		
+cboYear		ComboBox		2025;2026;2027;2028;2029;2030
+Label143		Label		السنه
+btnFilter		Button		Command146
+btnReset		Button		Command146
+lblSelectedPeriod		Label		.
+boxProfitSection		Rectangle		
+Line150		Line		
+lblProfitTitle		Label		💵 صافي الربح التقديري
+
+txtTotalSales		TextBox		
+Label153		Label		إجمالي المبيعات
+txtTotalPurchases		TextBox		
+Label155		Label		إجمالي المشتريات
+txtNetProfit		TextBox		
+Label157		Label		صافي الربح
+txtProfitPercent		TextBox		
+Label159		Label		نسبة الربح
+
+boxYearCompareSection		Rectangle		
+lblYearCompareTitle		Label		📊
+
+lblPrevYear		Label		 
+lblCurrYear		Label		 
+boxPrevYearBar		Rectangle		
+boxCurrYearBar		Rectangle		
+txtPrevYearSales		TextBox		
+txtCurrYearSales		TextBox		
+lblYearDown		Label		▼
+lblYearUp		Label		▲
+txtYearGrowth		TextBox		
+Label172		Label		مقارنة سنوية
+
+boxAgingSection		Rectangle		
+lblAgingTitle		Label		 المديونيات المستحقة
+lblAgingTitle1		Label		⚠️
+lblAging30		Label		 أقل من 30 يوم
+
+lblAging60		Label		30 : 60 يوم
+lblAging90		Label		60 : 90 يوم
+lblAgingOver90		Label		أكثر من 90 يوم
+lblAging30Logo		Label		🟢
+lblAging60Logo		Label		🟢
+lblAging90Logo		Label		🟢
+lblAgingOver90Logo		Label		🟢
+txtAging30		TextBox		
+txtAging60		TextBox		
+txtAging90		TextBox		
+txtAgingOver90		TextBox		
+txtAging30Pct		TextBox		
+txtAging60Pct		TextBox		
+txtAging90Pct		TextBox		
+txtAgingOver90Pct		TextBox		
+txtAgingTotal		TextBox		
+Line194		Line		
+Box195		Rectangle		
+Line196		Line		
+Label197		Label		  📋 فواتير تحتاج متابعة
+txtFollowDays1		TextBox		
+txtFollowAmount1		TextBox		
+txtFollowCustomer1		TextBox		
+txtFollowInvNo1		TextBox		
+txtFollowDays2		TextBox		
+txtFollowAmount2		TextBox		
+txtFollowCustomer2		TextBox		
+txtFollowInvNo2		TextBox		
+txtFollowDays3		TextBox		
+txtFollowAmount3		TextBox		
+txtFollowCustomer3		TextBox		
+txtFollowInvNo3		TextBox		
+txtFollowDays4		TextBox		
+txtFollowAmount4		TextBox		
+txtFollowCustomer4		TextBox		
+txtFollowInvNo4		TextBox		
+txtFollowDays5		TextBox		
+txtFollowAmount5		TextBox		
+txtFollowCustomer5		TextBox		
+txtFollowInvNo5		TextBox		
+Line218		Line		
+Chart14		Other (133)		qry_Sales
+txtLastUpdate		TextBox		
+btnExport		Button		تصدير الى الاكسيل
+btnReport		Button		تقرير
